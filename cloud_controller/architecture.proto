@@ -58,6 +58,9 @@ message Secret {
 
 message Probe {
     string name = 1;
+    string application = 2;
+    string component = 3;
+    uint32 wait_per_request = 4;
 }
 
 message Requirement {

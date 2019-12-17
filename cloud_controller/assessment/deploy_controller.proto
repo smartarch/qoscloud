@@ -9,7 +9,7 @@ option java_package = "";
 option java_outer_classname = "";
 option objc_class_prefix = "";
 
-package assessment;
+package cloud_controller.assessment;
 
 import "cloud_controller/architecture.proto";
 

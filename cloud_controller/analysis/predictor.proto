@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "";
+option java_outer_classname = "";
+option objc_class_prefix = "";
+
+package cloud_controller.analysis;
+import "cloud_controller/architecture.proto";
+import "cloud_controller/assessment/deploy_controller.proto";
+
+service Predictor {
+    rpc RegisterApp (cloud_controller.Architecture) returns (RegistrationAck);
+    rpc UnregisterApp (cloud_controller.Architecture) returns (RegistrationAck);
+    rpc RegisterHwConfig (cloud_controller.assessment.HwConfig) returns (RegistrationAck);
+    rpc FetchScenarios (ScenarioRequest) returns (stream Scenario);
+    rpc JudgeApp (cloud_controller.Architecture) returns (JudgeReply);
+    rpc OnScenarioDone (Scenario) returns (CallbackAck);
+    rpc OnScenarioFailure (ScenarioCompletion) returns (CallbackAck);
+}
+
+message RegistrationAck {}
+message ScenarioRequest {}
+message CallbackAck {}
+
+message Scenario {
+    //    TODO
+    cloud_controller.Probe controlled_probe = 1;
+    repeated cloud_controller.Probe background_probes = 2;
+    string hw_id = 3;
+    uint32 warm_up_cycles = 4;
+    uint32 measured_cycles = 5;
+    repeated string cpu_events = 6;
+}
+
+message ScenarioCompletion {
+    Scenario scenario = 1;
+    ScenarioOutcome outcome = 2;
+}
+
+enum ScenarioOutcome {
+    SUCCESS = 0;
+    CPU_EVENTS_NOT_SUPPORTED = 1;
+    IO_EVENTS_NOT_SUPPORTED = 2;
+}
+
+enum JudgeResult {
+    UNDEFINED = 0;
+    ACCEPTED = 1;
+    REJECTED = 2;
+    NEEDS_DATA = 3;
+}
+
+message JudgeReply {
+    JudgeResult result = 1;
+}

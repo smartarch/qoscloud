@@ -11,3 +11,11 @@
 logs/
 delete_frpyc_ns.sh
 
+
+probes/
+
+images/
+
+apps/frpyc_slup/model_images/
+
+slup_run_client.sh
