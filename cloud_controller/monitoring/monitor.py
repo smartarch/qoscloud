@@ -45,7 +45,7 @@ class Monitor:
         structures in the Knowledge.
         """
         core_api = client.CoreV1Api()
-        extensions_api = client.ExtensionsV1beta1Api()
+        extensions_api = client.AppsV1Api()
         api_nodes_response = core_api.list_node(watch=False)
         # Filter out names of untainted nodes:
         node_names = [item for item in api_nodes_response.items

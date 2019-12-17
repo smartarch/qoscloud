@@ -4,7 +4,7 @@ networkx
 grpcio==1.19.0
 grpcio-tools==1.19.0  # Used in ./generate_grpc.sh
 numpy==1.15.4
-kubernetes==8.0.0
+kubernetes==10.0.1
 ortools==6.9.5824
 # Pillow==5.3.0
 protobuf==3.6.1

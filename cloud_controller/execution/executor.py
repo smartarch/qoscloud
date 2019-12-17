@@ -47,7 +47,7 @@ class Executor:
         :param execution_plan: plan to execute.
         """
         core_api = client.CoreV1Api()
-        extensions_api = client.ExtensionsV1beta1Api()
+        extensions_api = client.AppsV1Api()
         plan_executor = PlanExecutor(
             tasks=execution_plan.tasks,
             namespace=execution_plan.namespace,
@@ -67,7 +67,7 @@ class Executor:
         :return: Number of executed plans.
         """
         core_api = client.CoreV1Api()
-        extensions_api = client.ExtensionsV1beta1Api()
+        extensions_api = client.AppsV1Api()
         executors = []
         plan_futures = []
         for execution_plan in execution_plans:

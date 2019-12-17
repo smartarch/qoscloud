@@ -60,7 +60,7 @@ class PlanExecutor:
         self.tasks: List[protocols.Task] = tasks
         self.namespace: str = namespace
         self.basic_api: client.CoreV1Api = basic_api
-        self.extensions_api: client.ExtensionsV1beta1Api = extensions_api
+        self.extensions_api: client.AppsV1Api = extensions_api
         self.client_controller_stub: servicers.ClientControllerInternalStub = client_controller_stub
         self.knowledge: Knowledge = knowledge
         self.mongo_controller: MongoController = mongo_controller

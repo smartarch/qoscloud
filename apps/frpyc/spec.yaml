@@ -10,6 +10,9 @@ components:
         labels:
           app: recognizer
       spec:   # micoservices specification
+        selector:
+          matchLabels:
+            app: recognizer
         template:
           metadata:
             labels:
