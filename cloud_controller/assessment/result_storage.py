@@ -11,8 +11,8 @@ from typing import Tuple, Iterable, Optional, Dict
 import cloud_controller.middleware.middleware_pb2 as mw_protocols
 from cloud_controller import middleware
 from cloud_controller.assessment import RESULTS_PATH
-from cloud_controller.assessment.model import Probe, Scenario
-from cloud_controller.knowledge.model import Compin
+from cloud_controller.assessment.model import Scenario
+from cloud_controller.knowledge.model import Compin, Probe
 from cloud_controller.middleware.helpers import connect_to_grpc_server_with_channel
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
 

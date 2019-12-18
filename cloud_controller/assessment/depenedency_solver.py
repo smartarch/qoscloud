@@ -10,8 +10,8 @@ from collections import deque
 from enum import IntEnum
 from typing import Dict, List, Deque, Set, Tuple
 
-from cloud_controller.assessment.model import Scenario, Probe
-from cloud_controller.knowledge.model import CloudState, Component, ManagedCompin, Compin
+from cloud_controller.assessment.model import Scenario
+from cloud_controller.knowledge.model import CloudState, Component, ManagedCompin, Compin, Probe
 
 
 class WorkloadType(IntEnum):

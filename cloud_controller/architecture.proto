@@ -61,6 +61,8 @@ message Probe {
     string application = 2;
     string component = 3;
     uint32 wait_per_request = 4;
+    double time_limit = 5;
+    string alias = 6;
 }
 
 message Requirement {

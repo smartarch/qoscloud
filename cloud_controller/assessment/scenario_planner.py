@@ -10,9 +10,9 @@ from enum import IntEnum
 from threading import Lock
 from typing import List, Set
 
-from cloud_controller.assessment.model import Scenario, Probe
+from cloud_controller.assessment.model import Scenario
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import Application
+from cloud_controller.knowledge.model import Application, Probe
 
 logger = logging.getLogger("SP")
 
@@ -75,7 +75,7 @@ class FakeScenarioPlanner(ScenarioPlanner):
             for probe in component.probes:
                 with self._lock:
                     self._plan.append(
-                        Scenario(controlled_probe=Probe(component, probe), background_probes=[],
+                        Scenario(controlled_probe=probe, background_probes=[],
                                  hw_id=self._default_hw_id))
 
     def unregister_app(self, app: Application) -> None:
@@ -118,9 +118,8 @@ class SimpleScenarioPlanner(ScenarioPlanner):
     def register_app(self, app: Application) -> None:
         with self._lock:
             for ctl_component in app.list_managed_components():
-                for ctl_probe_name in ctl_component.probes:
+                for ctl_probe in ctl_component.probes:
                     # Test all components alone
-                    ctl_probe = Probe(ctl_component, ctl_probe_name)
                     self._probes.append(ctl_probe)
 
                     for hw_config in self._hw_ids:
@@ -130,8 +129,7 @@ class SimpleScenarioPlanner(ScenarioPlanner):
                     # Test all pairs of components
                     for background_probe in self._probes:
                         for hw_config in self._hw_ids:
-                            scenario = Scenario(Probe(ctl_component, ctl_probe_name),
-                                                [Probe(background_probe.component, background_probe.name)], hw_config)
+                            scenario = Scenario(ctl_probe, [background_probe], hw_config)
                             self._plan.append(scenario)
 
     def unregister_app(self, app: Application) -> None:

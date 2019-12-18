@@ -16,11 +16,11 @@ from cloud_controller.assessment.depenedency_solver import DependencySolver, Wor
     ProbeCompinPlanTuple
 from cloud_controller.assessment.deploy_controller import AppJudge
 from cloud_controller.assessment.mapek_wrapper import MapekWrapper
-from cloud_controller.assessment.model import Scenario, Probe
+from cloud_controller.assessment.model import Scenario
 from cloud_controller.assessment.result_storage import ResultStorage
 from cloud_controller.assessment.scenario_planner import ScenarioPlanner, FailureReason
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import CloudState, Compin
+from cloud_controller.knowledge.model import CloudState, Compin, Probe
 from cloud_controller.middleware.helpers import connect_to_grpc_server_with_channel
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
 

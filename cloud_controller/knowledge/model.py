@@ -2,7 +2,7 @@
 Contains the classes that are used by the framework to model the state of the cloud and the cluster: representations
 of nodes, datacenters, namespaces, applications, components, compins, etc.
 """
-
+from dataclasses import dataclass
 from enum import Enum
 from typing import List, Dict, Optional, Any, Iterable, Type, TypeVar
 from io import StringIO
@@ -10,7 +10,7 @@ from io import StringIO
 import yaml
 
 import cloud_controller.architecture_pb2 as protocols
-from cloud_controller import MONGOS_LABEL, MONGO_SHARD_LABEL
+from cloud_controller import MONGOS_LABEL, MONGO_SHARD_LABEL, architecture_pb2 as arch_pb
 from cloud_controller.knowledge.user_equipment import UserEquipment
 from cloud_controller.middleware.helpers import OrderedEnum
 
@@ -172,7 +172,7 @@ class Component:
         self._container_spec: str = container_spec
         self._id: str = id_
         self._type: ComponentType = type_
-        self._probes: List[str] = probes
+        self._probes: List[Probe] = probes
         self._statefulness = statefulness
         self._dependencies: Dict[str, Component] = {}
         # The following attributes contains all the labels that were found in the Component's deployment descriptor
@@ -229,7 +229,7 @@ class Component:
         return _assert_not_none_and_return(list(self._dependencies.values()))
 
     @property
-    def probes(self) -> List[str]:
+    def probes(self) -> List["Probe"]:
         return self._probes
 
     def _parse_node_selector_labels(self) -> Dict[str, str]:
@@ -271,10 +271,8 @@ class Component:
         :param application: Application the component should belong to.
         :param component_pb: Protobuf representation of the component.
         """
-        probes = []
-        for probe in component_pb.probes:
-            probes.append(probe.name)
-        return Component(
+        probes: List[Probe] = []
+        component = Component(
             application=application,
             name=component_pb.name,
             id_=component_pb.name,
@@ -283,6 +281,10 @@ class Component:
             probes=probes,
             statefulness=Component.statefulness_map[component_pb.statefulness]
         )
+        for probe in component_pb.probes:
+            component.probes.append(Probe.init_from_pb_direct(probe, component))
+
+        return component
 
     def get_all_dependencies_in_levels(self) -> List[List["Component"]]:
         """
@@ -817,3 +819,31 @@ class CloudState:
                 compin = self.get_compin(application_name, component_name, compin_id)
                 if isinstance(compin, type_):
                     yield compin
+
+
+@dataclass
+class Probe:
+    component: Component
+    name: str
+    time_limit: float
+    alias: str
+    wait_per_request: int = 0
+
+    # def __init__(self):
+    #     pass
+
+    @staticmethod
+    def init_from_pb(probe_pb: arch_pb.Probe, applications: Dict[str, Application]) -> "Probe":
+        """
+        Creates a probe object from protobuf representation.
+        """
+        component = applications[probe_pb.application].components[probe_pb.component]
+        return Probe.init_from_pb_direct(probe_pb, component)
+
+    @staticmethod
+    def init_from_pb_direct(probe_pb: arch_pb.Probe, component: Component):
+        assert probe_pb.alias != ""
+        return Probe(name=probe_pb.name, component=component, time_limit=probe_pb.time_limit, alias=probe_pb.alias)
+
+    def __str__(self) -> str:
+        return f"{self.component.name}/{self.name}"
