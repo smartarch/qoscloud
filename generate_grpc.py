@@ -13,7 +13,7 @@ call("python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. cloud_
      shell=True)
 call("python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. cloud_controller/architecture.proto",
      shell=True)
-call("python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. cloud_controller/analysis/predictor.proto",
+call("python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. cloud_controller/analysis/predictor_interface/predictor.proto",
      shell=True)
 # Apps
 call("python3 generate_grpc.py", cwd="./apps/frpyc/", shell=True)

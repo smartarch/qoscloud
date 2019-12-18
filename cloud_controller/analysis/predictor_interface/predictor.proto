@@ -15,7 +15,7 @@ service Predictor {
     rpc RegisterHwConfig (cloud_controller.assessment.HwConfig) returns (RegistrationAck);
     rpc FetchScenarios (ScenarioRequest) returns (stream Scenario);
     rpc JudgeApp (cloud_controller.Architecture) returns (JudgeReply);
-    rpc OnScenarioDone (Scenario) returns (CallbackAck);
+    rpc OnScenarioDone (ScenarioCompletion) returns (CallbackAck);
     rpc OnScenarioFailure (ScenarioCompletion) returns (CallbackAck);
 }
 
@@ -24,13 +24,14 @@ message ScenarioRequest {}
 message CallbackAck {}
 
 message Scenario {
-    //    TODO
     cloud_controller.Probe controlled_probe = 1;
     repeated cloud_controller.Probe background_probes = 2;
     string hw_id = 3;
     uint32 warm_up_cycles = 4;
     uint32 measured_cycles = 5;
     repeated string cpu_events = 6;
+    string id = 7;
+    string filename = 8;
 }
 
 message ScenarioCompletion {

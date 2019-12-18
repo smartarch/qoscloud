@@ -30,6 +30,10 @@ PARALLEL_EXECUTION = False  # Whether the execution of execution plans for diffe
                             # parallel or sequentially
 USE_VIRTUAL_NETWORK_CONTROLLER = False
 
+PREDICTOR_HOST = "0.0.0.0"
+PREDICTOR_PORT = 4317
+GLOBAL_PERCENTILE = 90.0
+
 load_config_from_file(__name__, CONFIG_FILE_LOCATION)
 if not isinstance(DEFAULT_UE_MANAGEMENT_POLICY, UEManagementPolicy):
     assert isinstance(DEFAULT_UE_MANAGEMENT_POLICY, str)
