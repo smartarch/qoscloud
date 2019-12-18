@@ -39,6 +39,7 @@ class Knowledge:
         if actual_state is None:
             actual_state = CloudState()
         self.applications: Dict[str, Application] = {}
+        self.components: Dict[str, Component] = {}
         self.actual_state: CloudState = actual_state
         self.nodes: Dict[str, Node] = {}
         self.namespaces: Dict[str, Namespace] = {}
@@ -90,6 +91,8 @@ class Knowledge:
         :param app_pb: protobuf representation of the application architecture.
         """
         self.applications[app_pb.name] = Application.init_from_pb(app_pb)
+        for component in self.applications[app_pb.name].components.values():
+            self.components[component.id] = component
         if app_pb.HasField("secret"):
             self._add_secret(app_pb.name, app_pb.secret.value)
         logging.info("An architecture for the %s application was processed." % app_pb.name)
@@ -102,6 +105,8 @@ class Knowledge:
         :param name: name of the application.
         """
         if name in self.applications:
+            for component in self.applications[name].components.values():
+                del self.components[component.id]
             del self.applications[name]
         logging.info(f"A request for deletion of application {name} was processed.")
 
