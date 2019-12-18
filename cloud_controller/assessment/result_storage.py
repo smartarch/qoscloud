@@ -35,7 +35,8 @@ class ResultStorage:
 
     @staticmethod
     def _get_fs_probe_name(probe: Probe) -> str:
-        return f"{probe.component.name}_{probe.name}"
+        # TODO
+        return probe.alias # f"{probe.component.name}_{probe.name}"
 
     @staticmethod
     def get_results_path(scenario: Scenario) -> Tuple[str, str]:
@@ -43,10 +44,11 @@ class ResultStorage:
         Returns path to header and data file for selected scenario
         """
         folder = ResultStorage.get_folder(scenario.controlled_probe, scenario.hw_id)
-        file = "=".join(ResultStorage._get_fs_probe_name(probe)
+        file = "merged_iterative_result--batch--" + \
+               "-".join(ResultStorage._get_fs_probe_name(probe)
                         for probe in [scenario.controlled_probe] + scenario.background_probes)
         path = folder + '/' + file
-        return path + ".header", path + ".data"
+        return path + ".header", path + ".out"
 
     @staticmethod
     def _collect_probe_results(ip: str, probe: Probe) -> Iterable[Tuple[Optional[str], Optional[str]]]:
