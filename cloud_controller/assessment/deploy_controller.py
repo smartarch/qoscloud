@@ -48,8 +48,8 @@ class DeployController(DeployControllerServicer):
             return deploy_pb.DeployReply(rc=deploy_pb.RC_NAME_NOT_AVAILABLE)
 
         # Adds app to db
-        self._knowledge.add_application(architecture)
         self._app_db.add_app(architecture)
+        self._knowledge.add_application(architecture)
 
         # Submit app for benchmarks
         app = self._knowledge.applications[architecture.name]
@@ -136,7 +136,7 @@ class AppJudge:
 
         return False
 
-    def judge_and_rule(self, app: Application) -> None:
+    def _judge_and_rule(self, app: Application) -> None:
         judgement = self._planner.judge_app(app)
         if judgement == JudgeResult.ACCEPTED:
             self._app_db.update_app_status(app.name, AppStatus.ACCEPTED)
@@ -157,7 +157,7 @@ class AppJudge:
             if status == AppStatus.RECEIVED:
                 # Check if app could be judged
                 if not self._has_remaining_scenarios(app):
-                    self.judge_and_rule(app)
+                    self._judge_and_rule(app)
 
     def notify_scenario_finished(self, scenario: Scenario) -> None:
         with self._lock:
@@ -167,7 +167,7 @@ class AppJudge:
                 app = scenario.controlled_probe.component.application
 
                 if not self._has_remaining_scenarios(app):
-                    self.judge_and_rule(app)
+                    self._judge_and_rule(app)
 
 
 def start_servers(knowledge: Knowledge, app_db: AppDatabase, scenario_pln: ScenarioPlanner,

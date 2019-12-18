@@ -39,7 +39,7 @@ class ScenarioPlanner(ABC):
         pass
 
     @abstractmethod
-    def register_hw_config(self, app: Application) -> None:
+    def register_hw_config(self, name: str) -> None:
         pass
 
     @abstractmethod

@@ -99,7 +99,7 @@ class ResultStorage:
                         header_lines += 1
                         # Check header for conflict
                         if existing_header is not None and existing_header != header_line:
-                            raise UnexpectedHeaderException(f"Excepted header {existing_header} "
+                            raise UnexpectedHeaderException(f"Expected header {existing_header} "
                                                             f"but received {header_line} on {scenario}")
                     if data_line is not None:
                         data_file.write(data_line + '\n')

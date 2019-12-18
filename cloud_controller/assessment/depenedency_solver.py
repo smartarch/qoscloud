@@ -42,6 +42,7 @@ class MasterSlaveSolver(DependencySolver):
     last_chain_id = 0
 
     def request(self, scenario: Scenario) -> Dict[str, int]:
+        # TODO: make this method a static procedure
         if len(scenario.controlled_probe.component.dependencies) > 0:
             return {scenario.hw_id: 2}
 

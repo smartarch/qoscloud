@@ -8,7 +8,6 @@ import logging
 from typing import Optional
 
 from cloud_controller import ASSESSMENT_KUBECONFIG, ASSESSMENT_MONGOS_SERVER_IP
-from cloud_controller.adaptation_controller import AdaptationController
 from cloud_controller.extension_manager import ExtensionManager
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import CloudState
