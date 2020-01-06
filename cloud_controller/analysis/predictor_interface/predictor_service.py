@@ -25,8 +25,7 @@ class PredictorService(PredictorServicer, Predictor):
         self._predictor.register_nodetype(DEFAULT_HARDWARE_ID, "data/default.header")
         self._predictor.register_percentile(DEFAULT_HARDWARE_ID, GLOBAL_PERCENTILE)
         self.probes: Dict[str, List[Probe]] = {}
-        self._initial_scenarios: Dict[str, List[str]] = {}
-        self._advanced_scenarios: Dict[str, List[str]] = {}
+        self._scenarios_by_app: Dict[str, List[str]] = {}
         self._scenarios_by_id: Dict[str, Scenario] = {}
         self._measuring_phases: Dict[str, MeasuringPhase] = {}
         self.knowledge: Knowledge = knowledge
@@ -47,8 +46,7 @@ class PredictorService(PredictorServicer, Predictor):
     def RegisterApp(self, request, context):
         app = Application.init_from_pb(request)
         self.probes[app.name] = []
-        self._initial_scenarios[app.name] = []
-        self._advanced_scenarios[app.name] = []
+        self._scenarios_by_app[app.name] = []
         self._measuring_phases[app.name] = MeasuringPhase.INIT
         for component in app.components.values():
             for probe in component.probes:
@@ -56,7 +54,7 @@ class PredictorService(PredictorServicer, Predictor):
                 self.probes[app.name].append(probe)
                 scenario = Scenario(probe, [], DEFAULT_HARDWARE_ID, scenario_id=str(self._last_scenario_id))
                 self._last_scenario_id += 1
-                self._initial_scenarios[app.name].append(scenario.id_)
+                self._scenarios_by_app[app.name].append(scenario.id_)
                 self._scenarios_by_id[scenario.id_] = scenario
         return predictor_pb.RegistrationAck()
 
@@ -71,7 +69,7 @@ class PredictorService(PredictorServicer, Predictor):
 
     def FetchScenarios(self, request, context):
         from itertools import chain
-        for list in chain(self._initial_scenarios.values(), self._advanced_scenarios.values()):
+        for list in chain(self._scenarios_by_app.values()):
             for scenario_id in list:
                 yield self._scenarios_by_id[scenario_id].pb_representation(predictor_pb.Scenario())
 
@@ -89,17 +87,20 @@ class PredictorService(PredictorServicer, Predictor):
 
     def OnScenarioDone(self, request, context):
         # TODO: scenario IDs
-        app = request.scenario.controlled_probe.application
-        if request.scenario.id in self._initial_scenarios[app]:
-            self._initial_scenarios[app].remove(request.scenario.id)
-            if len(self._initial_scenarios[app]) == 0:
-                self._get_new_scenarios()
-        else:
-            assert request.scenario.id in self._advanced_scenarios[app]
-            self._advanced_scenarios[app].remove(request.scenario.id)
-            if len(self._advanced_scenarios[app]) == 0:
-                self._predictor.preprocess_data()
         self._predictor.provide_measurements({request.scenario.hw_id: [request.scenario.filename]})
+        # Remove scenario from the list of to-be-done scenarios
+        app = request.scenario.controlled_probe.application
+        assert request.scenario.id in self._scenarios_by_app[app]
+        self._scenarios_by_app[app].remove(request.scenario.id)
+        # If there are no more scenarios for this app, proceed to the next measurement phase
+        if len(self._scenarios_by_app[app]) == 0:
+            if self._measuring_phases[app] == MeasuringPhase.INIT:
+                self._get_new_scenarios()
+                self._measuring_phases[app] = MeasuringPhase.ADVANCED
+            else:
+                assert self._measuring_phases[app] == MeasuringPhase.ADVANCED
+                self._predictor.preprocess_data()
+                self._measuring_phases[app] = MeasuringPhase.COMPLETED
         return predictor_pb.CallbackAck()
 
     def OnScenarioFailure(self, request, context):
@@ -122,4 +123,4 @@ class PredictorService(PredictorServicer, Predictor):
                 self._last_scenario_id += 1
                 self._scenarios_by_id[scenario.id_] = scenario
                 app_name = controlled_probe.component.application.name
-                self._advanced_scenarios[app_name].append(scenario.id_)
+                self._scenarios_by_app[app_name].append(scenario.id_)
