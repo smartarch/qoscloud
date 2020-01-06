@@ -25,13 +25,14 @@ class PredictorService(PredictorServicer, Predictor):
         self._predictor.register_nodetype(DEFAULT_HARDWARE_ID, "data/default.header")
         self._predictor.register_percentile(DEFAULT_HARDWARE_ID, GLOBAL_PERCENTILE)
         self.probes: Dict[str, List[Probe]] = {}
-        self._initial_scenarios: Dict[str, List[Scenario]] = {}
-        self._advanced_scenarios: Dict[str, List[Scenario]] = {}
-        self._scenarios_by_id: Dict[str, Scenario]
+        self._initial_scenarios: Dict[str, List[str]] = {}
+        self._advanced_scenarios: Dict[str, List[str]] = {}
+        self._scenarios_by_id: Dict[str, Scenario] = {}
         self._measuring_phases: Dict[str, MeasuringPhase] = {}
         self.knowledge: Knowledge = knowledge
 
         self._probes_by_id: Dict[str, Probe] = {}
+        self._last_scenario_id: int = 0
 
     def predict_(self, node_id: str, components_on_node: Dict[str, int]) -> bool:
         assignment = {}
@@ -53,10 +54,14 @@ class PredictorService(PredictorServicer, Predictor):
             for probe in component.probes:
                 self._register_probe(probe)
                 self.probes[app.name].append(probe)
-                self._initial_scenarios[app.name].append(Scenario(probe, [], DEFAULT_HARDWARE_ID))
+                scenario = Scenario(probe, [], DEFAULT_HARDWARE_ID, scenario_id=str(self._last_scenario_id))
+                self._last_scenario_id += 1
+                self._initial_scenarios[app.name].append(scenario.id_)
+                self._scenarios_by_id[scenario.id_] = scenario
         return predictor_pb.RegistrationAck()
 
     def UnregisterApp(self, request, context):
+        # TODO: implement UnregisterApp
         return predictor_pb.RegistrationAck()
 
     def RegisterHwConfig(self, request, context):
@@ -65,12 +70,10 @@ class PredictorService(PredictorServicer, Predictor):
         return predictor_pb.RegistrationAck()
 
     def FetchScenarios(self, request, context):
-        for list in self._initial_scenarios.values():
-            for scenario in list:
-                yield scenario.pb_representation(predictor_pb.Scenario())
-        for list in self._advanced_scenarios.values():
-            for scenario in list:
-                yield scenario.pb_representation(predictor_pb.Scenario())
+        from itertools import chain
+        for list in chain(self._initial_scenarios.values(), self._advanced_scenarios.values()):
+            for scenario_id in list:
+                yield self._scenarios_by_id[scenario_id].pb_representation(predictor_pb.Scenario())
 
     def JudgeApp(self, request, context):
         if self._measuring_phases[request.name] != MeasuringPhase.COMPLETED:
@@ -87,19 +90,20 @@ class PredictorService(PredictorServicer, Predictor):
     def OnScenarioDone(self, request, context):
         # TODO: scenario IDs
         app = request.scenario.controlled_probe.application
-        if request.scenario in self._initial_scenarios[app]:
-            self._initial_scenarios[app].remove(request.scenario)
+        if request.scenario.id in self._initial_scenarios[app]:
+            self._initial_scenarios[app].remove(request.scenario.id)
             if len(self._initial_scenarios[app]) == 0:
                 self._get_new_scenarios()
         else:
-            assert request.scenario in self._advanced_scenarios[app]
-            self._advanced_scenarios[app].remove(request.scenario)
+            assert request.scenario.id in self._advanced_scenarios[app]
+            self._advanced_scenarios[app].remove(request.scenario.id)
             if len(self._advanced_scenarios[app]) == 0:
                 self._predictor.preprocess_data()
         self._predictor.provide_measurements({request.scenario.hw_id: [request.scenario.filename]})
-        return super().OnScenarioDone(request, context)
+        return predictor_pb.CallbackAck()
 
     def OnScenarioFailure(self, request, context):
+        # TODO: implement OnScenarioFailure
         return super().OnScenarioFailure(request, context)
 
     def _register_probe(self, probe: Probe) -> None:
@@ -114,6 +118,8 @@ class PredictorService(PredictorServicer, Predictor):
                 background_probes = []
                 for probe_name in plan[1:]:
                     background_probes.append(self._probes_by_id[probe_name])
-                scenario = Scenario(controlled_probe, background_probes, hw_id)
+                scenario = Scenario(controlled_probe, background_probes, hw_id, scenario_id=str(self._last_scenario_id))
+                self._last_scenario_id += 1
+                self._scenarios_by_id[scenario.id_] = scenario
                 app_name = controlled_probe.component.application.name
-                self._advanced_scenarios[app_name].append(scenario)
+                self._advanced_scenarios[app_name].append(scenario.id_)

@@ -118,8 +118,8 @@ probe_aliases = set()
 
 
 class Scenario:
-    def __init__(self, controlled_probe: Probe, background_probes: List[Probe], hw_id: str, warm_up_cycles: int = 100,
-                 measured_cycles: int = 400, cpu_events=None):
+    def __init__(self, controlled_probe: Probe, background_probes: List[Probe], hw_id: str, scenario_id: str = None,
+                 warm_up_cycles: int = 10, measured_cycles: int = 40, cpu_events=None):
         self.controlled_probe = controlled_probe
         self.background_probes = background_probes
         self.hw_id = hw_id
@@ -129,7 +129,7 @@ class Scenario:
             self.cpu_events = []  # ["JVM:compilations"]
         else:
             self.cpu_events = cpu_events
-        self._id: str = None
+        self._id: str = scenario_id
         self.filename_header, self.filename_data = Scenario.get_results_path(self)
 
     @staticmethod
@@ -176,7 +176,8 @@ class Scenario:
             hw_id=scenario_pb.hw_id,
             warm_up_cycles=scenario_pb.warm_up_cycles,
             measured_cycles=scenario_pb.measured_cycles,
-            cpu_events=scenario_pb.cpu_events
+            cpu_events=scenario_pb.cpu_events,
+            scenario_id=scenario_pb.id
         )
         scenario.id_ = scenario_pb.id
         return scenario
