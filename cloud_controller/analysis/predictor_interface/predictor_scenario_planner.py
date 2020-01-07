@@ -33,20 +33,7 @@ class PredictorScenarioPlanner(ScenarioPlanner):
     def fetch_scenarios(self) -> List[Scenario]:
         scenarios: List[Scenario] = []
         for scenario_pb in self._predictor_stub.FetchScenarios(ScenarioRequest()):
-            main_probe = Probe.init_from_pb(scenario_pb.controlled_probe, self._knowledge.applications)
-            background_load: List[Probe] = []
-            for probe_pb in scenario_pb.background_probes:
-                background_load.append(Probe.init_from_pb(probe_pb, self._knowledge.applications))
-            scenario = Scenario(
-                controlled_probe=main_probe,
-                background_probes=background_load,
-                hw_id=scenario_pb.hw_id,
-                warm_up_cycles=scenario_pb.warm_up_cycles,
-                measured_cycles=scenario_pb.measured_cycles,
-                cpu_events=scenario_pb.cpu_events
-            )
-            scenario.id_ = scenario_pb.id
-            scenarios.append(scenario)
+            scenarios.append(Scenario.init_from_pb(scenario_pb))
         return scenarios
 
     def judge_app(self, app: Application) -> JudgeResult:
