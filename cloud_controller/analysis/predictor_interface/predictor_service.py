@@ -2,12 +2,14 @@ from enum import Enum
 from typing import Dict, List
 
 import cloud_controller.analysis.predictor_interface.predictor_pb2 as predictor_pb
-from cloud_controller import DEFAULT_HARDWARE_ID, GLOBAL_PERCENTILE
+from cloud_controller import DEFAULT_HARDWARE_ID, GLOBAL_PERCENTILE, PREDICTOR_HOST, PREDICTOR_PORT
 from cloud_controller.analysis.predictor import Predictor
-from cloud_controller.analysis.predictor_interface.predictor_pb2_grpc import PredictorServicer
+from cloud_controller.analysis.predictor_interface.predictor_pb2_grpc import PredictorServicer, \
+    add_PredictorServicer_to_server
 from cloud_controller.assessment.model import Scenario
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import Application, Probe
+from cloud_controller.middleware.helpers import start_grpc_server
 from src import predictor
 
 
@@ -17,21 +19,15 @@ class MeasuringPhase(Enum):
     COMPLETED = 3
 
 
-# TODO: locking
-class PredictorService(PredictorServicer, Predictor):
+class StatisticalPredictor(Predictor):
 
     def __init__(self, knowledge: Knowledge):
+        self.knowledge: Knowledge = knowledge
         self._predictor = predictor.Predictor()
         self._predictor.register_nodetype(DEFAULT_HARDWARE_ID, "data/default.header")
         self._predictor.register_percentile(DEFAULT_HARDWARE_ID, GLOBAL_PERCENTILE)
-        self.probes: Dict[str, List[Probe]] = {}
-        self._scenarios_by_app: Dict[str, List[str]] = {}
-        self._scenarios_by_id: Dict[str, Scenario] = {}
-        self._measuring_phases: Dict[str, MeasuringPhase] = {}
-        self.knowledge: Knowledge = knowledge
-
-        self._probes_by_id: Dict[str, Probe] = {}
-        self._last_scenario_id: int = 0
+        self._predictor_service = PredictorService(self._predictor)
+        start_grpc_server(self._predictor_service, add_PredictorServicer_to_server, PREDICTOR_HOST, PREDICTOR_PORT)
 
     def predict_(self, node_id: str, components_on_node: Dict[str, int]) -> bool:
         assignment = {}
@@ -42,6 +38,23 @@ class PredictorService(PredictorServicer, Predictor):
         self._predictor.predict(node_id, assignment, GLOBAL_PERCENTILE)
         # TODO: PROBLEM: no way to specify the number of instances of the same process
         # TODO: PROBLEM: no way to specify different percentiles for each prediction
+
+    def start_predictor_service(self):
+        # start_grpc_server(self._predictor_service, add_PredictorServicer_to_server, PREDICTOR_HOST, PREDICTOR_PORT)
+        pass
+
+# TODO: locking
+class PredictorService(PredictorServicer):
+
+    def __init__(self, predictor_: predictor.Predictor):
+        self._predictor = predictor_
+        self.probes: Dict[str, List[Probe]] = {}
+        self._scenarios_by_app: Dict[str, List[str]] = {}
+        self._scenarios_by_id: Dict[str, Scenario] = {}
+        self._measuring_phases: Dict[str, MeasuringPhase] = {}
+
+        self._probes_by_id: Dict[str, Probe] = {}
+        self._last_scenario_id: int = 0
 
     def RegisterApp(self, request, context):
         app = Application.init_from_pb(request)
@@ -75,6 +88,7 @@ class PredictorService(PredictorServicer, Predictor):
 
     def JudgeApp(self, request, context):
         if self._measuring_phases[request.name] != MeasuringPhase.COMPLETED:
+            # TODO: normally it should not happen. Raise an exception at this point.
             return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("NEEDS_DATA"))
         self._predictor.preprocess_data()
         for probe, proc_name in self.probes[request.name]:
