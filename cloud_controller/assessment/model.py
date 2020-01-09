@@ -186,11 +186,14 @@ class Scenario:
         scenario_pb.hw_id = self.hw_id
         scenario_pb.measured_cycles = self.measured_cycles
         scenario_pb.warm_up_cycles = self.warm_up_cycles
-        scenario_pb.cpu_events = self.cpu_events
+        scenario_pb.id = self.id_
+        for cpu_event in self.cpu_events:
+            scenario_pb.cpu_events.append(cpu_event)
         scenario_pb.controlled_probe.name = self.controlled_probe.name
         scenario_pb.controlled_probe.application = self.controlled_probe.component.application.name
         scenario_pb.controlled_probe.component = self.controlled_probe.component.name
         scenario_pb.controlled_probe.time_limit = self.controlled_probe.time_limit
+        scenario_pb.controlled_probe.alias = self.controlled_probe.alias
         scenario_pb.filename = self.filename_data
         for bg_probe in self.background_probes:
             probe_pb = scenario_pb.background_probes.add()
@@ -198,6 +201,7 @@ class Scenario:
             probe_pb.component = bg_probe.component.name
             probe_pb.application = bg_probe.component.application.name
             probe_pb.time_limit = bg_probe.time_limit
+            probe_pb.alias = bg_probe.alias
         return scenario_pb
 
     def __str__(self) -> str:
