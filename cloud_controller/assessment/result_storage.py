@@ -96,7 +96,7 @@ class ResultStorage:
                 for header_line, data_line in ResultStorage._collect_probe_results(compin.ip,
                                                                                    scenario.controlled_probe):
                     if header_line is not None:
-                        header_line = header_line.strip()
+                        header_line = header_line.strip() + ';end'
                         header_file.write(header_line + '\n')
                         header_lines += 1
                         # Check header for conflict
@@ -104,5 +104,5 @@ class ResultStorage:
                             raise UnexpectedHeaderException(f"Expected header {existing_header} "
                                                             f"but received {header_line} on {scenario}")
                     if data_line is not None:
-                        data_file.write(data_line + '\n')
+                        data_file.write(data_line + ';\n')
             assert header_lines == 1
