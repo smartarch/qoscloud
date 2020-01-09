@@ -28,7 +28,7 @@ class MiddlewareAgent(MiddlewareAgentServicer):
     """
 
     def __init__(self, dependency_map, lock, update_call, finalize_call, initialize_call,
-                 probe_monitor: ProbeMonitor):
+                 probes: Dict[str, Callable[[], None]]):
         """
         :param dependency_map: a map of dependencies that will be updated on each dependency change
         :param lock: a lock to hold while setting a dependency value
@@ -45,7 +45,8 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         self._update_call = update_call
         self.phase = mw_protocols.Phase.Value('INIT')
         self._mongo_agent: Optional[MongoAgent] = None
-        self._probe_monitor = probe_monitor
+        self._probes = probes
+        self._probe_monitor = None
 
     def SetDependencyAddress(self, request, context):
         """
@@ -84,6 +85,10 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         This method is used to check whether the instance is already running and to get its current phase
         :return: Current phase of the instance
         """
+        if self._probe_monitor is None:
+            self._probe_monitor = ProbeMonitor(production=request.production)
+            for name, exe in self._probes.items():
+                self._probe_monitor.add_probe(name, exe)
         return mw_protocols.Pong(phase=self.phase)
 
     def SetMongoParameters(self, request, context):
@@ -216,14 +221,8 @@ class ServerAgent(Agent):
         :param initialize_call: A callback function which is called when the instance receives its initial state.
         """
         super().__init__()
-
-        # Prepare probes
-        monitor = ProbeMonitor()
-        for name, exe in probes.items():
-            monitor.add_probe(name, exe)
-
         self._mw_agent = MiddlewareAgent(self._dependencies, self._dependency_lock, update_call,
-                                         finalize_call, initialize_call, monitor)
+                                         finalize_call, initialize_call, probes)
 
     def _run(self) -> None:
         start_grpc_server(self._mw_agent, add_MiddlewareAgentServicer_to_server, AGENT_HOST, AGENT_PORT, 10, True)

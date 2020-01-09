@@ -53,7 +53,7 @@ class ResultStorage:
     @staticmethod
     def _collect_probe_results(ip: str, probe: Probe) -> Iterable[Tuple[Optional[str], Optional[str]]]:
         # Open connection
-        stub, channel = connect_to_grpc_server_with_channel(MiddlewareAgentStub, ip, middleware.AGENT_PORT, True)
+        stub, channel = connect_to_grpc_server_with_channel(MiddlewareAgentStub, ip, middleware.AGENT_PORT, True, production=False)
         probe_msg = mw_protocols.ProbeDescriptor(name=probe.name, waitPerRequest=probe.wait_per_request)
 
         for reply in stub.CollectProbeResults(probe_msg):

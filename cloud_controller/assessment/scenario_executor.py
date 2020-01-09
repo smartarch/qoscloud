@@ -75,7 +75,7 @@ class ScenarioExecutor:
             for cpu_event in cpu_events:
                 measure_msg.cpuEvents.append(cpu_event)
 
-        stub, channel = connect_to_grpc_server_with_channel(MiddlewareAgentStub, ip, middleware.AGENT_PORT, True)
+        stub, channel = connect_to_grpc_server_with_channel(MiddlewareAgentStub, ip, middleware.AGENT_PORT, True, production=False)
         reply = stub.MeasureProbe(measure_msg)
         channel.close()
 
@@ -103,7 +103,7 @@ class ScenarioExecutor:
             # Stop any probe workload
             workload_msg = mw_protocols.ProbeWorkload(none=True)
 
-        stub, channel = connect_to_grpc_server_with_channel(MiddlewareAgentStub, ip, middleware.AGENT_PORT, True)
+        stub, channel = connect_to_grpc_server_with_channel(MiddlewareAgentStub, ip, middleware.AGENT_PORT, True, production=False)
         reply = stub.SetProbeWorkload(workload_msg)
         channel.close()
 

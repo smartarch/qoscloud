@@ -18,14 +18,15 @@ Collects probes data and controls probe measurement process. The results are sav
 
 class ProbeMonitor:
 
-    def __init__(self):
+    def __init__(self, production: bool):
         self._workload_enabled = False
         self._probes: {str, Callable[[], None]} = {}
+        self._production = production
 
     def execute_probe(self, probe_name: str, warm_up_cycles: int, measured_cycles: int,
                       cpu_events: Optional[List[str]] = None) -> int:
         assert not self._workload_enabled
-        collector = DataCollector(probe_name, cpu_events)
+        collector = DataCollector(probe_name, cpu_events, self._production)
 
         # Warm up
         executable = self._probes[probe_name]
@@ -213,9 +214,12 @@ class DataCollector:
     SEPARATOR = ";"
     RESULTS_DIR = "./probes/"
 
-    def __init__(self, probe_name: str, cpu_events: Optional[List[str]] = None):
+    def __init__(self, probe_name: str, cpu_events: Optional[List[str]] = None, production: bool = False):
         # Monitors
-        self._monitors: List[IterativeMonitor] = [TimeMonitor(), DiskMonitor(), CpuMonitor(cpu_events)]
+        if not production:
+            self._monitors: List[IterativeMonitor] = [TimeMonitor(), DiskMonitor(), CpuMonitor(cpu_events)]
+        else:
+            self._monitors: List[IterativeMonitor] = [TimeMonitor()]
 
         # Common header
         self._header: List[str] = []

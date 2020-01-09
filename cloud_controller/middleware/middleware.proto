@@ -48,6 +48,7 @@ enum Phase {
 
 message Pong {
     Phase phase = 1;
+    bool production = 2;
 }
 
 message MongoParametersAck {}

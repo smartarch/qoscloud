@@ -105,7 +105,7 @@ class PlanExecutor:
             try:
                 all_ready = True
                 for stub, value in stubs:
-                    pong = stub.Ping(Pong())
+                    pong = stub.Ping(Pong(production=True))
                     if pong.phase < value:
                         all_ready = False
                         break
@@ -123,7 +123,7 @@ class PlanExecutor:
         """
         start = perf_counter()
         try:
-            pong_future = stub.Ping.future(Pong(), timeout=PING_TIMEOUT)
+            pong_future = stub.Ping.future(Pong(production=True), timeout=PING_TIMEOUT)
             while perf_counter() - start < PING_TIMEOUT:
                 if pong_future.done():
                     pong = pong_future.result()

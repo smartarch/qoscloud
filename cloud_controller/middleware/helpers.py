@@ -30,7 +30,7 @@ def connect_to_grpc_server(stub_class, host, port, block=False):
     return stub
 
 
-def connect_to_grpc_server_with_channel(stub_class, host, port, block=False):
+def connect_to_grpc_server_with_channel(stub_class, host, port, block=False, production=True):
     """
     Connects to a gRPC server of a specified type at a specified address
     :param stub_class: A class of the stub of the server to connect to
@@ -46,7 +46,7 @@ def connect_to_grpc_server_with_channel(stub_class, host, port, block=False):
         if isinstance(stub, MiddlewareAgentStub):
             while True:
                 try:
-                    stub.Ping(Pong())
+                    stub.Ping(Pong(production=production))
                     break
                 except grpc.RpcError:
                     time.sleep(WAIT_TIME)
