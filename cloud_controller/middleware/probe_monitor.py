@@ -121,43 +121,68 @@ class TimeMonitor(IterativeMonitor):
 
 class DiskMonitor(IterativeMonitor):
     DEFAULT_STAT_FILE_PATHS = ["/sys/block/sda/stat", "/sys/block/vda/stat"]
-    DEFAULT_FEATURES = ["reads_completed", "reads_merged", "read_sectors", "read_time", "write_completed",
-                        "write_merged", "written_sectors", "write_time", "io_in_progress", "io_time",
-                        "weighted_io_time", "discards_completed", "discards_merged", "sectors_discarded",
-                        "discards_time"]
+    DEFAULT_FEATURES = [
+        "reads_completed",
+        "reads_merged",
+        "read_sectors",
+        "read_time",
+        "write_completed",
+        "write_merged",
+        "written_sectors",
+        "write_time",
+        "io_in_progress",
+        "io_time",
+        "weighted_io_time",
+        "discards_completed",
+        "discards_merged",
+        "sectors_discarded",
+        "discards_time"
+    ]
+    FEATURES = [
+        "rw_completed",
+        "rw_merged",
+        "rw_sectors",
+        "io_in_progress",
+        "io_time",
+        "weighted_io_time"
+    ]
 
     def __init__(self):
         # Find disk info file
         for file in self.DEFAULT_STAT_FILE_PATHS:
             if path.isfile(file):
                 self._file = file
-
         # Check supported features
         with open(self._file, "r") as stream:
-            self._num_features = len(stream.readline().split())
-        # Warnings
-        if self._num_features < len(self.DEFAULT_FEATURES):
-            logging.warning(f"Recognized only {self._num_features} IO stats from {self.DEFAULT_FEATURES} supported")
-        if self._num_features == 0:
-            raise IOEventsNotSupportedException("Nothing to measure for IO")
-
+            if len(stream.readline().split()) < 11:
+                raise IOEventsNotSupportedException("Nothing to measure for IO")
         # Prepare data
-        self._start_data = [0] * self._num_features
-        self._end_data = [0] * self._num_features
+        self._start_data = [0] * len(self.FEATURES)
+        self._end_data = [0] * len(self.FEATURES)
+
+    def _read_data(self) -> List[int]:
+        with open(self._file, "r") as stream:
+            raw_data = [int(x) for x in stream.readline().split()]
+        assert len(self._start_data) >= 11
+        # Extract the needed values:
+        return [
+            raw_data[0] + raw_data[4],
+            raw_data[1] + raw_data[5],
+            raw_data[2] + raw_data[6],
+            raw_data[8],
+            raw_data[9],
+            raw_data[10]
+        ]
 
     def before_iteration(self) -> None:
-        with open(self._file, "r") as stream:
-            self._start_data = [int(x) for x in stream.readline().split()]
-        assert len(self._start_data) == self._num_features
+        self._start_data = self._read_data()
 
     def after_iteration(self) -> None:
-        with open(self._file, "r") as stream:
-            self._end_data = [int(x) for x in stream.readline().split()]
-        assert len(self._end_data) == self._num_features
+        self._end_data = self._read_data()
 
     @property
     def header(self) -> List[str]:
-        return self.DEFAULT_FEATURES[:self._num_features]
+        return self.FEATURES
 
     @property
     def last_measurement(self) -> List[int]:
