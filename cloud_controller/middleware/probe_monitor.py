@@ -101,8 +101,10 @@ class TimeMonitor(IterativeMonitor):
     def __init__(self):
         self._start_time = 0
         self._end_time = 0
+        self._iteration = -1
 
     def before_iteration(self) -> None:
+        self._iteration += 1
         self._start_time = round(time.perf_counter() * 1000)
 
     def after_iteration(self) -> None:
@@ -110,11 +112,11 @@ class TimeMonitor(IterativeMonitor):
 
     @property
     def header(self) -> List[str]:
-        return ["start_time", "end_time", "elapsed"]
+        return ["run", "iteration", "start_time", "end_time", "elapsed"]
 
     @property
     def last_measurement(self) -> List[int]:
-        return [self._start_time, self._end_time, self._end_time - self._start_time]
+        return [0, self._iteration, self._start_time, self._end_time, self._end_time - self._start_time]
 
 
 class DiskMonitor(IterativeMonitor):

@@ -13,17 +13,6 @@ from cloud_controller.middleware import AGENT_PORT, middleware_pb2
 from cloud_controller.middleware.helpers import connect_to_grpc_server
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
 
-# TODO: calling probes and collecting results
-
-# TODO: calculating statistics:
-#   for each instance
-#   for components
-#   for system at large
-
-# TODO: choosing which compins to measure
-
-# TODO: orchestrating measurement scenarios
-
 
 class RuntimeMeasurementScenario:
 
@@ -105,8 +94,8 @@ class StatisticsCollector:
             self.time_limits[component_id] = compin.component.probes[0].time_limit
         for line in data:
             items = line.split(';')
-            assert len(items) >= 3
-            execution_time = float(items[2])
+            assert len(items) >= 5
+            execution_time = float(items[4])
             self.compin_data[compin.id].append(execution_time)
             self.component_data[component_id].append(execution_time)
 
