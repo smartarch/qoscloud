@@ -175,6 +175,9 @@ class ProbeController:
         """
         while True:
             scenario: RuntimeMeasurementScenario = self._factory.next_scenario()
+            if scenario is None:
+                time.sleep(1)
+                continue
             self._pool = ThreadPool(processes=len(scenario.workloads))
             for compin, probe, cycles in scenario.workloads:
                 result = self._pool.apply_async(self.measure_workload, (compin, probe, cycles))
@@ -183,7 +186,7 @@ class ProbeController:
                 result.wait()
                 data = result.get()
                 self.statistics_collector.process_data(compin, data)
-            time.sleep(1)
+            self._log_stats()
 
     def add_compin(self, compin: ManagedCompin) -> None:
         """
@@ -200,3 +203,11 @@ class ProbeController:
         :param compin: ManagedCompin to remove
         """
         self._factory.remove_compin(compin)
+
+    def _log_stats(self) -> None:
+        logging.info(f"------------ TOTAL PERCENTAGE: {self.statistics_collector.get_global_stats()} ---------------")
+        for (app, component), percentage in self.statistics_collector.get_component_stats():
+            logging.info(f"Component {app}${component}: {percentage}")
+        logging.info("--------------------------------------------------------------------------------------------")
+        for compin, percentage in self.statistics_collector.get_compin_stats():
+            logging.info(f"Compin {compin}: {percentage}")
