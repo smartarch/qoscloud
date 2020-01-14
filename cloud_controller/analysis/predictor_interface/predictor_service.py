@@ -1,3 +1,4 @@
+import math
 from enum import Enum
 from typing import Dict, List
 
@@ -10,7 +11,7 @@ from cloud_controller.assessment.model import Scenario
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import Application, Probe
 from cloud_controller.middleware.helpers import start_grpc_server
-from src import predictor
+import predictor
 
 
 class MeasuringPhase(Enum):
@@ -23,9 +24,7 @@ class StatisticalPredictor(Predictor):
 
     def __init__(self, knowledge: Knowledge):
         self.knowledge: Knowledge = knowledge
-        self._predictor = predictor.Predictor()
-        self._predictor.register_nodetype(DEFAULT_HARDWARE_ID, "data/default.header")
-        self._predictor.register_percentile(DEFAULT_HARDWARE_ID, GLOBAL_PERCENTILE)
+        self._predictor = self._create_predictor()
         self._predictor_service = PredictorService(self._predictor)
         start_grpc_server(self._predictor_service, add_PredictorServicer_to_server, PREDICTOR_HOST, PREDICTOR_PORT)
 
@@ -34,14 +33,36 @@ class StatisticalPredictor(Predictor):
         for component_id, count in components_on_node.items():
             component = self.knowledge.components[component_id]
             for probe in component.probes:
-                assignment[probe.alias] = (probe.time_limit, count)
-        self._predictor.predict(node_id, assignment, GLOBAL_PERCENTILE)
+                assignment[probe.alias] = (math.ceil(probe.time_limit), count)
+        return self._predictor.predict(assignment)
         # TODO: PROBLEM: no way to specify the number of instances of the same process
         # TODO: PROBLEM: no way to specify different percentiles for each prediction
 
     def start_predictor_service(self):
         # start_grpc_server(self._predictor_service, add_PredictorServicer_to_server, PREDICTOR_HOST, PREDICTOR_PORT)
         pass
+
+    def _create_predictor(self) -> predictor.Predictor:
+        _predictor = predictor.Predictor(nodetype=DEFAULT_HARDWARE_ID, percentile=GLOBAL_PERCENTILE)
+        _predictor.assign_headers("headers.json")
+        _predictor.assign_groundtruth("groundtruth.json")
+        _predictor.assign_user_boundary("user_boundary.json")
+
+        from clustering_alg import MeanShift
+        from clustering_score import VMeasure
+        from distance import AveragePairCorrelation
+        from normalizer import MinMax
+        from optimizer import SimAnnealing
+        _predictor.configure(
+            clustering_alg=MeanShift(),
+            clustering_score=VMeasure(),
+            distance=AveragePairCorrelation(),
+            normalizer=MinMax(),
+            optimizer=SimAnnealing(),
+            boundary_percentage=140)
+        _predictor.calculate_weights()
+        return _predictor
+
 
 # TODO: locking
 class PredictorService(PredictorServicer):
@@ -76,8 +97,7 @@ class PredictorService(PredictorServicer):
         return predictor_pb.RegistrationAck()
 
     def RegisterHwConfig(self, request, context):
-        # TODO
-        self._predictor.register_nodetype(request.name, f"data/{request.name}")
+        # TODO: implement RegisterHwConfig
         return predictor_pb.RegistrationAck()
 
     def FetchScenarios(self, request, context):
@@ -89,9 +109,8 @@ class PredictorService(PredictorServicer):
         if self._measuring_phases[request.name] != MeasuringPhase.COMPLETED:
             # TODO: normally it should not happen. Raise an exception at this point.
             return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("NEEDS_DATA"))
-        self._predictor.preprocess_data()
         for probe, proc_name in self.probes[request.name]:
-            prediction = self._predictor.predict(DEFAULT_HARDWARE_ID, {proc_name: probe.time_limit}, GLOBAL_PERCENTILE)
+            prediction = self._predictor.predict({proc_name: (probe.time_limit, 1)})
             if prediction is None:
                 return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("NEEDS_DATA"))
             elif prediction is False:
@@ -100,7 +119,7 @@ class PredictorService(PredictorServicer):
 
     def OnScenarioDone(self, request, context):
         # TODO: scenario IDs
-        self._predictor.provide_measurements({request.scenario.hw_id: [request.scenario.filename]})
+        self._predictor.provide_data_matrix(request.scenario.filename)
         # Remove scenario from the list of to-be-done scenarios
         app = request.scenario.controlled_probe.application
         assert request.scenario.id in self._scenarios_by_app[app]
@@ -112,7 +131,6 @@ class PredictorService(PredictorServicer):
                 self._measuring_phases[app] = MeasuringPhase.ADVANCED
             else:
                 assert self._measuring_phases[app] == MeasuringPhase.ADVANCED
-                self._predictor.preprocess_data()
                 self._measuring_phases[app] = MeasuringPhase.COMPLETED
         return predictor_pb.CallbackAck()
 
@@ -124,7 +142,6 @@ class PredictorService(PredictorServicer):
         self._probes_by_id[probe.alias] = probe
 
     def _get_new_scenarios(self):
-        self._predictor.preprocess_data()
         measurements = self._predictor.get_requested_measurements()
         for hw_id in measurements:
             for plan in measurements[hw_id]:
