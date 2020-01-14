@@ -17,7 +17,7 @@ SLEEP_TIME = 10000  # seconds
 WAIT_TIME = 0.1  # seconds
 
 
-def connect_to_grpc_server(stub_class, host, port, block=False):
+def connect_to_grpc_server(stub_class, host, port, block=False, production=True):
     """
     Connects to a gRPC server of a specified type at a specified address
     :param stub_class: A class of the stub of the server to connect to
@@ -26,7 +26,7 @@ def connect_to_grpc_server(stub_class, host, port, block=False):
     :param block: Whether the function has to block until the server is available
     :return: stub object
     """
-    stub, _ = connect_to_grpc_server_with_channel(stub_class, host, port, block)
+    stub, _ = connect_to_grpc_server_with_channel(stub_class, host, port, block, production)
     return stub
 
 

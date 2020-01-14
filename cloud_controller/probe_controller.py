@@ -3,6 +3,8 @@ from functools import reduce
 from multiprocessing.pool import ThreadPool, ApplyResult
 from typing import List, Tuple, Dict, Optional
 
+import threading
+
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import ManagedCompin
 from cloud_controller.middleware import AGENT_PORT, middleware_pb2
@@ -115,7 +117,6 @@ class StatisticsCollector:
             stats.append((compin_id, success_percentage))
         return stats
 
-
     def get_component_stats(self) -> List[Tuple[Tuple[str, str], float]]:
         stats = []
         for component_id, data in self.component_data.items():
@@ -143,7 +144,8 @@ class ProbeController:
         self.MEASUREMENT_HEADER = "start_time;end_time;elapsed"
 
     def measure_workload(self, compin: ManagedCompin, probe: str, cycles: int) -> List[str]:
-        stub: MiddlewareAgentStub = connect_to_grpc_server(MiddlewareAgentStub, compin.ip, AGENT_PORT)
+        stub: MiddlewareAgentStub = connect_to_grpc_server(MiddlewareAgentStub, compin.ip, AGENT_PORT,
+                                                           block=True, production=True)
         measure_msg = middleware_pb2.ProbeMeasurement(
             probe=middleware_pb2.ProbeDescriptor(name=probe),
             warmUpCycles=0,
@@ -162,7 +164,12 @@ class ProbeController:
                 data.append(row.row)
         return data
 
-    def run(self) -> None:
+    def start(self):
+        measurement_thread = threading.Thread(target=self._run, args=())
+        measurement_thread.setDaemon(True)
+        measurement_thread.start()
+
+    def _run(self) -> None:
         """
         Measurement thread.
         """
