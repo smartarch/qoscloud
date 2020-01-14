@@ -5,6 +5,8 @@ from typing import List, Tuple, Dict, Optional
 
 import threading
 
+import logging
+
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import ManagedCompin
 from cloud_controller.middleware import AGENT_PORT, middleware_pb2
@@ -127,7 +129,7 @@ class StatisticsCollector:
         return stats
 
     def get_global_stats(self) -> float:
-        total_count = reduce((lambda x, y: x + len(y)), [[]] + list(self.compin_data.values()))
+        total_count = reduce((lambda x, y: x + len(y)), [0] + list(self.compin_data.values()))
         compin_stats = self.get_compin_stats()
         total_successes = reduce((lambda x, y: x + y[1] * len(self.compin_data[y[0]])), [0] + compin_stats)
         return total_successes / total_count
@@ -142,6 +144,7 @@ class ProbeController:
         self._compin_threads: Dict[str, Tuple[ManagedCompin, ApplyResult]] = {}
         self.statistics_collector = StatisticsCollector()
         self.MEASUREMENT_HEADER = "start_time;end_time;elapsed"
+        self.lock = threading.RLock()
 
     def measure_workload(self, compin: ManagedCompin, probe: str, cycles: int) -> List[str]:
         stub: MiddlewareAgentStub = connect_to_grpc_server(MiddlewareAgentStub, compin.ip, AGENT_PORT,
@@ -174,7 +177,8 @@ class ProbeController:
         Measurement thread.
         """
         while True:
-            scenario: RuntimeMeasurementScenario = self._factory.next_scenario()
+            with self.lock:
+                scenario: RuntimeMeasurementScenario = self._factory.next_scenario()
             if scenario is None:
                 time.sleep(1)
                 continue
@@ -194,7 +198,8 @@ class ProbeController:
         current measurement scenario, starts measuring its probes right away.
         :param compin: ManagedCompin to add
         """
-        self._factory.add_compin(compin)
+        with self.lock:
+            self._factory.add_compin(compin)
 
     def remove_compin(self, compin: ManagedCompin) -> None:
         """
@@ -202,7 +207,8 @@ class ProbeController:
         measured, stops the measurement.
         :param compin: ManagedCompin to remove
         """
-        self._factory.remove_compin(compin)
+        with self.lock:
+            self._factory.remove_compin(compin)
 
     def _log_stats(self) -> None:
         logging.info(f"------------ TOTAL PERCENTAGE: {self.statistics_collector.get_global_stats()} ---------------")
