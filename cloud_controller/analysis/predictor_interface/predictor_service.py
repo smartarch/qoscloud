@@ -81,8 +81,7 @@ class PredictorService(PredictorServicer):
         return predictor_pb.RegistrationAck()
 
     def FetchScenarios(self, request, context):
-        from itertools import chain
-        for list in chain(self._scenarios_by_app.values()):
+        for list in self._scenarios_by_app.values():
             for scenario_id in list:
                 yield self._scenarios_by_id[scenario_id].pb_representation(predictor_pb.Scenario())
 

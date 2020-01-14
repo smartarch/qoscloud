@@ -109,7 +109,7 @@ class PlanExecutor:
             try:
                 all_ready = True
                 for stub, value in stubs:
-                    pong = stub.Ping(Pong(production=True))
+                    pong = stub.Ping(Pong(production=self.knowledge.client_support))
                     if pong.phase < value:
                         all_ready = False
                         break
@@ -118,8 +118,7 @@ class PlanExecutor:
             except grpc.RpcError:
                 time.sleep(self.WAIT_BEFORE_RETRY)
 
-    @staticmethod
-    def ping_compin(stub: MiddlewareAgentStub) -> CompinPhase:
+    def ping_compin(self, stub: MiddlewareAgentStub) -> CompinPhase:
         """
         Checks whether managed compin answers to the ping, and its current phase.
         :param stub: MiddlewareAgentStub of compin to check.
@@ -127,7 +126,7 @@ class PlanExecutor:
         """
         start = perf_counter()
         try:
-            pong_future = stub.Ping.future(Pong(production=True), timeout=PING_TIMEOUT)
+            pong_future = stub.Ping.future(Pong(production=self.knowledge.client_support), timeout=PING_TIMEOUT)
             while perf_counter() - start < PING_TIMEOUT:
                 if pong_future.done():
                     pong = pong_future.result()

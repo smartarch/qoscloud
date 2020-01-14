@@ -42,7 +42,8 @@ class Executor:
         self.mongo_controller = MongoController(mongos_ip)
         self.mongo_controller.start()
         self.probe_controller = ProbeController(self.knowledge)
-        self.probe_controller.start()
+        if self.knowledge.client_support:
+            self.probe_controller.start()
 
     def execute_plan(self, execution_plan: ExecutionPlan) -> None:
         """
