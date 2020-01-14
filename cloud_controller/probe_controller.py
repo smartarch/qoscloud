@@ -132,7 +132,7 @@ class ProbeController:
         self._factory: ScenarioFactory = SingleNodeScenarioFactory()
         self._compin_threads: Dict[str, Tuple[ManagedCompin, ApplyResult]] = {}
         self.statistics_collector = StatisticsCollector()
-        self.MEASUREMENT_HEADER = "start_time;end_time;elapsed"
+        self.MEASUREMENT_HEADER = "run;iteration;start_time;end_time;elapsed"
         self.lock = threading.RLock()
 
     def measure_workload(self, compin: ManagedCompin, probe: str, cycles: int) -> List[str]:

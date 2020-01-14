@@ -190,6 +190,15 @@ class DiskMonitor(IterativeMonitor):
 
 
 class CpuMonitor(IterativeMonitor):
+    HEADER = [
+        "ref-cycles",
+        "instructions",
+        "cache-references",
+        "cache-misses",
+        "branch-instructions",
+        "branch-misses",
+        "PAPI_L1_DCM"
+    ]
 
     def __init__(self, cpu_events: List[str] = None):
         # Starts some counters
@@ -200,23 +209,10 @@ class CpuMonitor(IterativeMonitor):
             raise CPUEventsNotSupportedException("No CPU events to measure")
         # Events are defined at https://flozz.github.io/pypapi/events.html
         try:
-            papi_high.start_counters([
-                papi_events.PAPI_REF_CYC,
-                papi_events.PAPI_TOT_INS,
-                papi_events.PAPI_L3_TCA,
-                papi_events.PAPI_L3_TCM,
-                papi_events.PAPI_BR_INS,
-                papi_events.PAPI_BR_MSP,
-                papi_events.PAPI_L1_DCM
-            ])
-            if cpu_events is None:
-                self._event_names = ["PAPI_REF_CYC", "PAPI_TOT_INS", "PAPI_L3_TCA", "PAPI_L3_TCM", "PAPI_BR_INS",
-                                     "PAPI_BR_MSP", "PAPI_L1_DCM"]
-            else:
-                assert len(cpu_events) > 0
-                self._event_names = cpu_events
-                cpu_events = [getattr(papi_events, event) for event in cpu_events]
-                papi_high.start_counters(cpu_events)
+            self._event_names = ["PAPI_REF_CYC", "PAPI_TOT_INS", "PAPI_L3_TCA", "PAPI_L3_TCM", "PAPI_BR_INS",
+                                 "PAPI_BR_MSP", "PAPI_L1_DCM"]
+            cpu_events = [getattr(papi_events, event) for event in self._event_names]
+            papi_high.start_counters(cpu_events)
         except (PapiNoEventError, AttributeError) as e:
             raise CPUEventsNotSupportedException(e)
 
@@ -230,7 +226,7 @@ class CpuMonitor(IterativeMonitor):
 
     @property
     def header(self) -> List[str]:
-        return self._event_names
+        return self.HEADER
 
     @property
     def last_measurement(self) -> List[int]:
