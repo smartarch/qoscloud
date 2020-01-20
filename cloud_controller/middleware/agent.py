@@ -121,11 +121,11 @@ class MiddlewareAgent(MiddlewareAgentServicer):
             time = self._probe_monitor.execute_probe(measurement.probe.name, measurement.warmUpCycles,
                                                      measurement.measuredCycles, cpu_events)
 
-            return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.OK, executionTime=time)
+            return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.Value("OK"), executionTime=time)
         except IOEventsNotSupportedException:
-            return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.IO_EVENT_NOT_SUPPORTED)
+            return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.Value("IO_EVENT_NOT_SUPPORTED"))
         except CPUEventsNotSupportedException:
-            return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.CPU_EVENT_NOT_SUPPORTED)
+            return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.Value("CPU_EVENT_NOT_SUPPORTED"))
 
     def SetProbeWorkload(self, workload: mw_protocols.ProbeWorkload, context) -> mw_protocols.ProbeCallResult:
         if workload.WhichOneof("newWorkload") == "probe":

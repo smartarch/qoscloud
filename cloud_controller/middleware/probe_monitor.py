@@ -163,7 +163,7 @@ class DiskMonitor(IterativeMonitor):
     def _read_data(self) -> List[int]:
         with open(self._file, "r") as stream:
             raw_data = [int(x) for x in stream.readline().split()]
-        assert len(self._start_data) >= 11
+        assert len(raw_data) >= 11
         # Extract the needed values:
         return [
             raw_data[0] + raw_data[4],
