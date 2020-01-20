@@ -49,7 +49,7 @@ class AppDatabase:
         return self._apps[app_name]
 
     def _generate_alias(self):
-        id_ = ''.join(random.choice(string.ascii_uppercase) for _ in range(4))
+        id_ = "ASSESSMENT" + ''.join(random.choice(string.ascii_uppercase) for _ in range(4))
         while id_ in self.probes_by_alias:
             id_ = ''.join(random.choice(string.ascii_uppercase) for _ in range(4))
         self.probes_by_alias[id_] = None
@@ -147,11 +147,10 @@ class Scenario:
         Returns path to header and data file for selected scenario
         """
         folder = Scenario.get_folder(scenario.controlled_probe, scenario.hw_id)
-        file = "merged_iterative_result--batch--" + \
-               "-".join(Scenario._get_fs_probe_name(probe)
+        file = "-".join(Scenario._get_fs_probe_name(probe)
                         for probe in [scenario.controlled_probe] + scenario.background_probes)
         path = folder + '/' + file
-        return path + ".header", path + ".out"
+        return path + ".header", path + ".csv"
 
     @property
     def id_(self) -> str:
@@ -179,7 +178,6 @@ class Scenario:
             cpu_events=scenario_pb.cpu_events,
             scenario_id=scenario_pb.id
         )
-        scenario.id_ = scenario_pb.id
         return scenario
 
     def pb_representation(self, scenario_pb):

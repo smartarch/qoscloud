@@ -44,11 +44,10 @@ class ResultStorage:
         Returns path to header and data file for selected scenario
         """
         folder = ResultStorage.get_folder(scenario.controlled_probe, scenario.hw_id)
-        file = "merged_iterative_result--batch--" + \
-               "-".join(ResultStorage._get_fs_probe_name(probe)
+        file = "-".join(ResultStorage._get_fs_probe_name(probe)
                         for probe in [scenario.controlled_probe] + scenario.background_probes)
         path = folder + '/' + file
-        return path + ".header", path + ".out"
+        return path + ".header", path + ".csv"
 
     @staticmethod
     def _collect_probe_results(ip: str, probe: Probe) -> Iterable[Tuple[Optional[str], Optional[str]]]:
@@ -96,7 +95,7 @@ class ResultStorage:
                 for header_line, data_line in ResultStorage._collect_probe_results(compin.ip,
                                                                                    scenario.controlled_probe):
                     if header_line is not None:
-                        header_line = header_line.strip() + ';end'
+                        header_line = header_line.strip() + ';scale'
                         header_file.write(header_line + '\n')
                         header_lines += 1
                         # Check header for conflict
