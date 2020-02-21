@@ -1,7 +1,7 @@
 CLIENT_CONTROLLER_HOST: "0.0.0.0"
 CLIENT_CONTROLLER_PORT: 4217
 DEFAULT_SECRET_NAME: "dockerhubsecret"
-DEFAULT_HARDWARE_ID: "defaultclusternode"
+DEFAULT_HARDWARE_ID: "nodetype_1"
 PRODUCTION_KUBECONFIG: "/root/.kube/config"
 ASSESSMENT_KUBECONFIG: "/root/.kube/config-assessment"
 DATACENTER_LABEL: "mlmec/DataCenter"
