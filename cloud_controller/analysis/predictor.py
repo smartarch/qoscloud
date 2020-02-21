@@ -6,6 +6,7 @@ real predictor aims for.
 
 import logging
 from abc import ABC, abstractmethod
+from time import perf_counter
 from typing import Dict, Iterable
 import random
 
@@ -92,6 +93,8 @@ class StraightforwardPredictorModel(Predictor):
         """
         self._components: Dict[str, PredictorObjectModel] = {}
         self._nodes: Dict[str, PredictorObjectModel] = {}
+        self.calls = 0
+        self.time = 0
         with open(filename, "r") as file:
             self._yaml_obj = yaml.load(file)
 
@@ -104,6 +107,8 @@ class StraightforwardPredictorModel(Predictor):
             self._nodes[id_] = PredictorObjectModel(id_, node["memory"], node["cpu"], node["io"])
 
     def predict_(self, node_id: str, components_on_node: Dict[str, int]) -> bool:
+        start_time = perf_counter()
+        self.calls += 1
         node_model: PredictorObjectModel = self._nodes[node_id]
         utilization_model = PredictorObjectModel("", 0, 0, 0)
         for component_id, count in components_on_node.items():
@@ -111,6 +116,7 @@ class StraightforwardPredictorModel(Predictor):
             utilization_model.io += component_model.io * count
             utilization_model.mem += component_model.mem * count
             utilization_model.cpu += component_model.cpu * count
+        self.time += perf_counter() - start_time
         return utilization_model.io <= node_model.io and \
                utilization_model.cpu <= node_model.cpu and \
                utilization_model.mem <= node_model.mem
