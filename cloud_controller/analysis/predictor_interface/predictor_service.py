@@ -15,7 +15,6 @@ from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import Application, Probe
 from cloud_controller.middleware.helpers import start_grpc_server
 import predictor
-from evaluator import Evaluator
 
 
 class MeasuringPhase(Enum):
@@ -46,9 +45,6 @@ class StatisticalPredictor(Predictor):
 
     def _create_predictor(self) -> predictor.Predictor:
         # Just a clean-up of files, in case they got corrupted in other tests
-        _evaluator = Evaluator()
-        _evaluator.configure_evaluator(nodetype="nodetype_1", percentile=90, test_setup=None, test_plan=None)
-        _evaluator.clean_files("headers.json")
 
         _predictor = predictor.Predictor(nodetype=DEFAULT_HARDWARE_ID, percentile=GLOBAL_PERCENTILE)
         _predictor.assign_headers("headers.json")
@@ -67,7 +63,6 @@ class StatisticalPredictor(Predictor):
             normalizer=MinMax(),
             optimizer=SimAnnealing(),
             boundary_percentage=140)
-        _predictor.calculate_weights()
         return _predictor
 
 
@@ -120,6 +115,7 @@ class PredictorService(PredictorServicer):
             if self._measuring_phases[request.name] != MeasuringPhase.COMPLETED:
                 assert len(self._scenarios_by_app[request.name]) > 0
                 return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("NEEDS_DATA"))
+            self._predictor.prepare_predictor()
             for probe in self.probes[request.name]:
                 prediction = self._predictor.predict({probe.alias: (math.ceil(probe.time_limit), 1)})
                 if prediction is None:
