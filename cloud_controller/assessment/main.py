@@ -10,6 +10,7 @@ import time
 from threading import Thread
 from typing import Optional
 
+from cloud_controller.analysis.predictor_interface.predictor_scenario_planner import PredictorScenarioPlanner
 from cloud_controller.assessment import deploy_controller
 from cloud_controller.assessment.depenedency_solver import MasterSlaveSolver
 from cloud_controller.assessment.deploy_controller import AppJudge
@@ -55,7 +56,7 @@ if __name__ == "__main__":
     # Planner
     scenario_pln: ScenarioPlanner
     if not args.fake_planner:
-        scenario_pln = SimpleScenarioPlanner(knowledge)
+        scenario_pln = PredictorScenarioPlanner(knowledge)
     else:
         scenario_pln = FakeScenarioPlanner(knowledge.nodes[0].hardware_id)
 

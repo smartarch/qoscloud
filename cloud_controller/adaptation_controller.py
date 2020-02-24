@@ -8,6 +8,7 @@ from typing import Iterable, Type
 
 import logging
 
+import threading
 from kubernetes import config
 
 from cloud_controller import PRODUCTION_KUBECONFIG, THREAD_COUNT, PRODUCTION_MONGOS_SERVER_IP, DEFAULT_PREDICTOR_CONFIG, \
@@ -15,6 +16,7 @@ from cloud_controller import PRODUCTION_KUBECONFIG, THREAD_COUNT, PRODUCTION_MON
 from cloud_controller.analysis.analyzer import Analyzer
 from cloud_controller.analysis.parallel_solver import ParallelSolver
 from cloud_controller.analysis.predictor import Predictor, StraightforwardPredictorModel
+from cloud_controller.analysis.predictor_interface.predictor_service import StatisticalPredictor
 from cloud_controller.cleanup import ClusterCleaner
 from cloud_controller.execution.executor import Executor
 from cloud_controller.knowledge.knowledge import Knowledge
@@ -72,6 +74,11 @@ class AdaptationController:
         self.mongos_ip = mongos_ip
         self.pool = ThreadPool(processes=thread_count)
         self.knowledge = knowledge
+        # TODO: find a better way to instantiate Predictor
+        if self.knowledge.client_support:
+            predictor = StatisticalPredictor(self.knowledge)
+            self.predictor_thread = threading.Thread(target=predictor.start_predictor_service, args=())
+            self.predictor_thread.start()
         self.monitor = monitor
         self.analyzer = analyzer
         self.planner = planner
