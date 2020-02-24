@@ -47,6 +47,7 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         self._mongo_agent: Optional[MongoAgent] = None
         self._probes = probes
         self._probe_monitor = None
+        self._production = None
 
     def SetDependencyAddress(self, request, context):
         """
@@ -86,7 +87,9 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         :return: Current phase of the instance
         """
         if self._probe_monitor is None:
-            self._probe_monitor = ProbeMonitor(production=request.production)
+            self._production = request.production
+            self._probe_monitor = ProbeMonitor(production=self._production)
+            logging.info(f"Production: {self._production}")
             for name, exe in self._probes.items():
                 self._probe_monitor.add_probe(name, exe)
         return mw_protocols.Pong(phase=self.phase)
@@ -118,6 +121,8 @@ class MiddlewareAgent(MiddlewareAgentServicer):
                 cpu_events: Optional[List[str]] = None
             else:
                 cpu_events: Optional[List[str]] = measurement.cpuEvents[:]
+            if not self._production:
+                self._probe_monitor.start_probe_workload(measurement.probe.name)
             time = self._probe_monitor.execute_probe(measurement.probe.name, measurement.warmUpCycles,
                                                      measurement.measuredCycles, cpu_events)
 
@@ -137,7 +142,7 @@ class MiddlewareAgent(MiddlewareAgentServicer):
             # Start
             if self._probe_monitor.has_workload:
                 self._probe_monitor.stop_probe_workload()
-            self._probe_monitor.start_probe_workload(workload.probe.name)
+            self._probe_monitor.start_probe_workload(workload.probe.name, workload.probe.name)
         else:
             # Check status
             if not self._probe_monitor.has_workload:

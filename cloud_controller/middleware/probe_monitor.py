@@ -22,10 +22,11 @@ class ProbeMonitor:
         self._workload_enabled = False
         self._probes: {str, Callable[[], None]} = {}
         self._production = production
+        self._workload_thread = None
+        self._workload_thread_2 = None
 
     def execute_probe(self, probe_name: str, warm_up_cycles: int, measured_cycles: int,
                       cpu_events: Optional[List[str]] = None) -> int:
-        assert not self._workload_enabled
         collector = DataCollector(probe_name, cpu_events, self._production)
 
         # Warm up
@@ -51,19 +52,21 @@ class ProbeMonitor:
         while self._workload_enabled:
             executable()
 
-    def start_probe_workload(self, probe_name: str) -> None:
+    def start_probe_workload(self, probe_name: str, probe_name_2: str = None) -> None:
         assert not self._workload_enabled
         self._workload_enabled = True
-        executable = self._probes[probe_name]
-        self._workload_thread = Thread(target=self._workload,
-                                       args=(executable,),
-                                       name="Probe-WL")
-        self._workload_thread.start()
+        for name, thread in (probe_name, self._workload_thread), (probe_name_2, self._workload_thread_2):
+            if name is not None:
+                executable = self._probes[name]
+                thread = Thread(target=self._workload, args=(executable,))
+                thread.start()
 
     def stop_probe_workload(self) -> None:
         assert self._workload_enabled
         self._workload_enabled = False
-        self._workload_thread.join()
+        for thread in self._workload_thread, self._workload_thread_2:
+            if thread:
+                thread.join()
 
     def add_probe(self, name: str, executable: "Callable[[], None]"):
         self._probes[name] = executable
