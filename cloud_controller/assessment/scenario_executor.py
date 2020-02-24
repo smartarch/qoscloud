@@ -37,7 +37,7 @@ class ProbeExecutionException(Exception):
 class ScenarioExecutor:
 
     def __init__(self, knowledge: Knowledge, planner: ScenarioPlanner, solver: DependencySolver,
-                 mapek_wrapper: MapekWrapper, judge: AppJudge, multi_thread=True):
+                 mapek_wrapper: MapekWrapper, judge: AppJudge, multi_thread=False):
         # Other classes
         self._knowledge = knowledge
         self._planner = planner
@@ -185,6 +185,7 @@ class ScenarioExecutor:
                         # Deploy scenario
                         provided, cmd_plans = self.deploy_scenario(scenario, requirements)
 
+                        # TODO: what's wrong with multi threaded execution?
                         # Start scenario and than stop it
                         if self._multi_thread:
                             thread = threading.Thread(target=self._scenario_worker,

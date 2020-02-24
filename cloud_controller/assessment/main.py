@@ -34,8 +34,8 @@ if __name__ == "__main__":
                         help='Creates single scenario per probe')
     parser.add_argument('-m', '--fake_mapek', action='store_true',
                         help='Does NOT use K8S for measurement (doesn\'t measure anything)')
-    parser.add_argument('-t', '--single_thread', action='store_true',
-                        help='Uses only one thread for measurement')
+    parser.add_argument('-t', '--multi_thread', action='store_true',
+                        help='Uses multiple threads for measurement')
     args = parser.parse_args()
 
     # Apps database
@@ -69,7 +69,7 @@ if __name__ == "__main__":
     if not args.fake_mapek:
         assert mapek_wrapper is not None
         scenario_executor = ScenarioExecutor(knowledge, scenario_pln, dependency_solver, mapek_wrapper, app_judge,
-                                             multi_thread=not args.single_thread)
+                                             multi_thread=args.multi_thread)
     else:
         assert mapek_wrapper is None
         scenario_executor = FakeScenarioExecutor(knowledge, scenario_pln, dependency_solver, app_judge)
