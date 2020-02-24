@@ -73,15 +73,15 @@ if __name__ == "__main__":
         assert mapek_wrapper is None
         scenario_executor = FakeScenarioExecutor(knowledge, scenario_pln, dependency_solver, app_judge)
 
-    # Start benchmark controller thread
-    scenario_executor_thread = Thread(target=scenario_executor.run, name="SE-Thread")
-    scenario_executor_thread.start()
-
     # Deploy controller server
     deploy_ctl_thread = Thread(target=deploy_controller.start_servers,
                                args=(knowledge, app_db, scenario_pln, app_judge),
                                name="DC-Thread")
     deploy_ctl_thread.start()
+
+    # Start benchmark controller thread
+    scenario_executor_thread = Thread(target=scenario_executor.run, name="SE-Thread")
+    scenario_executor_thread.start()
 
     # Sleep and wait for exit
     logging.info("Assessment process started")
