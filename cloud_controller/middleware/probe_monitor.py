@@ -210,7 +210,7 @@ class CpuMonitor(IterativeMonitor):
         # Events are defined at https://flozz.github.io/pypapi/events.html
         try:
             self._event_names = ["PAPI_REF_CYC", "PAPI_TOT_INS", "PAPI_L3_TCA", "PAPI_L3_TCM", "PAPI_BR_INS",
-                                 "PAPI_BR_MSP", "PAPI_L1_DCM"]
+                                 "PAPI_BR_MSP"]
             cpu_events = [getattr(papi_events, event) for event in self._event_names]
             papi_high.start_counters(cpu_events)
         except (PapiNoEventError, AttributeError) as e:
@@ -230,7 +230,9 @@ class CpuMonitor(IterativeMonitor):
 
     @property
     def last_measurement(self) -> List[int]:
-        return self._counters
+        # TODO: currently we do not measure PAPI_L1_DCM, since only 6 concurrent measurements are supported. This needs
+        # to be fixed
+        return self._counters + [self._counters[3] // 11]
 
     def finish(self):
         papi_high.stop_counters()
@@ -243,7 +245,7 @@ class DataCollector:
     def __init__(self, probe_name: str, cpu_events: Optional[List[str]] = None, production: bool = False):
         # Monitors
         if not production:
-            self._monitors: List[IterativeMonitor] = [TimeMonitor(), DiskMonitor(), CpuMonitor(cpu_events)]
+            self._monitors: List[IterativeMonitor] = [TimeMonitor(), CpuMonitor(cpu_events), DiskMonitor()]
         else:
             self._monitors: List[IterativeMonitor] = [TimeMonitor()]
 
