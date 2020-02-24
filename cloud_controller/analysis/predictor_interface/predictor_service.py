@@ -89,10 +89,12 @@ class PredictorService(PredictorServicer):
                 for probe in component.probes:
                     self._register_probe(probe)
                     self.probes[app.name].append(probe)
-                    scenario = Scenario(probe, [], DEFAULT_HARDWARE_ID, scenario_id=str(self._last_scenario_id))
-                    self._last_scenario_id += 1
-                    self._scenarios_by_app[app.name].append(scenario.id_)
-                    self._scenarios_by_id[scenario.id_] = scenario
+                    for bg_load in [], [probe], [probe, probe]:
+                        scenario = Scenario(probe, bg_load, DEFAULT_HARDWARE_ID, scenario_id=str(self._last_scenario_id))
+                        self._last_scenario_id += 1
+                        self._scenarios_by_app[app.name].append(scenario.id_)
+                        self._scenarios_by_id[scenario.id_] = scenario
+
         return predictor_pb.RegistrationAck()
 
     def UnregisterApp(self, request, context):
@@ -111,9 +113,10 @@ class PredictorService(PredictorServicer):
                     yield self._scenarios_by_id[scenario_id].pb_representation(predictor_pb.Scenario())
 
     def JudgeApp(self, request, context):
+        if len(self._scenarios_by_app[request.name]) == 0:
+            self._measuring_phases[request.name] = MeasuringPhase.COMPLETED
         with self._lock:
             if self._measuring_phases[request.name] != MeasuringPhase.COMPLETED:
-                assert len(self._scenarios_by_app[request.name]) > 0
                 return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("NEEDS_DATA"))
             self._predictor.prepare_predictor()
             for probe in self.probes[request.name]:
