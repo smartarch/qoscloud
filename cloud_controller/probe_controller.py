@@ -128,7 +128,7 @@ class ProbeController:
 
     def __init__(self, knowledge: Knowledge):
         self._knowledge = knowledge
-        self._pool: ThreadPool = ThreadPool(processes=32)
+        self._pool: ThreadPool = None
         self._factory: ScenarioFactory = SingleNodeScenarioFactory()
         self._compin_threads: Dict[str, Tuple[ManagedCompin, ApplyResult]] = {}
         self.statistics_collector = StatisticsCollector()

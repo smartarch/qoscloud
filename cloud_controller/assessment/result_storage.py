@@ -103,5 +103,5 @@ class ResultStorage:
                             raise UnexpectedHeaderException(f"Expected header {existing_header} "
                                                             f"but received {header_line} on {scenario}")
                     if data_line is not None:
-                        data_file.write(data_line + ';\n')
+                        data_file.write(data_line + '\n')
             assert header_lines == 1
