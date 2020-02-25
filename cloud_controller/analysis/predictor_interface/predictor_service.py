@@ -9,11 +9,11 @@ import cloud_controller.analysis.predictor_interface.predictor_pb2 as predictor_
 from cloud_controller import DEFAULT_HARDWARE_ID, GLOBAL_PERCENTILE, PREDICTOR_HOST, PREDICTOR_PORT
 from cloud_controller.analysis.predictor import Predictor
 from cloud_controller.analysis.predictor_interface.predictor_pb2_grpc import PredictorServicer, \
-    add_PredictorServicer_to_server
+    add_PredictorServicer_to_server, PredictorStub
 from cloud_controller.assessment.model import Scenario
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import Application, Probe
-from cloud_controller.middleware.helpers import start_grpc_server
+from cloud_controller.middleware.helpers import start_grpc_server, connect_to_grpc_server, setup_logging
 import predictor
 
 
@@ -27,25 +27,35 @@ class StatisticalPredictor(Predictor):
 
     def __init__(self, knowledge: Knowledge):
         self.knowledge: Knowledge = knowledge
-        self._predictor = self._create_predictor()
-        self._predictor_service = PredictorService(self._predictor)
+        self._predictor_service = connect_to_grpc_server(PredictorStub, PREDICTOR_HOST, PREDICTOR_PORT)
 
     def predict_(self, node_id: str, components_on_node: Dict[str, int]) -> bool:
-        assignment = {}
+        assignment = predictor_pb.Assignment(hw_id=node_id)
         for component_id, count in components_on_node.items():
             component = self.knowledge.components[component_id]
             for probe in component.probes:
-                assignment[probe.alias] = (math.ceil(probe.time_limit), count)
-        return self._predictor.predict(assignment)
-        # TODO: PROBLEM: no way to specify the number of instances of the same process
+                ct_ = assignment.components.add()
+                ct_.component_id = probe.alias
+                ct_.count = count
+                ct_.time_limit = math.ceil(probe.time_limit)
+        return self._predictor_service.Predict(assignment).result
         # TODO: PROBLEM: no way to specify different percentiles for each prediction
 
-    def start_predictor_service(self):
-        start_grpc_server(self._predictor_service, add_PredictorServicer_to_server, PREDICTOR_HOST, PREDICTOR_PORT, block=True)
+
+class PredictorService(PredictorServicer):
+
+    def __init__(self):
+        self._predictor = self._create_predictor()
+        self.probes: Dict[str, List[Probe]] = {}
+        self._scenarios_by_app: Dict[str, List[str]] = {}
+        self._scenarios_by_id: Dict[str, Scenario] = {}
+        self._measuring_phases: Dict[str, MeasuringPhase] = {}
+
+        self._probes_by_id: Dict[str, Probe] = {}
+        self._last_scenario_id: int = 0
+        self._lock = RLock()
 
     def _create_predictor(self) -> predictor.Predictor:
-        # Just a clean-up of files, in case they got corrupted in other tests
-
         _predictor = predictor.Predictor(nodetype=DEFAULT_HARDWARE_ID, percentile=GLOBAL_PERCENTILE)
         _predictor.assign_headers("headers.json")
         _predictor.assign_groundtruth("groundtruth.json")
@@ -65,19 +75,12 @@ class StatisticalPredictor(Predictor):
             boundary_percentage=140)
         return _predictor
 
-
-class PredictorService(PredictorServicer):
-
-    def __init__(self, predictor_: predictor.Predictor):
-        self._predictor = predictor_
-        self.probes: Dict[str, List[Probe]] = {}
-        self._scenarios_by_app: Dict[str, List[str]] = {}
-        self._scenarios_by_id: Dict[str, Scenario] = {}
-        self._measuring_phases: Dict[str, MeasuringPhase] = {}
-
-        self._probes_by_id: Dict[str, Probe] = {}
-        self._last_scenario_id: int = 0
-        self._lock = RLock()
+    def Predict(self, request, context):
+        assignment = {}
+        for component in request.components:
+            assignment[component.component_id] = (component.time_limit, component.count)
+        prediction = self._predictor.predict(assignment)
+        return predictor_pb.Prediction(result=prediction)
 
     def RegisterApp(self, request, context):
         with self._lock:
@@ -170,3 +173,8 @@ class PredictorService(PredictorServicer):
                 app_name = controlled_probe.component.application.name
                 self._scenarios_by_app[app_name].append(scenario.id_)
         return True
+
+
+if __name__ == "__main__":
+    setup_logging()
+    start_grpc_server(PredictorService(), add_PredictorServicer_to_server, PREDICTOR_HOST, PREDICTOR_PORT, block=True)

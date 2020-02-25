@@ -53,7 +53,7 @@ class AdaptationController:
                  planner=None,
                  executor=None,
                  solver_class: Type = ParallelSolver,
-                 predictor: Predictor = StraightforwardPredictorModel(DEFAULT_PREDICTOR_CONFIG),
+                 predictor: Predictor = None,
                  mongos_ip: str = PRODUCTION_MONGOS_SERVER_IP,
                  thread_count: int = THREAD_COUNT
                  ):
@@ -74,11 +74,11 @@ class AdaptationController:
         self.mongos_ip = mongos_ip
         self.pool = ThreadPool(processes=thread_count)
         self.knowledge = knowledge
-        # TODO: find a better way to instantiate Predictor
-        if self.knowledge.client_support:
-            predictor = StatisticalPredictor(self.knowledge)
-            self.predictor_thread = threading.Thread(target=predictor.start_predictor_service, args=())
-            self.predictor_thread.start()
+        if predictor is None:
+            if self.knowledge.client_support:
+                predictor = StatisticalPredictor(self.knowledge)
+            else:
+                predictor = StraightforwardPredictorModel(DEFAULT_PREDICTOR_CONFIG)
         self.monitor = monitor
         self.analyzer = analyzer
         self.planner = planner

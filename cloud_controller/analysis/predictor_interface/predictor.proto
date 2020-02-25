@@ -17,6 +17,22 @@ service Predictor {
     rpc JudgeApp (cloud_controller.Architecture) returns (JudgeReply);
     rpc OnScenarioDone (ScenarioCompletion) returns (CallbackAck);
     rpc OnScenarioFailure (ScenarioCompletion) returns (CallbackAck);
+    rpc Predict (Assignment) returns (Prediction);
+}
+
+message Assignment {
+    string hw_id = 1;
+    repeated ComponentTuple components = 2;
+}
+
+message ComponentTuple {
+    string component_id = 1;
+    int32 count = 2;
+    int32 time_limit = 3;
+}
+
+message Prediction {
+    bool result = 1;
 }
 
 message RegistrationAck {}
