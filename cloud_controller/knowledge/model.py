@@ -829,9 +829,6 @@ class Probe:
     alias: str
     wait_per_request: int = 0
 
-    # def __init__(self):
-    #     pass
-
     @staticmethod
     def init_from_pb(probe_pb: arch_pb.Probe, applications: Dict[str, Application]) -> "Probe":
         """

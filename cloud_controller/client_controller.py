@@ -164,6 +164,7 @@ class ClientModel:
                 logging.info("New client added successfully. ID = %s" % id_)
                 return mw_protocols.ClientResponseCode.Value("OK"), id_, client
             elif self._client_exists(request.application, request.id):
+                # TODO: Two clients can connect with the same ID. This needs to be fixed
                 client = self.clients[request.application][request.id]
                 client.last_call = time.perf_counter()
                 client.context = context

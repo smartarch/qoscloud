@@ -106,7 +106,7 @@ class RecognizerClient:
                         self.recognize(self.images[i])
                         logging.info(f"Recognition time: {(time.perf_counter() - start):.6f} seconds")
                         time.sleep(frpyc.CLIENT_PERIOD / 1000.0)
-                except grpc._channel._Rendezvous:
+                except grpc.RpcError:
                     logging.info(f"Could not connect to recognizer. Retrying")
                     time.sleep(frpyc.CLIENT_PERIOD / 1000.0)
         except KeyboardInterrupt:
