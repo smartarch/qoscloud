@@ -17,8 +17,7 @@ from cloud_controller.assessment.deploy_controller import AppJudge
 from cloud_controller.assessment.mapek_wrapper import MapekWrapper
 from cloud_controller.assessment.model import AppDatabase
 from cloud_controller.assessment.scenario_executor import ScenarioExecutor, FakeScenarioExecutor
-from cloud_controller.assessment.scenario_planner import ScenarioPlanner, FakeScenarioPlanner, \
-    SimpleScenarioPlanner
+from cloud_controller.assessment.scenario_planner import ScenarioPlanner, FakeScenarioPlanner
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import Node
 from cloud_controller.middleware.helpers import setup_logging
@@ -40,6 +39,7 @@ if __name__ == "__main__":
 
     # Apps database
     app_db = AppDatabase()
+    deploy_controller.start_publisher_server(app_db)
 
     # MAPE-K wrapper
     mapek_wrapper: Optional[MapekWrapper] = None
@@ -75,10 +75,7 @@ if __name__ == "__main__":
         scenario_executor = FakeScenarioExecutor(knowledge, scenario_pln, dependency_solver, app_judge)
 
     # Deploy controller server
-    deploy_ctl_thread = Thread(target=deploy_controller.start_servers,
-                               args=(knowledge, app_db, scenario_pln, app_judge),
-                               name="DC-Thread")
-    deploy_ctl_thread.start()
+    deploy_controller.start_controller_server(knowledge, app_db, scenario_pln, app_judge)
 
     # Start benchmark controller thread
     scenario_executor_thread = Thread(target=scenario_executor.run, name="SE-Thread")

@@ -14,6 +14,8 @@ from typing import List, Iterable
 import grpc
 
 # grpc
+from threading import Thread
+
 import cloud_controller.architecture_pb2 as arch_pb
 # Deploy controller grpc
 import cloud_controller.assessment.deploy_controller_pb2 as deploy_pb
@@ -28,6 +30,7 @@ from cloud_controller.assessment.model import AppDatabase, Scenario, AppStatus
 from cloud_controller.assessment.scenario_planner import ScenarioPlanner, JudgeResult
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import Application
+from cloud_controller.middleware.helpers import start_grpc_server
 
 logger = logging.getLogger("DC")
 
@@ -170,30 +173,30 @@ class AppJudge:
                     self._judge_and_rule(app)
 
 
-def start_servers(knowledge: Knowledge, app_db: AppDatabase, scenario_pln: ScenarioPlanner,
+def start_publisher_server(app_db: AppDatabase) -> None:
+    thread = Thread(
+        target=start_grpc_server,
+        args=(
+            DeployPublisher(app_db),
+            deploy_grpc.add_DeployPublisherServicer_to_server,
+            PUBLISHER_HOST,
+            PUBLISHER_PORT
+        ),
+        kwargs={'block': True}
+    )
+    thread.start()
+
+
+def start_controller_server(knowledge: Knowledge, app_db: AppDatabase, scenario_pln: ScenarioPlanner,
                   app_judge: AppJudge) -> None:
-    # Deploy controller server
-    deploy_controller = DeployController(knowledge, app_db, scenario_pln, app_judge)
-    ctl_server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    deploy_grpc.add_DeployControllerServicer_to_server(deploy_controller, ctl_server)
-
-    ctl_server.add_insecure_port(CTL_HOST + ":" + str(CTL_PORT))
-    ctl_server.start()
-
-    # Deploy updater server
-    publisher = DeployPublisher(app_db)
-    publish_server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    deploy_grpc.add_DeployPublisherServicer_to_server(publisher, publish_server)
-
-    publish_server.add_insecure_port(PUBLISHER_HOST + ":" + str(PUBLISHER_PORT))
-    publish_server.start()
-
-    # Sleep and wait for exit
-    logger.info("Server started")
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        logger.info('^C received, ending')
-        ctl_server.stop(0)
-        publish_server.stop(0)
+    thread = Thread(
+        target=start_grpc_server,
+        args=(
+            DeployController(knowledge, app_db, scenario_pln, app_judge),
+            deploy_grpc.add_DeployControllerServicer_to_server,
+            CTL_HOST,
+            CTL_PORT
+        ),
+        kwargs={'block': True}
+    )
+    thread.start()
