@@ -10,6 +10,11 @@ import time
 from threading import Thread
 from typing import Optional
 
+import grpc
+
+from cloud_controller import PREDICTOR_HOST, PREDICTOR_PORT
+from cloud_controller.analysis.predictor_interface.predictor_pb2 import ScenarioRequest
+from cloud_controller.analysis.predictor_interface.predictor_pb2_grpc import PredictorStub
 from cloud_controller.analysis.predictor_interface.predictor_scenario_planner import PredictorScenarioPlanner
 from cloud_controller.assessment import deploy_controller
 from cloud_controller.assessment.depenedency_solver import MasterSlaveSolver
@@ -20,7 +25,7 @@ from cloud_controller.assessment.scenario_executor import ScenarioExecutor, Fake
 from cloud_controller.assessment.scenario_planner import ScenarioPlanner, FakeScenarioPlanner
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import Node
-from cloud_controller.middleware.helpers import setup_logging
+from cloud_controller.middleware.helpers import setup_logging, connect_to_grpc_server
 
 if __name__ == "__main__":
     # Logging
@@ -56,7 +61,17 @@ if __name__ == "__main__":
     # Planner
     scenario_pln: ScenarioPlanner
     if not args.fake_planner:
-        scenario_pln = PredictorScenarioPlanner(knowledge)
+        _predictor_stub: PredictorStub = connect_to_grpc_server(PredictorStub, PREDICTOR_HOST, PREDICTOR_PORT)
+        while True:
+            try:
+                for scenario in _predictor_stub.FetchScenarios(ScenarioRequest()):
+                    pass
+                break
+            except grpc.RpcError as e:
+                logging.info(f"Predictor connection unsuccessful")
+                time.sleep(1)
+        logging.info(f"Successfully connected to predictor at {PREDICTOR_HOST}:{PREDICTOR_PORT}")
+        scenario_pln = PredictorScenarioPlanner(knowledge, _predictor_stub)
     else:
         scenario_pln = FakeScenarioPlanner(knowledge.nodes[0].hardware_id)
 
