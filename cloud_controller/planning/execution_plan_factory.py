@@ -74,6 +74,9 @@ class ExecutionPlanFactory:
         task_2.predecessors.append(task_1.id)
         logging.debug(f"Added dependency between {task_1.id} and {task_2.id}")
 
+    def _cc_operations_required(self) -> bool:
+        return self._knowledge.client_support and len(list(self._application.list_unmanaged_components())) > 0
+
     def create_application_creation_plan(self) -> protocols.ExecutionPlan:
         """
         Creates an execution plan for new application, which includes creation of namespace, adding the image pull
@@ -88,7 +91,7 @@ class ExecutionPlanFactory:
         namespace_task = self._add_new_task()
         self._add_dependency(database_record_task, namespace_task)
         namespace_task.CREATE_NAMESPACE.name = self._application.name
-        if self._knowledge.client_support:
+        if self._cc_operations_required():
             cc_task = self._add_new_task()
             cc_task.ADD_APPLICATION_TO_CC.CopyFrom(self._application.get_pb_representation())
             self._add_dependency(namespace_task, cc_task)
@@ -115,7 +118,7 @@ class ExecutionPlanFactory:
         self._new_execution_plan()
         namespace_task = self._add_new_task()
         namespace_task.DELETE_NAMESPACE.name = self._application.name
-        if self._knowledge.client_support:
+        if self._cc_operations_required():
             disconnection_task = self._add_new_task()
             disconnection_task.DISCONNECT_APPLICATION_CLIENTS = self._application.name
             self._add_dependency(self._starting_task, disconnection_task)

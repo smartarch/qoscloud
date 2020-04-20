@@ -11,6 +11,7 @@ import yaml
 
 import cloud_controller.architecture_pb2 as protocols
 from cloud_controller import MONGOS_LABEL, MONGO_SHARD_LABEL, architecture_pb2 as arch_pb
+from cloud_controller.architecture_pb2 import ApplicationType
 from cloud_controller.knowledge.user_equipment import UserEquipment
 from cloud_controller.middleware.helpers import OrderedEnum
 
@@ -401,14 +402,91 @@ class Application:
         """
         Creates an application object from protobuf representation.
         """
-        application = Application(name=application_pb.name, secret=application_pb.secret)
-        for component_name in application_pb.components:
-            application.add_component(Component.init_from_pb(application, application_pb.components[component_name]))
-        for component_pb in application_pb.components.values():
-            for dependency in component_pb.dependsOn:
-                application.get_component(component_pb.name).add_dependency(application.get_component(dependency))
+        if application_pb.type == ApplicationType.Value("IVIS"):
+            application = IvisApplication(application_pb.job_id, application_pb.code, application_pb.parameters,
+                                          application_pb.config, application_pb.minimal_interval)
+        else:
+            application = Application(name=application_pb.name, secret=application_pb.secret)
+            for component_name in application_pb.components:
+                application.add_component(Component.init_from_pb(application, application_pb.components[component_name]))
+            for component_pb in application_pb.components.values():
+                for dependency in component_pb.dependsOn:
+                    application.get_component(component_pb.name).add_dependency(application.get_component(dependency))
+
         application._pb_representation = application_pb
         return application
+
+
+JOB_DEPLOYMENT_TEMPLATE = """
+kind: Deployment
+metadata:
+  name: job
+  labels:
+    app: ivisjob
+spec:
+  selector:
+    matchLabels:
+      app: ivisjob
+  template:
+    metadata:
+      labels:
+        app: ivisjob
+    spec:
+      containers:
+      - name: job
+        image: dankhalev/ivis-job:latest
+        imagePullPolicy: Always
+        args: []
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "0"
+        ports:
+        - containerPort: 8888
+          protocol: UDP
+"""
+
+
+class IvisApplication(Application):
+
+    def __init__(self, job_id: str, code: str, parameters: str, config: str, interval: int):
+        super().__init__(job_id)
+        self._code = code
+        self._parameters = parameters
+        self._config = config
+        self._interval = interval
+
+        self._job_component = Component(self, job_id, job_id, ComponentType.MANAGED,
+                                        container_spec=JOB_DEPLOYMENT_TEMPLATE)
+        self._probe = Probe(name=job_id, component=self._job_component, time_limit=interval * 1000, alias=f"JOB{job_id}")
+        self._job_component.probes.append(self._probe)
+        self._components[self._job_component.name] = self._job_component
+
+    @property
+    def code(self) -> str:
+        return self._code
+
+    @property
+    def parameters(self) -> str:
+        return self._parameters
+
+    @property
+    def config(self) -> str:
+        return self._config
+
+    @property
+    def interval(self) -> int:
+        return self._interval
+
+    @property
+    def job_component(self) -> Component:
+        return self._job_component
+
+    @property
+    def probe(self) -> "Probe":
+        return self._probe
+
+    def add_component(self, component: Component) -> None:
+        raise NotImplementedError("Operation not supported!")
 
 
 class Compin:
@@ -692,6 +770,11 @@ class CloudState:
             return self._state[application_name][component_name][instance_id]
         else:
             return None
+
+    def get_job_compin(self, job_id: str) -> Optional[ManagedCompin]:
+        for compin in self.list_managed_compins(job_id):
+            return compin
+        return None
 
     def add_instance(self, compin: Compin) -> None:
         """

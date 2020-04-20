@@ -10,7 +10,7 @@ from typing import List, Dict, Tuple
 from ortools.constraint_solver.pywrapcp import Solver
 
 from cloud_controller.analysis.csp_solver.variables import Variables, CompNodeVar, CompDCVar, RunningNodeVar, \
-    RunningCompNodeVar
+    RunningCompNodeVar, NodeRoleVar
 from cloud_controller.knowledge import model as model
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.network_distances import NetworkDistances
@@ -80,6 +80,11 @@ class VariableAdder:
             cn_vars_by_node_and_compin=self.vars_by_node_and_compin,
             rcn_vars_by_node_and_compin=self.running_vars_by_node_and_compin,
             client_dc_vars_by_tier=self.client_dc_vars_by_tier,
+
+            job_vars_by_compin=self.job_vars_by_compin,
+            job_vars_by_node=self.job_vars_by_node,
+            job_vars_by_node_and_compin=self.job_vars_by_node_and_compin,
+            job_vars=self.job_vars,
         )
 
     def _create_compin_node_variables(self) -> List[CompNodeVar]:
@@ -109,6 +114,11 @@ class VariableAdder:
         self.client_dc_vars: Dict[str, Dict[str, CompDCVar]] = {}  # DC : client : var
         self.client_dc_vars_by_tier: Dict[int, List[CompDCVar]] = {}  # Tier: [var]
 
+        self.job_vars_by_compin: Dict[str, List[CompNodeVar]] = {}  # compin : [var]
+        self.job_vars_by_node: Dict[str, List[CompNodeVar]] = {}  # node : [var]
+        self.job_vars_by_node_and_compin: Dict[str, Dict[str, CompNodeVar]] = {}  # node : compin : var
+        self.job_vars: List[CompNodeVar] = []
+
         for datacenter in self._datacenters:
             self.node_vars_by_dc[datacenter] = {}
             self.comp_dc_vars[datacenter] = {}
@@ -128,6 +138,9 @@ class VariableAdder:
             self.vars_by_node[node.name] = []
             self.vars_by_node_and_compin[node.name] = {}
             self.running_vars_by_node_and_compin[node.name] = {}
+
+            self.job_vars_by_node[node.name] = []
+            self.job_vars_by_node_and_compin[node.name] = {}
 
         for compin in self._knowledge.actual_state.list_all_managed_compins():
             if compin.component.application.name in self._knowledge.applications:
@@ -157,6 +170,18 @@ class VariableAdder:
                 var_ = CompDCVar(self._solver, component_id="", chain_id=client.id, node=datacenter)
                 self.client_dc_vars[datacenter][client.id] = var_
                 self.client_dc_vars_by_tier[self._tiers[client.id][datacenter]].append(var_)
+
+        for job in self._knowledge.ivis_jobs:
+            self.job_vars_by_compin[job] = []
+            for node in self._nodes:
+                var_ = CompNodeVar(self._solver, component_id=job, chain_id=job, node=node.name)
+                self.job_vars_by_compin[job].append(var_)
+                self.job_vars_by_node[node.name].append(var_)
+                self.job_vars_by_node_and_compin[node.name][job] = var_
+                self.job_vars.append(var_)
+        self.node_role_vars: Dict[str, NodeRoleVar] = {}
+        for node in self._nodes:
+            self.node_role_vars[node.name] = NodeRoleVar(self._solver, node.name)
 
         logging.debug(f"Compin node variables adding time: {(time.perf_counter() - start):.15f}")
         return comp_node_vars

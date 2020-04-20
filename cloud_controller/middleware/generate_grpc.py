@@ -8,3 +8,8 @@ from subprocess import call
 
 call("python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. cloud_controller/middleware/middleware.proto",
      shell=True)
+
+call("python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. cloud_controller/middleware/ivis.proto",
+     shell=True)
+call("python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. cloud_controller/architecture.proto",
+     shell=True)

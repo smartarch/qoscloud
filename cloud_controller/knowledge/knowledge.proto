@@ -55,6 +55,7 @@ message Task {
         cloud_controller.Architecture ADD_APPLICATION_TO_CC = 30;
         CompinDescriptor DELETE_COMPIN = 31;
         CompinDescriptor CREATE_COMPIN = 32;
+        string INITIALIZE_JOB = 33;
     }
 }
 

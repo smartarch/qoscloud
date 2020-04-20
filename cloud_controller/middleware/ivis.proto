@@ -1,0 +1,155 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "cz.cuni.mff.avocado.api";
+
+import "cloud_controller/architecture.proto";
+import "cloud_controller/middleware/middleware.proto";
+
+package cloud_controller.middleware;
+
+//-------------------------------MIDDLEWARE AGENT-----------------------------
+
+service JobMiddlewareAgent {
+
+// --- IVIS-specific methods
+
+    rpc InitializeJob (JobDescriptor) returns (InitJobAck) {}
+
+    rpc RunJob (RunParameters) returns (RunJobAck) {}
+
+    rpc GetRunStatus (RunStatusRequest) returns (RunStatus) {}
+
+    rpc GetInstanceStatus (InstanceStatusRequest) returns (InstanceStatus) {}
+
+// --- Regular middleware agent methods
+
+    rpc Ping (Pong) returns (Pong) {}
+
+    rpc MeasureProbe (ProbeMeasurement) returns (ProbeCallResult) {}
+
+    // Sets a probe as a workload ie. either starts the probe as a background workload or stops the probe.
+    rpc SetProbeWorkload (ProbeWorkload) returns (ProbeCallResult) {}
+
+    rpc CollectProbeResults (ProbeDescriptor) returns (stream ProbeFullResult) {}
+
+
+}
+
+message JobDescriptor {
+    string job_id = 1;
+    string code = 2;
+    string parameters = 3;
+    string config = 4;
+    int32 minimal_interval = 5;
+}
+
+message InitJobAck {}
+
+message RunParameters {
+    string job_id = 1;
+    string run_id = 2;
+    string state = 3;
+    string task_dir = 4; // ??? do we need this
+}
+
+message RunJobAck {}
+
+message RunStatusRequest {
+    string run_id = 1;
+    bool full_status = 2;
+}
+
+message RunStatus {
+    enum Status {
+        RUNNING = 0;
+        COMPLETED = 1;
+        FAILED = 2;
+    }
+    string run_id = 1;
+    Status status = 2;
+    double start_time = 3;
+    double end_time = 4;
+    string stdout = 5;
+    string stderr = 6;
+    int32 return_code = 7;
+    string job_id = 8;
+    string config = 9; // this field is not used in the current IVIS implementation
+}
+
+message InstanceStatusRequest {
+    bool full_status = 1;
+}
+
+message InstanceStatus {
+    RunStatus current_run = 1;
+    repeated RunStatus completed_runs = 2;
+    repeated RunStatus failed_runs = 3;
+}
+
+// ----------------------------------RunStatus-------------------------------------------
+
+service IvisCore {
+
+    rpc HandleRunRequest (RunRequest) returns (RunResponse) {}
+
+    rpc OnSuccess (RunStatus) returns (RunFinalStateAck) {}
+
+    rpc OnFail (RunStatus) returns (RunFinalStateAck) {}
+
+}
+
+message RunRequest {
+    string job_id = 1;
+    string request = 2;
+}
+
+message RunResponse {
+    string response = 1;
+}
+
+message RunFinalStateAck {}
+
+// -----------------------------------------------------------------------------
+
+service IvisInterface {
+
+    rpc SubmitJob (Architecture) returns (SubmissionAck) {}
+
+    rpc GetJobStatus (JobID) returns (JobStatus) {}
+
+    rpc RunJob (RunParameters) returns (RunJobAck) {}
+
+    rpc UnscheduleJob (JobID) returns (UnscheduleJobAck) {}
+
+}
+
+message SubmissionAck {}
+
+enum JobAdmissionStatus {
+    MEASURING = 0;
+    REJECTED = 1;
+    ACCEPTED = 2;
+    DEPLOYED = 3;
+    NO_RESOURCES = 4;
+    NOT_PRESENT = 5;
+}
+
+
+message JobStatus {
+    JobAdmissionStatus status = 1;
+    JobStats stats = 2;
+}
+
+message JobStats {
+    // Run times for different percentiles without additional background workloads (Min acceptable periods)
+    map<int32, float> percentiles = 1;
+}
+
+message JobID {
+    string job_id = 1;
+}
+
+message UnscheduleJobAck {}
+
+// -----------------------------------------------------------------------------

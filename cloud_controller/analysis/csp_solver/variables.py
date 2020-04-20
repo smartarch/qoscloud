@@ -13,6 +13,7 @@ from cloud_controller.knowledge.knowledge import Knowledge
 COMPIN_NODE_VAR = "CompNode"
 COMPIN_DC_VAR = "CompDC"
 RUNNING_NODE_VAR = "Running"
+NODE_ROLE_VAR = "Role"
 
 _logger = logging.getLogger("CSPSolver")
 
@@ -103,6 +104,20 @@ class RunningNodeVar(Var):
         return self._node
 
 
+class NodeRoleVar(Var):
+    """
+    When this variable is set to 1, it means that this node is allocated for jobs only, otherwise for regular
+    compins only.
+    """
+    def __init__(self, solver: Solver, node: str):
+        super().__init__(solver.BoolVar(f"{NODE_ROLE_VAR},{node}"))
+        self._node: str = node
+
+    @property
+    def node(self) -> str:
+        return self._node
+
+
 class Variables:
     """
     Container for all variables in constraint satisfaction problem.
@@ -121,6 +136,10 @@ class Variables:
                  cn_vars_by_node_and_compin,
                  rcn_vars_by_node_and_compin,
                  client_dc_vars_by_tier,
+                 job_vars_by_compin,
+                 job_vars_by_node,
+                 job_vars_by_node_and_compin,
+                 job_vars,
     ):
         self.comp_node_vars: List[CompNodeVar] = comp_node_vars
         self.vars_by_compin: Dict[str, List[CompNodeVar]] = cn_vars_by_compin
@@ -137,6 +156,11 @@ class Variables:
         self.cdc_vars: Dict[str, Dict[str, CompDCVar]] = cdc_vars
         self._collector: SolutionCollector = None
 
+        self.job_vars_by_compin: Dict[str, List[CompNodeVar]] = job_vars_by_compin
+        self.job_vars_by_node: Dict[str, List[CompNodeVar]] = job_vars_by_node
+        self.job_vars_by_node_and_compin: Dict[str, Dict[str, CompNodeVar]] = job_vars_by_node_and_compin
+        self.job_vars: List[CompNodeVar] = job_vars
+
     def get_all_variables(self) -> List[Var]:
         """
         :return: All the variables present in the container. The variables that are stored in several different
@@ -149,6 +173,7 @@ class Variables:
             for var_ in node_vars.values():
                 var_list.append(var_)
         var_list += self.comp_node_vars
+        var_list += self.job_vars
         for dc in self.dc_vars_by_chain.values():
             for lst in dc.values():
                 var_list += lst
@@ -189,6 +214,14 @@ class Variables:
                                         id_=generate_managed_compin_id(component, var),
                                         node=var.node,
                                         chain_id=var.chain_id))
+            for var in iterate_set_vars(self.job_vars):
+                component = knowledge.ivis_jobs[var.component_id].job_component
+                managed_compins.append(model.ManagedCompin(
+                    component=component,
+                    id_=f"job{var.component_id}",
+                    node=var.node,
+                    chain_id=var.chain_id
+                ))
             return managed_compins
 
         def copy_unmanaged_compins_from_curr_state() -> List[model.UnmanagedCompin]:

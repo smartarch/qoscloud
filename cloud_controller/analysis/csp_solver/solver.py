@@ -87,7 +87,7 @@ class CSPSolver:
         CSP solver returns cloudstate containing desired deployment of every client compin.
         :return: desired CloudState, if the solution was found, None otherwise
         """
-        if self._curr_state_contains_no_apps() or self._curr_state_contains_no_clients():
+        if self._curr_state_contains_no_apps():
             return self._create_default_cloud_state()
 
         start = time.perf_counter()

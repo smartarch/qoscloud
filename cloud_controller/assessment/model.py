@@ -119,7 +119,7 @@ probe_aliases = set()
 
 class Scenario:
     def __init__(self, controlled_probe: Probe, background_probes: List[Probe], hw_id: str, scenario_id: str = None,
-                 warm_up_cycles: int = 10, measured_cycles: int = 40, cpu_events=None):
+                 app_name: str = None, warm_up_cycles: int = 10, measured_cycles: int = 40, cpu_events=None):
         self.controlled_probe = controlled_probe
         self.background_probes = background_probes
         self.hw_id = hw_id
@@ -131,6 +131,10 @@ class Scenario:
             self.cpu_events = cpu_events
         self._id: str = scenario_id
         self.filename_header, self.filename_data = Scenario.get_results_path(self)
+        if app_name is None:
+            self.application: str = self.controlled_probe.component.application.name
+        else:
+            self.application: str = app_name
 
     @staticmethod
     def get_folder(probe: Probe, hw_config: str) -> str:
@@ -176,7 +180,8 @@ class Scenario:
             warm_up_cycles=scenario_pb.warm_up_cycles,
             measured_cycles=scenario_pb.measured_cycles,
             cpu_events=scenario_pb.cpu_events,
-            scenario_id=scenario_pb.id
+            scenario_id=scenario_pb.id,
+            app_name=scenario_pb.application
         )
         return scenario
 
@@ -185,6 +190,7 @@ class Scenario:
         scenario_pb.measured_cycles = self.measured_cycles
         scenario_pb.warm_up_cycles = self.warm_up_cycles
         scenario_pb.id = self.id_
+        scenario_pb.application = self.application
         for cpu_event in self.cpu_events:
             scenario_pb.cpu_events.append(cpu_event)
         scenario_pb.controlled_probe.name = self.controlled_probe.name

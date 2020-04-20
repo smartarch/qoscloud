@@ -97,7 +97,7 @@ class DeployController(DeployControllerServicer):
         app_stats = self._app_db.print_stats(app_name.name)
 
         # Sends reply
-        return deploy_pb.AppStats(rc=deploy_pb.RC_OK, stats=app_stats)
+        return deploy_pb.AppStats(rc=deploy_pb.RC_OK, status=self._app_db.get_app_status(app_name.name))
 
 
 class DeployPublisher(DeployPublisherServicer):

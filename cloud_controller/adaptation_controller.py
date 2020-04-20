@@ -19,10 +19,13 @@ from cloud_controller.analysis.predictor import Predictor, StraightforwardPredic
 from cloud_controller.analysis.predictor_interface.predictor_service import StatisticalPredictor
 from cloud_controller.cleanup import ClusterCleaner
 from cloud_controller.execution.executor import Executor
+from cloud_controller.ivis.ivis_interface import IvisInterface
+from cloud_controller.ivis.ivis_mock import IVIS_INTERFACE_HOST, IVIS_INTERFACE_PORT
 from cloud_controller.knowledge.knowledge import Knowledge
+from cloud_controller.middleware.ivis_pb2_grpc import add_IvisInterfaceServicer_to_server
 from cloud_controller.monitoring.monitor import Monitor
 from cloud_controller.planning.execution_planner import ExecutionPlanner
-from cloud_controller.middleware.helpers import setup_logging
+from cloud_controller.middleware.helpers import setup_logging, start_grpc_server
 from cloud_controller.knowledge import knowledge_pb2 as protocols
 
 
@@ -177,4 +180,9 @@ if __name__ == "__main__":
     setup_logging()
     adaptation_ctl = AdaptationController()
     adaptation_ctl.clean_cluster()
+    ivis_interface = IvisInterface(adaptation_ctl.knowledge)
+    ivis_interface_thread = threading.Thread(
+        target=start_grpc_server,
+        args=(ivis_interface, add_IvisInterfaceServicer_to_server, IVIS_INTERFACE_HOST, IVIS_INTERFACE_PORT, 10, True))
+    ivis_interface_thread.start()
     adaptation_ctl.run()

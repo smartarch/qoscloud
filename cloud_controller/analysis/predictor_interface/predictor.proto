@@ -48,6 +48,7 @@ message Scenario {
     repeated string cpu_events = 6;
     string id = 7;
     string filename = 8;
+    string application = 9;
 }
 
 message ScenarioCompletion {

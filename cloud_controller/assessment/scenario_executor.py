@@ -22,6 +22,7 @@ from cloud_controller.assessment.scenario_planner import ScenarioPlanner, Failur
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import CloudState, Compin, Probe
 from cloud_controller.middleware.helpers import connect_to_grpc_server_with_channel
+from cloud_controller.middleware.ivis_pb2_grpc import JobMiddlewareAgentStub
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
 
 logger = logging.getLogger("SE")
@@ -75,7 +76,7 @@ class ScenarioExecutor:
             for cpu_event in cpu_events:
                 measure_msg.cpuEvents.append(cpu_event)
 
-        stub, channel = connect_to_grpc_server_with_channel(MiddlewareAgentStub, ip, middleware.AGENT_PORT, True, production=False)
+        stub, channel = connect_to_grpc_server_with_channel(JobMiddlewareAgentStub, ip, middleware.AGENT_PORT, True, production=False)
         reply = stub.MeasureProbe(measure_msg)
         channel.close()
 
@@ -103,7 +104,8 @@ class ScenarioExecutor:
             # Stop any probe workload
             workload_msg = mw_protocols.ProbeWorkload(none=True)
 
-        stub, channel = connect_to_grpc_server_with_channel(MiddlewareAgentStub, ip, middleware.AGENT_PORT, True, production=False)
+        # TODO: Middleware
+        stub, channel = connect_to_grpc_server_with_channel(JobMiddlewareAgentStub, ip, middleware.AGENT_PORT, True, production=False)
         reply = stub.SetProbeWorkload(workload_msg)
         channel.close()
 

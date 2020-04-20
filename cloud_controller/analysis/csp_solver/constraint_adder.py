@@ -51,10 +51,13 @@ class ConstraintAdder:
         corresponding method.
         """
         start = time.perf_counter()
-        self._add_redeployment_constraints()
+        self._add_node_separation_constraints()  # DONE
+        logging.debug(f"Constraint 0 adding time: {(time.perf_counter() - start):.15f}")
+        start = time.perf_counter()
+        self._add_redeployment_constraints()  # DONE
         logging.debug(f"Constraint 1 adding time: {(time.perf_counter() - start):.15f}")
         start = time.perf_counter()
-        self._add_compin_deployed_exactly_once()
+        self._add_compin_deployed_exactly_once()  # DONE
         logging.debug(f"Constraint 2 adding time: {(time.perf_counter() - start):.15f}")
         start = time.perf_counter()
         self._add_whole_chain_in_single_datacenter()
@@ -63,8 +66,18 @@ class ConstraintAdder:
         self._add_running_nodes_constraints()
         logging.debug(f"Constraint 4 adding time: {(time.perf_counter() - start):.15f}")
         start = time.perf_counter()
-        self._add_predict_constraints()
+        self._add_predict_constraints()  # DONE
         logging.debug(f"Constraint 5 adding time: {(time.perf_counter() - start):.15f}")
+
+    def _add_node_separation_constraints(self) -> None:
+        for node_name in self._node_names:
+            # node_role_var = self._variables.node_role_vars[node_name]
+            job_vars_for_node: List[IntVar] = [var_.int_var for var_ in self._variables.job_vars_by_node[node_name]]
+            vars_for_node: List[IntVar] = [var_.int_var for var_ in self._variables.vars_by_node[node_name]]
+            # "":
+            if len(job_vars_for_node) != 0 and len(vars_for_node) != 0:
+                self._solver.Add(self._solver.Max(vars_for_node) == 0 or self._solver.Max(job_vars_for_node) == 0)
+            # self._solver.Add(self._solver.Max(job_vars_for_node) == 0 or node_role_var.int_var == 1)
 
     def _add_whole_chain_in_single_datacenter(self) -> None:
         """
@@ -76,17 +89,21 @@ class ConstraintAdder:
                 vars_ = [var_.int_var for var_ in self._variables.node_vars_by_dc[datacenter][compin]]
                 # The following constraint says: "The compin is located in a data center iff it is located in one of
                 # its nodes"
-                self._solver.Add(self._variables.dc_vars[datacenter][compin].int_var == self._solver.Max(vars_))
+
+                if len(vars_) > 0:
+                    self._solver.Add(self._variables.dc_vars[datacenter][compin].int_var == self._solver.Max(vars_))
             for client in self._clients:
                 vars_ = [var_.int_var for var_ in self._variables.dc_vars_by_chain[datacenter][client.id]]
                 var_ = self._variables.cdc_vars[datacenter][client.id]
                 # "The client's chain is located in a data center iff all of the compins of this chan are located in
                 # that datacenter":
-                self._solver.Add(self._solver.MinEquality(vars_,  var_.int_var))
+                if len(vars_) > 0:
+                    self._solver.Add(self._solver.MinEquality(vars_,  var_.int_var))
         for client in self._clients:
             vars_ = [dict_[client.id].int_var for dict_ in self._variables.cdc_vars.values()]
             # "The client's chain has to be located in some datacenter"
-            self._solver.Add(self._solver.Max(vars_) == 1)
+            if len(vars_) > 0:
+                self._solver.Add(self._solver.Max(vars_) == 1)
 
     def _add_compin_deployed_exactly_once(self) -> None:
         """
@@ -94,7 +111,14 @@ class ConstraintAdder:
         """
         for compin in self._variables.vars_by_compin.values():
             # "The compin can be deployed only on one node":
-            self._solver.Add(self._solver.SumEquality([var_.int_var for var_ in compin], 1))
+            vars = [var_.int_var for var_ in compin]
+            if len(vars) > 0:
+                self._solver.Add(self._solver.SumEquality(vars, 1))
+        for compin in self._variables.job_vars_by_compin.values():
+            # "The compin can be deployed only on one node":
+            vars = [var_.int_var for var_ in compin]
+            if len(vars) > 0:
+                self._solver.Add(self._solver.SumEquality(vars, 1))
 
     def _add_redeployment_constraints(self) -> None:
         """
@@ -109,6 +133,10 @@ class ConstraintAdder:
                         self._variables.running_vars_by_node_and_compin[node_][compin_].int_var !=
                         self._variables.vars_by_node_and_compin[node_][compin_].int_var
                     )
+                # "Jobs cannot be redeployed"
+                elif node_ in self._variables.job_vars_by_node_and_compin and \
+                        compin_ in self._variables.job_vars_by_node_and_compin[node_]:
+                    self._solver.Add(self._variables.job_vars_by_node_and_compin[node_][compin_].int_var == 1)
                 # This works, because we create RunningCompNodeVars only for already existing compins (from the actual
                 # state
 
@@ -120,7 +148,12 @@ class ConstraintAdder:
 
         for node in self._nodes:
             vars_for_node: List[CompNodeVar] = self._variables.vars_by_node[node.name]
-            self._solver.Add(NodePredictConstraint(solver=self._solver, vars_for_node=vars_for_node,
+            if len(vars_for_node) > 0:
+                self._solver.Add(NodePredictConstraint(solver=self._solver, vars_for_node=vars_for_node,
+                                                   node=node, predictor=self._predictor))
+            job_vars_for_node: List[CompNodeVar] = self._variables.job_vars_by_node[node.name]
+            if len(job_vars_for_node) > 0:
+                self._solver.Add(NodePredictConstraint(solver=self._solver, vars_for_node=job_vars_for_node,
                                                    node=node, predictor=self._predictor))
 
     def _add_running_nodes_constraints(self) -> None:
@@ -131,4 +164,5 @@ class ConstraintAdder:
             running_node_var = self._variables.running_node_vars[node_name]
             vars_for_node: List[IntVar] = [var_.int_var for var_ in self._variables.vars_by_node[node_name]]
             # "A node is running iff there is at least one compin running on that node":
-            self._solver.Add(self._solver.MaxEquality(vars_for_node, running_node_var.int_var))
+            if len(vars_for_node) > 0:
+                self._solver.Add(self._solver.MaxEquality(vars_for_node, running_node_var.int_var))

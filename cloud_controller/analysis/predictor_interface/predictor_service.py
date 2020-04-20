@@ -10,9 +10,10 @@ from cloud_controller import DEFAULT_HARDWARE_ID, GLOBAL_PERCENTILE, PREDICTOR_H
 from cloud_controller.analysis.predictor import Predictor
 from cloud_controller.analysis.predictor_interface.predictor_pb2_grpc import PredictorServicer, \
     add_PredictorServicer_to_server, PredictorStub
+from cloud_controller.architecture_pb2 import Architecture, ApplicationType
 from cloud_controller.assessment.model import Scenario
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import Application, Probe
+from cloud_controller.knowledge.model import Application, Probe, IvisApplication
 from cloud_controller.middleware.helpers import start_grpc_server, connect_to_grpc_server, setup_logging
 import predictor
 
@@ -47,6 +48,7 @@ class PredictorService(PredictorServicer):
     def __init__(self):
         self._predictor = self._create_predictor()
         self.probes: Dict[str, List[Probe]] = {}
+        self._jobs: Dict[str, Probe] = {}
         self._scenarios_by_app: Dict[str, List[str]] = {}
         self._scenarios_by_id: Dict[str, Scenario] = {}
         self._measuring_phases: Dict[str, MeasuringPhase] = {}
@@ -82,22 +84,36 @@ class PredictorService(PredictorServicer):
         prediction = self._predictor.predict(assignment)
         return predictor_pb.Prediction(result=prediction)
 
+    def _add_scenario(self, probe: Probe, bg_load: List[Probe], app_name: str):
+        scenario = Scenario(probe, bg_load, DEFAULT_HARDWARE_ID,
+                            scenario_id=str(self._last_scenario_id), app_name=app_name)
+        self._last_scenario_id += 1
+        self._scenarios_by_app[app_name].append(scenario.id_)
+        self._scenarios_by_id[scenario.id_] = scenario
+
     def RegisterApp(self, request, context):
         with self._lock:
             app = Application.init_from_pb(request)
-            self.probes[app.name] = []
             self._scenarios_by_app[app.name] = []
             self._measuring_phases[app.name] = MeasuringPhase.INIT
-            for component in app.components.values():
-                for probe in component.probes:
-                    self._register_probe(probe)
-                    self.probes[app.name].append(probe)
-                    for bg_load in [], [probe], [probe, probe]:
-                        scenario = Scenario(probe, bg_load, DEFAULT_HARDWARE_ID, scenario_id=str(self._last_scenario_id))
-                        self._last_scenario_id += 1
-                        self._scenarios_by_app[app.name].append(scenario.id_)
-                        self._scenarios_by_id[scenario.id_] = scenario
-
+            if request.type == ApplicationType.Value("REGULAR"):
+                self.probes[app.name] = []
+                for component in app.components.values():
+                    for probe in component.probes:
+                        self._register_probe(probe)
+                        self.probes[app.name].append(probe)
+                        for bg_load in [], [probe], [probe, probe]:
+                            self._add_scenario(probe, bg_load, app.name)
+            elif isinstance(app, IvisApplication):
+                self._add_scenario(app.probe, [], app.name)
+                for probe_1 in self._jobs.values():
+                    self._add_scenario(app.probe, [probe_1], app.name)
+                    self._add_scenario(probe_1, [app.probe], app.name)
+                    for probe_2 in self._jobs.values():
+                        if probe_2.name != probe_1.name:
+                            self._add_scenario(app.probe, [probe_1, probe_2], app.name)
+                            self._add_scenario(probe_1, [app.probe, probe_2], app.name)
+                self._jobs[app.name] = app.probe
         return predictor_pb.RegistrationAck()
 
     def UnregisterApp(self, request, context):
@@ -122,7 +138,15 @@ class PredictorService(PredictorServicer):
             if self._measuring_phases[request.name] != MeasuringPhase.COMPLETED:
                 return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("NEEDS_DATA"))
             self._predictor.prepare_predictor()
-            for probe in self.probes[request.name]:
+            if request.name in self.probes:
+                for probe in self.probes[request.name]:
+                    prediction = self._predictor.predict({probe.alias: (math.ceil(probe.time_limit), 1)})
+                    if prediction is None:
+                        raise Exception("Predictor needs data for single process prediction!")
+                    elif prediction is False:
+                        return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("REJECTED"))
+            else:
+                probe = self._jobs[request.name]
                 prediction = self._predictor.predict({probe.alias: (math.ceil(probe.time_limit), 1)})
                 if prediction is None:
                     raise Exception("Predictor needs data for single process prediction!")
@@ -134,7 +158,7 @@ class PredictorService(PredictorServicer):
         with self._lock:
             self._predictor.provide_data_matrix(request.scenario.filename)
             # Remove scenario from the list of to-be-done scenarios
-            app = request.scenario.controlled_probe.application
+            app = request.scenario.application
             logging.info(f"Received ScenarioDone notification for scenario {request.scenario.id} of app {app}")
             assert request.scenario.id in self._scenarios_by_app[app]
             self._scenarios_by_app[app].remove(request.scenario.id)

@@ -13,6 +13,12 @@ message Architecture {
     string name = 1;
     map<string, Component> components = 2;
     Secret secret = 3;
+    ApplicationType type = 4;
+    string job_id = 5;
+    string code = 6;
+    string parameters = 7;
+    string config = 8;
+    int32 minimal_interval = 9;
 }
 
 message Component {
@@ -27,6 +33,11 @@ message Component {
     Statefulness statefulness = 10;
     UEMPolicy policy = 11;
     repeated string whitelist = 12;
+}
+
+enum ApplicationType {
+    REGULAR = 0;
+    IVIS = 1;
 }
 
 enum Statefulness {

@@ -34,13 +34,21 @@ enum ReplyCode {
     RC_NAME_NOT_AVAILABLE = 1;
 }
 
+enum AppAdmissionStatus {
+    UNKNOWN = 0;
+    RECEIVED = 1;
+    REJECTED = 2;
+    ACCEPTED = 3;
+    PUBLISHED = 4;
+}
+
 message DeployReply {
     ReplyCode rc = 1;
 }
 
 message AppStats {
     ReplyCode rc = 1;
-    string stats = 2;
+    AppAdmissionStatus status = 2;
 }
 
 service DeployPublisher {

@@ -6,11 +6,12 @@ from itertools import chain
 from typing import Iterable
 
 from cloud_controller import DEBUG
-from cloud_controller.knowledge.model import CloudState, NamespacePhase
+from cloud_controller.knowledge.model import CloudState, NamespacePhase, IvisApplication
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.planning.cloud_state_diff import get_application_diff
 from cloud_controller.planning.execution_plan_factory import ExecutionPlanFactory
 import cloud_controller.knowledge.knowledge_pb2 as protocols
+from cloud_controller.planning.job_execution_plan_factory import JobExecutionPlanFactory
 
 
 def delete_ns_plan(ns_name: str) -> protocols.ExecutionPlan:
@@ -88,8 +89,10 @@ class ExecutionPlanner:
                         # was running. In production we just delete that namespace.
                         yield delete_ns_plan(app_name)
                         continue
-
-            self._factories[app_name] = ExecutionPlanFactory(app_name, self.knowledge)
+            if isinstance(self.knowledge.applications[app_name], IvisApplication):
+                self._factories[app_name] = JobExecutionPlanFactory(app_name, self.knowledge)
+            else:
+                self._factories[app_name] = ExecutionPlanFactory(app_name, self.knowledge)
             exec_plan = self._factories[app_name].create_application_creation_plan()
             yield exec_plan
         for app_name in delete_apps:

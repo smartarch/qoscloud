@@ -5,7 +5,7 @@ import logging
 import time
 from multiprocessing.pool import ThreadPool
 from time import perf_counter
-from typing import Dict, Callable, Iterable, Tuple, List
+from typing import Dict, Callable, Iterable, Tuple, List, Union
 
 import grpc
 import yaml
@@ -18,9 +18,11 @@ from cloud_controller import DEFAULT_SECRET_NAME, SYSTEM_DATABASE_NAME, APPS_COL
 from cloud_controller.execution.mongo_controller import MongoController
 from cloud_controller.knowledge.knowledge import Knowledge
 import cloud_controller.knowledge.knowledge_pb2_grpc as servicers
-from cloud_controller.knowledge.model import ManagedCompin, CompinPhase, UnmanagedCompin
+from cloud_controller.knowledge.model import ManagedCompin, CompinPhase, UnmanagedCompin, IvisApplication
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer
 from cloud_controller.middleware import AGENT_PORT
+from cloud_controller.middleware.ivis_pb2 import JobDescriptor
+from cloud_controller.middleware.ivis_pb2_grpc import JobMiddlewareAgentStub
 from cloud_controller.middleware.middleware_pb2 import Pong, DependencyAddress
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
 from cloud_controller.middleware.helpers import connect_to_grpc_server
@@ -91,6 +93,7 @@ class PlanExecutor:
             'ADD_APPLICATION_TO_CC': self.execute_add_app_to_cc,
             'DELETE_COMPIN': self.execute_delete_compin,
             'CREATE_COMPIN': self.execute_create_compin,
+            'INITIALIZE_JOB': self.execute_initialize_job,
         }
         self.WAIT_BEFORE_RETRY = 2
 
@@ -118,7 +121,7 @@ class PlanExecutor:
             except grpc.RpcError:
                 time.sleep(self.WAIT_BEFORE_RETRY)
 
-    def ping_compin(self, stub: MiddlewareAgentStub) -> CompinPhase:
+    def ping_compin(self, stub: Union[MiddlewareAgentStub, JobMiddlewareAgentStub]) -> CompinPhase:
         """
         Checks whether managed compin answers to the ping, and its current phase.
         :param stub: MiddlewareAgentStub of compin to check.
@@ -198,6 +201,7 @@ class PlanExecutor:
         )
         logging.info(f"Database {task.DROP_DATABASE.db} dropped")
         return True
+
 
     def execute_shard_collection(self, task: protocols.Task) -> bool:
         """
@@ -419,6 +423,28 @@ class PlanExecutor:
         )
         compin.ip = api_response.spec.cluster_ip
         logging.info("Service created. status='%s'" % str(api_response.status))
+        return True
+
+    def execute_initialize_job(self, task: protocols.Task) -> bool:
+        job_id = task.INITIALIZE_JOB
+        compin = self.knowledge.actual_state.get_job_compin(job_id)
+        assert compin is not None
+        stub: JobMiddlewareAgentStub = connect_to_grpc_server(JobMiddlewareAgentStub, compin.ip, AGENT_PORT)
+        phase = self.ping_compin(stub)
+        if phase < CompinPhase.INIT:
+            return False
+        app = self.knowledge.applications[task.INITIALIZE_JOB]
+        assert isinstance(app, IvisApplication)
+        init_data = JobDescriptor(
+            job_id=app.name,
+            code=app.code,
+            parameters=app.parameters,
+            config=app.config,
+            minimal_interval=app.interval
+        )
+        stub.InitializeJob(init_data)
+        compin.phase = CompinPhase.READY
+        logging.info(f"Job {task.INITIALIZE_JOB} was successfully initialized")
         return True
 
     def execute_create_compin(self, task: protocols.Task) -> bool:

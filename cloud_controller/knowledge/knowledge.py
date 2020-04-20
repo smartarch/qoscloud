@@ -7,7 +7,7 @@ from typing import Dict, Set, Optional, Iterable
 from typing import List
 
 from cloud_controller.knowledge.model import Component, UnmanagedCompin, check_datacenters, construct_datacenters, \
-    Datacenter
+    Datacenter, IvisApplication
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer, UserEquipment
 from cloud_controller.knowledge.model import CloudState, Node, Namespace, Application
 from cloud_controller.knowledge.network_topology import NetworkTopology, EuclidNetworkTopology
@@ -39,6 +39,7 @@ class Knowledge:
         if actual_state is None:
             actual_state = CloudState()
         self.applications: Dict[str, Application] = {}
+        self.ivis_jobs: Dict[str, IvisApplication] = {}
         self.components: Dict[str, Component] = {}
         self.actual_state: CloudState = actual_state
         self.nodes: Dict[str, Node] = {}
@@ -90,7 +91,10 @@ class Knowledge:
         processes the application's docker secret.
         :param app_pb: protobuf representation of the application architecture.
         """
-        self.applications[app_pb.name] = Application.init_from_pb(app_pb)
+        app = Application.init_from_pb(app_pb)
+        self.applications[app_pb.name] = app
+        if isinstance(app, IvisApplication):
+            self.ivis_jobs[app.name] = app
         for component in self.applications[app_pb.name].components.values():
             self.components[component.id] = component
         if app_pb.HasField("secret"):
