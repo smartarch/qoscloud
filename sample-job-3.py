@@ -72,7 +72,7 @@ from collections import deque
 # Get parameters and set up elasticsearch
 print("reading")
 if not STANDALONE:
-    fhd = int(sys.argv[1])
+    fd = int(sys.argv[1])
     data = json.loads(sys.stdin.readline())
 else:
     data = json.loads(SAMPLE_JOB_CONFIG)

@@ -14,16 +14,16 @@ import logging
 import json
 
 from cloud_controller.middleware import AGENT_PORT, AGENT_HOST
-from cloud_controller.middleware.helpers import start_grpc_server, connect_to_grpc_server, setup_logging
-from cloud_controller.middleware.ivis_pb2 import InitJobAck, RunJobAck, RunStatus, InstanceStatus, RunRequest, \
-    RunParameters
+from cloud_controller.middleware.helpers import start_grpc_server, setup_logging
+from cloud_controller.middleware.ivis_pb2 import InitJobAck, RunJobAck, RunStatus, InstanceStatus, RunParameters
 from cloud_controller.middleware.ivis_pb2_grpc import JobMiddlewareAgentServicer, \
-    add_JobMiddlewareAgentServicer_to_server, IvisCoreStub
+    add_JobMiddlewareAgentServicer_to_server
 from cloud_controller.middleware.middleware_pb2 import Phase, Pong
 from cloud_controller.middleware.probe_monitor import IOEventsNotSupportedException, CPUEventsNotSupportedException, \
     DataCollector, ProbeMonitor
 
 import cloud_controller.middleware.middleware_pb2 as mw_protocols
+import requests
 
 PYTHON_EXEC = "/bin/python3"
 
@@ -38,7 +38,7 @@ class JobAgent(JobMiddlewareAgentServicer):
         self._job_file: str = "/root/ivisjob/job.py"
         self._job_id: Optional[int] = None
         self._parameters: Optional[str] = None
-        self._config: Optional[str] = None
+        self._config: Optional[Dict] = None
         self._minimal_interval: int = 0
 
         self._current_process: Optional[str] = None
@@ -48,30 +48,31 @@ class JobAgent(JobMiddlewareAgentServicer):
         self._requests_thread: Optional[Thread] = None
         self._process: Optional[Popen] = None
         self._phase: Phase = Phase.Value('INIT')
-        self._ivis_core: IvisCoreStub = connect_to_grpc_server(IvisCoreStub, "192.168.58.13", IVIS_CORE_PORT)
+        self._ivis_core_url = f"192.168.58.13:{IVIS_CORE_PORT}"
 
         self._probe_monitor = None
 
     def wait_for_process(self):
         assert self._current_process is not None
-        run_status = RunStatus()
-        run_status.job_id = self._job_id
-        run_status.run_id = self._current_process
-        run_status.end_time = perf_counter()
-        run_status.start_time = self._last_run_start_time
+        run_status = {}
+        run_status['config'] = ""
+        run_status['jobId'] = self._job_id
+        run_status['runId'] = self._current_process
+        run_status['endTime'] = perf_counter()
+        run_status['startTime'] = self._last_run_start_time
 
         while self._process.poll() is None:
             time.sleep(0.1)
 
-        run_status.stdout = self._process.stdout.read()
-        run_status.stderr = self._process.stderr.read()
-        run_status.return_code = self._process.returncode
+        run_status['output'] = self._process.stdout.read()
+        run_status['error'] = self._process.stderr.read()
+        run_status['returnCode'] = self._process.returncode
         if self._process.returncode == 0:
-            run_status.status = RunStatus.Status.Value('COMPLETED')
-            self._ivis_core.OnSuccess(run_status)
+            run_status['status'] = RunStatus.Status.Value('COMPLETED')
+            requests.post(f"{self._ivis_core_url}/on-success", json=run_status)
         else:
-            run_status.status = RunStatus.Status.Value('FAILED')
-            self._ivis_core.OnFail(run_status)
+            run_status['status'] = RunStatus.Status.Value('FAILED')
+            requests.post(f"{self._ivis_core_url}/on-fail", json=run_status)
         self._runs[self._current_process] = run_status
         self._current_process = None
 
@@ -81,9 +82,12 @@ class JobAgent(JobMiddlewareAgentServicer):
         while not fr.closed:
             line = fr.readline()
             print(f"Processing a runtime request: {line}")
-            response = self._ivis_core.HandleRunRequest(RunRequest(job_id=self._job_id, request=line))
-            print(f"Writing a runtime response: {response.response}")
-            stdin.write(f"{response.response}\n")
+            response = requests.post(f"{self._ivis_core_url}/run-request", json={
+                'jobId': self._job_id,
+                'request': line
+            }).json()
+            print(f"Writing a runtime response: {response['response']}")
+            stdin.write(f"{response['response']}\n")
             stdin.flush()
 
     def InitializeJob(self, request, context):
