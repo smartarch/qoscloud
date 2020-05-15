@@ -67,24 +67,27 @@ class Analyzer:
 
         if desired_state is None:
             # If solver could not find a result quickly, we can turn to long-term computation:
-            logging.info("No desired state was found. Using long-term desired state computation.")
+            logging.info("Deployment plan was not found. Some workloads cannot be deployed due to the lack of resources.")
             if self._longterm_result_future is not None:
                 # If a long-term computation of the desired state is already running, we can try to get its result:
-                if self._longterm_result_future.ready():
-                    logging.info("Using the result of a long-term desired state computation.")
-                    desired_state = self._longterm_result_future.get()
-                    self._longterm_result_future = None
+                # if self._longterm_result_future.ready():
+                #     logging.info("Using the result of a long-term desired state computation.")
+                #     desired_state = self._longterm_result_future.get()
+                #     self._longterm_result_future = None
+                pass
             else:
-                # Otherwise we start that long-term computation
-                self._solver = self._solver_class(self.knowledge, network_distances, self.predictor)
-                self._longterm_result_future = self._pool.apply_async(self._solver.find_assignment_longterm, ())
+                for job in self.knowledge.ivis_jobs.values():
+                    job_compin = self.knowledge.actual_state.get_job_compin(job.name)
+                    if job_compin is None:
+                        self.knowledge.no_resources_for_job(job.name)
 
         if desired_state is None:
             # If the result is still None, we just return the last desired state (for now, until the new assignment is
             # found).
             logging.info("Using previous desired state.")
             desired_state = self._last_desired_state
-
+        else:
+            self.knowledge.all_jobs_scheduled()
         self._mark_force_keep_compins(desired_state)
         self._log_desired_state(desired_state)
         self._last_desired_state = desired_state

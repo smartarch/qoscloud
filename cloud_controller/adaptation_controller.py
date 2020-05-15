@@ -14,7 +14,7 @@ from kubernetes import config
 from cloud_controller import PRODUCTION_KUBECONFIG, THREAD_COUNT, PRODUCTION_MONGOS_SERVER_IP, DEFAULT_PREDICTOR_CONFIG, \
     PARALLEL_EXECUTION
 from cloud_controller.analysis.analyzer import Analyzer
-from cloud_controller.analysis.parallel_solver import ParallelSolver
+from cloud_controller.analysis.csp_solver.solver import CSPSolver
 from cloud_controller.analysis.predictor import Predictor, StraightforwardPredictorModel
 from cloud_controller.analysis.predictor_interface.predictor_service import StatisticalPredictor
 from cloud_controller.cleanup import ClusterCleaner
@@ -55,7 +55,7 @@ class AdaptationController:
                  analyzer=None,
                  planner=None,
                  executor=None,
-                 solver_class: Type = ParallelSolver,
+                 solver_class: Type = CSPSolver,
                  predictor: Predictor = None,
                  mongos_ip: str = PRODUCTION_MONGOS_SERVER_IP,
                  thread_count: int = THREAD_COUNT

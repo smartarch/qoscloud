@@ -43,14 +43,14 @@ class ParallelSolver:
         _csp_solver = CSPSolver(self._knowledge, self._distances, self._predictor, TIME_LIMIT_SOLUTION)
         csp_result: AsyncResult = self._pool.apply_async(_csp_solver.find_assignment, ())
 
-        trivial_solver = TrivialSolver(self._knowledge, self._distances, self._predictor)
-        trivial_result: AsyncResult = self._pool.apply_async(trivial_solver.find_assignment, ())
+        # trivial_solver = TrivialSolver(self._knowledge, self._distances, self._predictor)
+        # trivial_result: AsyncResult = self._pool.apply_async(trivial_solver.find_assignment, ())
 
         csp_result.wait(TIME_LIMIT_TOTAL)
         if csp_result.ready():
             return csp_result.get()
-        elif trivial_result.ready() and trivial_result.successful():
-            return trivial_result.get()
+        # elif trivial_result.ready() and trivial_result.successful():
+        #     return trivial_result.get()
         else:
             return None
 
