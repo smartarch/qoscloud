@@ -5,8 +5,8 @@ This script builds the docker images of image client and recognizer server and p
 """
 from subprocess import call
 
-print("Build docker images for frpyc")
-call("docker build -t dankhalev/ivis-job ../..", shell=True)
+print("Building docker image for IVIS jobs")
+call("docker build -t dankhalev/ivis-job -f Dockerfile ../..", shell=True)
 
 print("Pushing images to DockerHub")
 call("docker push dankhalev/ivis-job", shell=True)

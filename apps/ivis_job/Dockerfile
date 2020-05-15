@@ -7,7 +7,7 @@ RUN pip3.6 install grpcio
 RUN pip3.6 install grpcio-tools
 RUN pip3.6 install typing
 RUN yum -y install git gcc gcc-c++ make cmake
-RUN pip3.6 install pymongo Pillow python_papi==5.5.1.3
+RUN pip3.6 install pymongo Pillow python_papi==5.5.1.3 flask requests elasticsearch
 
 
 COPY ./cloud_controller/middleware /root/ivisjob/cloud_controller/middleware
