@@ -5,7 +5,8 @@ from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import ManagedCompin, CompinPhase
 from cloud_controller.middleware import AGENT_PORT
 from cloud_controller.middleware.helpers import connect_to_grpc_server
-from cloud_controller.middleware.ivis_pb2 import SubmissionAck, JobStatus, JobAdmissionStatus, UnscheduleJobAck
+from cloud_controller.middleware.ivis_pb2 import SubmissionAck, JobStatus, JobAdmissionStatus, UnscheduleJobAck, \
+    RunJobAck
 from cloud_controller.middleware.ivis_pb2_grpc import IvisInterfaceServicer, JobMiddlewareAgentStub
 
 
@@ -22,6 +23,8 @@ class IvisInterface(IvisInterfaceServicer):
     def GetJobStatus(self, request, context):
         job_id = request.job_id
         if job_id in self._knowledge.applications:
+            if job_id in self._knowledge.jobs_without_resources:
+                return JobStatus(status=JobAdmissionStatus.Value('NO_RESOURCES'))
             job_compin = self._knowledge.actual_state.get_job_compin(job_id)
             assert job_compin is None or isinstance(job_compin, ManagedCompin)
             if job_compin is not None and job_compin.phase == CompinPhase.READY:
@@ -41,6 +44,8 @@ class IvisInterface(IvisInterfaceServicer):
 
     def RunJob(self, request, context):
         job_compin = self._knowledge.actual_state.get_job_compin(request.job_id)
+        if job_compin is None or job_compin.phase != CompinPhase.READY:
+            return RunJobAck()
         job_agent: JobMiddlewareAgentStub = connect_to_grpc_server(JobMiddlewareAgentStub, job_compin.ip, AGENT_PORT)
         return job_agent.RunJob(request)
 

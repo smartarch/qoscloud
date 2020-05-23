@@ -50,6 +50,13 @@ class Knowledge:
         self.secrets: Dict[str, str] = {}
         self._new_clients: List[UnmanagedCompin] = []
         self.client_support = True
+        self.jobs_without_resources: List[str] = []
+
+    def no_resources_for_job(self, job_id: str) -> None:
+        self.jobs_without_resources.append(job_id)
+
+    def all_jobs_scheduled(self) -> None:
+        self.jobs_without_resources.clear()
 
     def set_network_topology(self, network_topology: NetworkTopology):
         """
@@ -112,6 +119,8 @@ class Knowledge:
             for component in self.applications[name].components.values():
                 del self.components[component.id]
             del self.applications[name]
+        if name in self.ivis_jobs:
+            del self.ivis_jobs[name]
         logging.info(f"A request for deletion of application {name} was processed.")
 
     def add_client(self, app_name: str, component_name: str, id_: str, ip: str) -> None:
