@@ -35,7 +35,7 @@ IVIS_PORT = 8082
 class JobAgent(JobMiddlewareAgentServicer):
 
     def __init__(self):
-        self._job_file: str = "/root/ivisjob/job.py"
+        self._job_file: str = "./job.py"
         self._job_id: Optional[int] = None
         self._parameters: Optional[str] = None
         self._config: Optional[Dict] = None
@@ -70,9 +70,11 @@ class JobAgent(JobMiddlewareAgentServicer):
         run_status['returnCode'] = self._process.returncode
         if self._process.returncode == 0:
             run_status['status'] = RunStatus.Status.Value('COMPLETED')
+            logging.info(f"Run completed successfully. STDOUT: {run_status['output']}")
             requests.post(f"{self._ivis_core_url}/on-success", json=run_status)
         else:
             run_status['status'] = RunStatus.Status.Value('FAILED')
+            logging.info(f"Run failed. STDERR: {run_status['error']}")
             requests.post(f"{self._ivis_core_url}/on-fail", json=run_status)
         self._runs[self._current_process] = run_status
         self._current_process = None
@@ -102,6 +104,7 @@ class JobAgent(JobMiddlewareAgentServicer):
         with open(self._job_file, "w") as code_file:
             code_file.write(request.code)
         self._phase = Phase.Value('READY')
+        logging.info("Job initialized")
         return InitJobAck()
 
     def RunJob(self, request, context):
@@ -170,7 +173,11 @@ class JobAgent(JobMiddlewareAgentServicer):
 
     def _run_as_probe(self):
         logging.info(f"Running run {self.internal_run_number}")
-        self.RunJob(RunParameters(job_id=self._job_id, run_id=f"run{self.internal_run_number}"), None)
+        while self._current_process is not None:
+            time.sleep(.01)
+        state = requests.get(f"{self._ivis_core_url}/job-state/{self._job_id}").json()
+        self.RunJob(RunParameters(job_id=self._job_id, run_id=f"run{self.internal_run_number}",
+                                  state=json.dumps(state)), None)
         self.internal_run_number += 1
 
     def Ping(self, request, context):
@@ -192,11 +199,14 @@ class JobAgent(JobMiddlewareAgentServicer):
             time = self._probe_monitor.execute_probe("job", measurement.warmUpCycles,
                                                      measurement.measuredCycles, cpu_events)
 
-            return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.Value("OK"), executionTime=time)
+            return mw_protocols.ProbeCallResult(
+                result=mw_protocols.ProbeCallResult.Result.Value("OK"), executionTime=time)
         except IOEventsNotSupportedException:
-            return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.Value("IO_EVENT_NOT_SUPPORTED"))
+            return mw_protocols.ProbeCallResult(
+                result=mw_protocols.ProbeCallResult.Result.Value("IO_EVENT_NOT_SUPPORTED"))
         except CPUEventsNotSupportedException:
-            return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.Value("CPU_EVENT_NOT_SUPPORTED"))
+            return mw_protocols.ProbeCallResult(
+                result=mw_protocols.ProbeCallResult.Result.Value("CPU_EVENT_NOT_SUPPORTED"))
 
     def SetProbeWorkload(self, workload: mw_protocols.ProbeWorkload, context) -> mw_protocols.ProbeCallResult:
         if workload.WhichOneof("newWorkload") == "probe":
