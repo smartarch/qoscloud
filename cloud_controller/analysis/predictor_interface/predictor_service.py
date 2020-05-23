@@ -106,13 +106,14 @@ class PredictorService(PredictorServicer):
                             self._add_scenario(probe, bg_load, app.name)
             elif isinstance(app, IvisApplication):
                 self._add_scenario(app.probe, [], app.name)
-                for probe_1 in self._jobs.values():
-                    self._add_scenario(app.probe, [probe_1], app.name)
-                    self._add_scenario(probe_1, [app.probe], app.name)
-                    for probe_2 in self._jobs.values():
-                        if probe_2.name != probe_1.name:
-                            self._add_scenario(app.probe, [probe_1, probe_2], app.name)
-                            self._add_scenario(probe_1, [app.probe, probe_2], app.name)
+                # TODO: implement a better strategy for jobs assessment
+                # for probe_1 in self._jobs.values():
+                #     self._add_scenario(app.probe, [probe_1], app.name)
+                #     self._add_scenario(probe_1, [app.probe], app.name)
+                #     for probe_2 in self._jobs.values():
+                #         if probe_2.name != probe_1.name:
+                #             self._add_scenario(app.probe, [probe_1, probe_2], app.name)
+                #             self._add_scenario(probe_1, [app.probe, probe_2], app.name)
                 self._jobs[app.name] = app.probe
         return predictor_pb.RegistrationAck()
 

@@ -90,6 +90,10 @@ class CSPSolver:
         if self._curr_state_contains_no_apps():
             return self._create_default_cloud_state()
 
+        # TODO: implement a better way to enforce NO_RESOURCES
+        if len(self._knowledge.ivis_jobs) > len(self._knowledge.nodes):
+            return None
+
         start = time.perf_counter()
         self._add_variables()
         logging.debug(f"Variables adding time: {(time.perf_counter() - start):.15f}")
