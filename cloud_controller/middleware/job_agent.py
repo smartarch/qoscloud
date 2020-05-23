@@ -27,8 +27,8 @@ import requests
 
 PYTHON_EXEC = "/bin/python3"
 
-IVIS_CORE_HOST = "0.0.0.0"
-IVIS_CORE_PORT = 6644
+IVIS_HOST = "0.0.0.0"
+IVIS_PORT = 8082
 
 
 # TODO: locking
@@ -48,7 +48,8 @@ class JobAgent(JobMiddlewareAgentServicer):
         self._requests_thread: Optional[Thread] = None
         self._process: Optional[Popen] = None
         self._phase: Phase = Phase.Value('INIT')
-        self._ivis_core_url = f"192.168.58.13:{IVIS_CORE_PORT}"
+        self._ivis_ip = IVIS_HOST
+        self._ivis_core_url = f"http://{IVIS_HOST}:{IVIS_PORT}/ccapi"
 
         self._probe_monitor = None
 
@@ -93,8 +94,11 @@ class JobAgent(JobMiddlewareAgentServicer):
     def InitializeJob(self, request, context):
         self._job_id = request.job_id
         self._parameters = request.parameters
+        self._ivis_ip = request.ivis_core_ip
         self._config = json.loads(request.config)
+        self._config['es']['host'] = self._ivis_ip
         self._minimal_interval = request.minimal_interval
+        self._ivis_core_url = f"http://{self._ivis_ip}:{request.ivis_core_port}/ccapi"
         with open(self._job_file, "w") as code_file:
             code_file.write(request.code)
         self._phase = Phase.Value('READY')

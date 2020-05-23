@@ -7,7 +7,7 @@ from typing import Type, Callable, Any
 import cloud_controller
 from cloud_controller import PRODUCTION_KUBECONFIG, DEFAULT_PREDICTOR_CONFIG, PRODUCTION_MONGOS_SERVER_IP, THREAD_COUNT
 from cloud_controller.adaptation_controller import AdaptationController
-from cloud_controller.analysis.parallel_solver import ParallelSolver
+from cloud_controller.analysis.csp_solver.solver import CSPSolver
 from cloud_controller.analysis.predictor import StraightforwardPredictorModel
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.network_topology import NetworkTopology
@@ -29,7 +29,7 @@ class ExtensionManager:
     def __init__(self):
         self._knowledge = Knowledge()
         self._analyzer = None
-        self._solver_class = ParallelSolver
+        self._solver_class = CSPSolver
         self._predictor = StraightforwardPredictorModel(DEFAULT_PREDICTOR_CONFIG)
         self._kubeconfig_file = PRODUCTION_KUBECONFIG
         self._mongos_ip: str = PRODUCTION_MONGOS_SERVER_IP

@@ -42,6 +42,8 @@ message JobDescriptor {
     string parameters = 3;
     string config = 4;
     int32 minimal_interval = 5;
+    string ivis_core_ip = 6;
+    int32 ivis_core_port = 7;
 }
 
 message InitJobAck {}

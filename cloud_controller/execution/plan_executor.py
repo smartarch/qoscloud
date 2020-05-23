@@ -14,7 +14,7 @@ import cloud_controller.knowledge.knowledge_pb2 as protocols
 
 from kubernetes import client
 
-from cloud_controller import DEFAULT_SECRET_NAME, SYSTEM_DATABASE_NAME, APPS_COLLECTION_NAME
+from cloud_controller import DEFAULT_SECRET_NAME, SYSTEM_DATABASE_NAME, APPS_COLLECTION_NAME, IVIS_CORE_IP, IVIS_CORE_PORT
 from cloud_controller.execution.mongo_controller import MongoController
 from cloud_controller.knowledge.knowledge import Knowledge
 import cloud_controller.knowledge.knowledge_pb2_grpc as servicers
@@ -440,7 +440,9 @@ class PlanExecutor:
             code=app.code,
             parameters=app.parameters,
             config=app.config,
-            minimal_interval=app.interval
+            minimal_interval=app.interval,
+            ivis_core_ip=IVIS_CORE_IP,
+            ivis_core_port=IVIS_CORE_PORT
         )
         stub.InitializeJob(init_data)
         compin.phase = CompinPhase.READY

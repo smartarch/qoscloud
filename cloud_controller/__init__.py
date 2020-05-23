@@ -34,6 +34,9 @@ PREDICTOR_HOST = "0.0.0.0"
 PREDICTOR_PORT = 4317
 GLOBAL_PERCENTILE = 90.0
 
+IVIS_CORE_IP = "192.168.100.7"
+IVIS_CORE_PORT = 8082
+
 load_config_from_file(__name__, CONFIG_FILE_LOCATION)
 if not isinstance(DEFAULT_UE_MANAGEMENT_POLICY, UEManagementPolicy):
     assert isinstance(DEFAULT_UE_MANAGEMENT_POLICY, str)

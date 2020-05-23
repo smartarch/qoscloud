@@ -131,7 +131,9 @@ if __name__ == "__main__":
             code=SAMPLE_JOB_CODE,
             parameters=SAMPLE_JOB_PARAMETERS,
             config=json.dumps(json.loads(SAMPLE_JOB_CONFIG)),
-            minimal_interval=SAMPLE_JOB_INTERVAL
+            minimal_interval=SAMPLE_JOB_INTERVAL,
+            ivis_core_ip=IVIS_CORE_IP,
+            ivis_core_port=IVIS_CORE_PORT
         ))
         logging.info("Job has been initialized")
     # Run the job 4 times
