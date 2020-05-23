@@ -108,8 +108,25 @@ class JobAgent(JobMiddlewareAgentServicer):
         return InitJobAck()
 
     def RunJob(self, request, context):
-        self._last_run_start_time = perf_counter()
+        if self._current_process is not None:
+            run_status = {}
+            run_status['config'] = ""
+            run_status['jobId'] = self._job_id
+            run_status['runId'] = request.run_id
+            run_status['startTime'] = perf_counter()
+            run_status['endTime'] = perf_counter()
+            run_status['output'] = ""
+            run_status['error'] = "The job is already running."
+            run_status['returnCode'] = -1
+            run_status['status'] = RunStatus.Status.Value('FAILED')
+            logging.info(f"Cannot run the job. {run_status['error']}")
+            requests.post(f"{self._ivis_core_url}/on-fail", json=run_status)
+            self._runs[self._current_process] = run_status
+            return RunJobAck()
+
         self._current_process = request.run_id
+        logging.info(f"Running job with state {request.state}")
+        self._last_run_start_time = perf_counter()
         if request.state is not None and request.state != "":
             self._config['state'] = json.loads(request.state)
         else:
