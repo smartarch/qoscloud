@@ -1,6 +1,31 @@
 SAMPLE_JOB_ID = "job1"
 SAMPLE_JOB_INTERVAL = 10
-SAMPLE_JOB_PARAMETERS = ""
+SAMPLE_JOB_PARAMETERS = '''
+[
+    {
+      "id": "sigSet",
+      "label": "Signal Set",
+      "type": "signalSet"
+    },
+    {
+      "id": "ts_signal",
+      "label": "TS signal",
+      "type": "signal",
+      "signalSetRef": "sigSet"
+    },
+    {
+      "id": "source_signal",
+      "label": "Source signal",
+      "type": "signal",
+      "signalSetRef": "sigSet"
+    },
+    {
+      "id": "window",
+      "label": "Window",
+      "type": "string"
+    }
+]
+'''
 SAMPLE_JOB_CONFIG = '''
 {
   "params": {
