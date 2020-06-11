@@ -44,6 +44,7 @@ message JobDescriptor {
     int32 minimal_interval = 5;
     string ivis_core_ip = 6;
     int32 ivis_core_port = 7;
+    string access_token = 8;
 }
 
 message InitJobAck {}
@@ -124,9 +125,21 @@ service IvisInterface {
 
     rpc UnscheduleJob (JobID) returns (UnscheduleJobAck) {}
 
+    rpc UpdateAccessToken (AccessToken) returns (AccessTokenAck) {}
+
 }
 
-message SubmissionAck {}
+message AccessToken {
+    string token = 1;
+}
+
+message AccessTokenAck {
+    bool success = 1;
+}
+
+message SubmissionAck {
+    bool success = 1;
+}
 
 enum JobAdmissionStatus {
     MEASURING = 0;

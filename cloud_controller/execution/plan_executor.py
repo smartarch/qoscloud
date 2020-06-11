@@ -442,7 +442,8 @@ class PlanExecutor:
             config=app.config,
             minimal_interval=app.interval,
             ivis_core_ip=IVIS_CORE_IP,
-            ivis_core_port=IVIS_CORE_PORT
+            ivis_core_port=IVIS_CORE_PORT,
+            access_token=self.knowledge.ivis_access_token
         )
         stub.InitializeJob(init_data)
         compin.phase = CompinPhase.READY

@@ -3,6 +3,7 @@
 
 import os
 import time
+from enum import Enum
 from subprocess import Popen, PIPE
 
 from threading import Thread
@@ -30,6 +31,19 @@ PYTHON_EXEC = "/bin/python3"
 IVIS_HOST = "0.0.0.0"
 IVIS_PORT = 8082
 
+class Request(Enum):
+    SUCCESS = 1
+    FAIL = 2
+    RUNTIME = 3
+    STATE = 4
+
+request_names = {
+    Request.SUCCESS: "/on-success",
+    Request.FAIL: "/on-fail",
+    Request.RUNTIME: "/run-request",
+    Request.STATE: "/job-state/"
+}
+
 
 # TODO: locking
 class JobAgent(JobMiddlewareAgentServicer):
@@ -50,8 +64,25 @@ class JobAgent(JobMiddlewareAgentServicer):
         self._phase: Phase = Phase.Value('INIT')
         self._ivis_ip = IVIS_HOST
         self._ivis_core_url = f"http://{IVIS_HOST}:{IVIS_PORT}/ccapi"
+        self._access_token: str = ""
 
         self._probe_monitor = None
+
+    def send_request(self, request: Request, payload=None):
+        headers = {
+            "Content-Type": "application/json",
+            "access-token": self._access_token
+        }
+        if request == Request.STATE:
+            return requests.get(
+                f"{self._ivis_core_url}{request_names[request]}{self._job_id}",
+                headers=headers
+            ).json()
+        else:
+            return requests.post(
+                f"{self._ivis_core_url}{request_names[request]}",
+                headers=headers, json=payload
+            ).json()
 
     def wait_for_process(self):
         assert self._current_process is not None
@@ -71,11 +102,11 @@ class JobAgent(JobMiddlewareAgentServicer):
         if self._process.returncode == 0:
             run_status['status'] = RunStatus.Status.Value('COMPLETED')
             logging.info(f"Run completed successfully. STDOUT: {run_status['output']}")
-            requests.post(f"{self._ivis_core_url}/on-success", json=run_status)
+            self.send_request(Request.SUCCESS, run_status)
         else:
             run_status['status'] = RunStatus.Status.Value('FAILED')
             logging.info(f"Run failed. STDERR: {run_status['error']}")
-            requests.post(f"{self._ivis_core_url}/on-fail", json=run_status)
+            self.send_request(Request.FAIL, run_status)
         self._runs[self._current_process] = run_status
         self._current_process = None
 
@@ -85,10 +116,10 @@ class JobAgent(JobMiddlewareAgentServicer):
         while not fr.closed:
             line = fr.readline()
             print(f"Processing a runtime request: {line}")
-            response = requests.post(f"{self._ivis_core_url}/run-request", json={
+            response = self.send_request(Request.RUNTIME, {
                 'jobId': self._job_id,
                 'request': line
-            }).json()
+            })
             print(f"Writing a runtime response: {response['response']}")
             stdin.write(f"{response['response']}\n")
             stdin.flush()
@@ -101,6 +132,7 @@ class JobAgent(JobMiddlewareAgentServicer):
         self._config['es']['host'] = self._ivis_ip
         self._minimal_interval = request.minimal_interval
         self._ivis_core_url = f"http://{self._ivis_ip}:{request.ivis_core_port}/ccapi"
+        self._access_token = request.access_token
         with open(self._job_file, "w") as code_file:
             code_file.write(request.code)
         self._phase = Phase.Value('READY')
@@ -120,7 +152,7 @@ class JobAgent(JobMiddlewareAgentServicer):
             run_status['returnCode'] = -1
             run_status['status'] = RunStatus.Status.Value('FAILED')
             logging.info(f"Cannot run the job. {run_status['error']}")
-            requests.post(f"{self._ivis_core_url}/on-fail", json=run_status)
+            self.send_request(Request.FAIL, run_status)
             self._runs[self._current_process] = run_status
             return RunJobAck()
 
@@ -192,7 +224,7 @@ class JobAgent(JobMiddlewareAgentServicer):
         logging.info(f"Running run {self.internal_run_number}")
         while self._current_process is not None:
             time.sleep(.01)
-        state = requests.get(f"{self._ivis_core_url}/job-state/{self._job_id}").json()
+        state = self.send_request(Request.STATE)
         self.RunJob(RunParameters(job_id=self._job_id, run_id=f"run{self.internal_run_number}",
                                   state=json.dumps(state)), None)
         self.internal_run_number += 1

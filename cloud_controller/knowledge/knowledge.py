@@ -51,12 +51,20 @@ class Knowledge:
         self._new_clients: List[UnmanagedCompin] = []
         self.client_support = True
         self.jobs_without_resources: List[str] = []
+        self.ivis_access_token: Optional[str] = None
+
+    def update_access_token(self, token: str):
+        self.ivis_access_token = token
 
     def no_resources_for_job(self, job_id: str) -> None:
         self.jobs_without_resources.append(job_id)
 
     def all_jobs_scheduled(self) -> None:
         self.jobs_without_resources.clear()
+
+    def there_are_jobs(self) -> bool:
+        return len(self.ivis_jobs) > 0
+
 
     def set_network_topology(self, network_topology: NetworkTopology):
         """

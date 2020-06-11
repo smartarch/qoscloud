@@ -1,3 +1,5 @@
+import logging
+
 from cloud_controller.assessment import CTL_HOST, CTL_PORT
 from cloud_controller.assessment.deploy_controller_pb2 import AppName, AppAdmissionStatus
 from cloud_controller.assessment.deploy_controller_pb2_grpc import DeployControllerStub
@@ -6,7 +8,7 @@ from cloud_controller.knowledge.model import ManagedCompin, CompinPhase
 from cloud_controller.middleware import AGENT_PORT
 from cloud_controller.middleware.helpers import connect_to_grpc_server
 from cloud_controller.middleware.ivis_pb2 import SubmissionAck, JobStatus, JobAdmissionStatus, UnscheduleJobAck, \
-    RunJobAck
+    RunJobAck, AccessTokenAck
 from cloud_controller.middleware.ivis_pb2_grpc import IvisInterfaceServicer, JobMiddlewareAgentStub
 
 
@@ -17,8 +19,12 @@ class IvisInterface(IvisInterfaceServicer):
         self._knowledge: Knowledge = knowledge
 
     def SubmitJob(self, request, context):
+        if self._knowledge.ivis_access_token is None:
+            logging.error(f"Cannot deploy a job due to the absence of an access token")
+            return SubmissionAck(success=False)
         self._deploy_controller.SubmitArchitecture(request)
-        return SubmissionAck()
+        logging.info(f"Job {request.job_id} was accepted for measurements")
+        return SubmissionAck(success=True)
 
     def GetJobStatus(self, request, context):
         job_id = request.job_id
@@ -53,3 +59,11 @@ class IvisInterface(IvisInterfaceServicer):
         self._deploy_controller.DeleteApplication(AppName(name=request.job_id))
         return UnscheduleJobAck()
 
+    def UpdateAccessToken(self, request, context):
+        if self._knowledge.there_are_jobs():
+            logging.error(f"Cannot update the access token due to the jobs already deployed")
+            return AccessTokenAck(success=False)
+        else:
+            self._knowledge.update_access_token(request.token)
+            logging.info(f"Access token was updated successfully")
+            return AccessTokenAck(success=True)
