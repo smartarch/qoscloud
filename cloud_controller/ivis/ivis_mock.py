@@ -19,7 +19,7 @@ app = Flask(__name__)
 state = None
 
 IVIS_INTERFACE_HOST = "0.0.0.0"
-IVIS_INTERFACE_PORT = 7766
+IVIS_INTERFACE_PORT = 62533
 testing_job_agent = False
 
 state_ = None

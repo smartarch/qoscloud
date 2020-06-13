@@ -60,10 +60,13 @@ class IvisInterface(IvisInterfaceServicer):
         return UnscheduleJobAck()
 
     def UpdateAccessToken(self, request, context):
+        assessment_response = self._deploy_controller.UpdateAccessToken(request)
+        if not assessment_response.success:
+            logging.error(f"Cannot update the access token due to the jobs already being measured")
+            return AccessTokenAck(success=False)
         if self._knowledge.there_are_jobs():
             logging.error(f"Cannot update the access token due to the jobs already deployed")
             return AccessTokenAck(success=False)
-        else:
-            self._knowledge.update_access_token(request.token)
-            logging.info(f"Access token was updated successfully")
-            return AccessTokenAck(success=True)
+        self._knowledge.update_access_token(request.token)
+        logging.info(f"Access token was updated successfully")
+        return AccessTokenAck(success=True)

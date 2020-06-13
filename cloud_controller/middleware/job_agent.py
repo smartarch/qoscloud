@@ -78,11 +78,16 @@ class JobAgent(JobMiddlewareAgentServicer):
                 f"{self._ivis_core_url}{request_names[request]}{self._job_id}",
                 headers=headers
             ).json()
-        else:
+        elif request == Request.RUNTIME:
             return requests.post(
                 f"{self._ivis_core_url}{request_names[request]}",
                 headers=headers, json=payload
             ).json()
+        else:
+            requests.post(
+                f"{self._ivis_core_url}{request_names[request]}",
+                headers=headers, json=payload
+            )
 
     def wait_for_process(self):
         assert self._current_process is not None

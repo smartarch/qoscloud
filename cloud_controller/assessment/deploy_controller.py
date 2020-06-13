@@ -31,6 +31,7 @@ from cloud_controller.assessment.scenario_planner import ScenarioPlanner, JudgeR
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import Application
 from cloud_controller.middleware.helpers import start_grpc_server
+from cloud_controller.middleware.ivis_pb2 import AccessTokenAck
 
 logger = logging.getLogger("DC")
 
@@ -43,6 +44,14 @@ class DeployController(DeployControllerServicer):
         self._app_db = app_db
         self._scenario_pln = scenario_pln
         self._app_judge = app_judge
+
+    def UpdateAccessToken(self, request, context):
+        if self._knowledge.there_are_jobs():
+            logging.error(f"Cannot update the access token due to the jobs already deployed")
+            return AccessTokenAck(success=False)
+        self._knowledge.update_access_token(request.token)
+        logging.info(f"Access token was updated successfully")
+        return AccessTokenAck(success=True)
 
     def SubmitArchitecture(self, architecture: arch_pb.Architecture, context) -> deploy_pb.DeployReply:
         # Check app name for conflicts
