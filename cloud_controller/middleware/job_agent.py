@@ -226,9 +226,9 @@ class JobAgent(JobMiddlewareAgentServicer):
         return instance_status
 
     def _run_as_probe(self):
-        logging.info(f"Running run {self.internal_run_number}")
         while self._current_process is not None:
             time.sleep(.01)
+        logging.info(f"Running run {self.internal_run_number}")
         state = self.send_request(Request.STATE)
         self.RunJob(RunParameters(job_id=self._job_id, run_id=f"run{self.internal_run_number}",
                                   state=json.dumps(state)), None)

@@ -19,6 +19,12 @@ message Architecture {
     string parameters = 7;
     string config = 8;
     int32 minimal_interval = 9;
+    string docker_container = 10;
+    string min_memory = 11;
+    string max_memory = 12;
+    string min_cpu = 13;
+    string max_cpu = 14;
+    string k8s_labels = 15;
 }
 
 message Component {

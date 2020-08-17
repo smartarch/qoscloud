@@ -404,7 +404,14 @@ class Application:
         """
         if application_pb.type == ApplicationType.Value("IVIS"):
             application = IvisApplication(application_pb.job_id, application_pb.code, application_pb.parameters,
-                                          application_pb.config, application_pb.minimal_interval)
+                                          application_pb.config, application_pb.minimal_interval,
+                                          application_pb.docker_container,
+                                          application_pb.min_memory,
+                                          application_pb.max_memory,
+                                          application_pb.min_cpu,
+                                          application_pb.max_cpu,
+                                          application_pb.k8s_labels
+            )
         else:
             application = Application(name=application_pb.name, secret=application_pb.secret)
             for component_name in application_pb.components:
@@ -434,7 +441,7 @@ spec:
     spec:
       containers:
       - name: job
-        image: dankhalev/ivis-job:latest
+        image: %s
         imagePullPolicy: Always
         args: []
         env:
@@ -448,7 +455,7 @@ spec:
 
 class IvisApplication(Application):
 
-    def __init__(self, job_id: str, code: str, parameters: str, config: str, interval: int):
+    def __init__(self, job_id: str, code: str, parameters: str, config: str, interval: int, container_name: str = 'dankhalev/ivis-job:latest', min_memory="", max_memory="", min_cpu="", max_cpu="", k8s_labels=""):
         super().__init__(job_id)
         self._code = code
         self._parameters = parameters
@@ -456,7 +463,7 @@ class IvisApplication(Application):
         self._interval = interval
 
         self._job_component = Component(self, job_id, job_id, ComponentType.MANAGED,
-                                        container_spec=JOB_DEPLOYMENT_TEMPLATE)
+                                        container_spec=(JOB_DEPLOYMENT_TEMPLATE % container_name))
         # TODO: remove +1 in time limit
         self._probe = Probe(name=job_id, component=self._job_component, time_limit=(interval+1) * 1000, alias=f"JOB{job_id}")
         self._job_component.probes.append(self._probe)
