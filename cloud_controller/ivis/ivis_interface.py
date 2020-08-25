@@ -26,6 +26,10 @@ class IvisInterface(IvisInterfaceServicer):
         logging.info(f"Job {request.job_id} was accepted for measurements")
         return SubmissionAck(success=True)
 
+    def DeployJob(self, request, context):
+        self._deploy_controller.SubmitRequirements(request)
+        return SubmissionAck(success=True)
+
     def GetJobStatus(self, request, context):
         job_id = request.job_id
         if job_id in self._knowledge.applications:
@@ -45,8 +49,13 @@ class IvisInterface(IvisInterfaceServicer):
                 return JobStatus(status=JobAdmissionStatus.Value('MEASURING'))
             elif status.status == AppAdmissionStatus.Value('REJECTED'):
                 return JobStatus(status=JobAdmissionStatus.Value('REJECTED'))
-            else:
+            elif status.status == AppAdmissionStatus.Value('ACCEPTED') or \
+                    status.status == AppAdmissionStatus.Value('PUBLISHED'):
                 return JobStatus(status=JobAdmissionStatus.Value('ACCEPTED'))
+            elif status.status == AppAdmissionStatus.Value('MEASURED'):
+                return JobStatus(status=JobAdmissionStatus.Value('MEASURED'))
+            else:
+                raise RuntimeError(f"App admission status {status.status} is not supported.")
 
     def RunJob(self, request, context):
         job_compin = self._knowledge.actual_state.get_job_compin(request.job_id)

@@ -10,8 +10,9 @@ from cloud_controller import DEFAULT_HARDWARE_ID, GLOBAL_PERCENTILE, PREDICTOR_H
 from cloud_controller.analysis.predictor import Predictor
 from cloud_controller.analysis.predictor_interface.predictor_pb2_grpc import PredictorServicer, \
     add_PredictorServicer_to_server, PredictorStub
-from cloud_controller.architecture_pb2 import Architecture, ApplicationType
+from cloud_controller.architecture_pb2 import ApplicationType, ApplicationTimingRequirements
 from cloud_controller.assessment.model import Scenario
+from cloud_controller.ivis.statistical_predictor import PercentilePredictor
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import Application, Probe, IvisApplication
 from cloud_controller.middleware.helpers import start_grpc_server, connect_to_grpc_server, setup_logging
@@ -46,7 +47,8 @@ class StatisticalPredictor(Predictor):
 class PredictorService(PredictorServicer):
 
     def __init__(self):
-        self._predictor = self._create_predictor()
+        self._single_process_predictor = PercentilePredictor()
+        self._predictor = None
         self.probes: Dict[str, List[Probe]] = {}
         self._jobs: Dict[str, Probe] = {}
         self._scenarios_by_app: Dict[str, List[str]] = {}
@@ -78,6 +80,15 @@ class PredictorService(PredictorServicer):
         return _predictor
 
     def Predict(self, request, context):
+        if len(request.components) == 1:
+            component = request.components[0]
+            if component.count == 1:
+                prediction = self._single_process_predictor.predict(component.component_id, component.time_limit, component.percentile)
+                return predictor_pb.Prediction(result=prediction)
+            else:
+                return predictor_pb.Prediction(result=False)
+        else:
+            return predictor_pb.Prediction(result=False)
         assignment = {}
         for component in request.components:
             assignment[component.component_id] = (component.time_limit, component.count)
@@ -132,32 +143,47 @@ class PredictorService(PredictorServicer):
                     logging.info(f"Sending scenario description for scenario {scenario_id}")
                     yield self._scenarios_by_id[scenario_id].pb_representation(predictor_pb.Scenario())
 
+    def ReportPercentiles(self, request, context):
+        response = ApplicationTimingRequirements()
+        response.name = request.name
+        for percentile in request.contracts:
+            time = self._single_process_predictor.predict_time(request.name, percentile.percentile)
+            contract = response.contracts.add()
+            contract.time = time
+            contract.percentile = percentile.percentile
+        return response
+
     def JudgeApp(self, request, context):
         if len(self._scenarios_by_app[request.name]) == 0:
             self._measuring_phases[request.name] = MeasuringPhase.COMPLETED
         with self._lock:
             if self._measuring_phases[request.name] != MeasuringPhase.COMPLETED:
                 return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("NEEDS_DATA"))
-            self._predictor.prepare_predictor()
+            if self._predictor is not None:
+                self._predictor.prepare_predictor()
             if request.name in self.probes:
+                # TODO: add support for new requirements format
                 for probe in self.probes[request.name]:
                     prediction = self._predictor.predict({probe.alias: (math.ceil(probe.time_limit), 1)})
                     if prediction is None:
+                        # This should never happen
                         raise Exception("Predictor needs data for single process prediction!")
                     elif prediction is False:
                         return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("REJECTED"))
             else:
                 probe = self._jobs[request.name]
-                prediction = self._predictor.predict({probe.alias: (math.ceil(probe.time_limit), 1)})
-                if prediction is None:
-                    raise Exception("Predictor needs data for single process prediction!")
-                elif prediction is False:
-                    return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("REJECTED"))
+                for contract in request.contracts:
+                    prediction = self._single_process_predictor.predict(request.name, contract.time, contract.percentile)
+                    if not prediction:
+                        return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("REJECTED"))
             return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("ACCEPTED"))
 
     def OnScenarioDone(self, request, context):
+        if len(request.scenario.background_probes) == 0:
+            self._single_process_predictor.add_job(request.scenario.application, request.scenario.filename)
         with self._lock:
-            self._predictor.provide_data_matrix(request.scenario.filename)
+            if self._predictor is not None:
+                self._predictor.provide_data_matrix(request.scenario.filename)
             # Remove scenario from the list of to-be-done scenarios
             app = request.scenario.application
             logging.info(f"Received ScenarioDone notification for scenario {request.scenario.id} of app {app}")

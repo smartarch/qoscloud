@@ -10,7 +10,7 @@ from enum import IntEnum
 from threading import Lock
 from typing import List, Set
 
-from cloud_controller.assessment.model import Scenario
+from cloud_controller.assessment.model import Scenario, RunningTimeContract
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import Application, Probe
 
@@ -52,8 +52,11 @@ class ScenarioPlanner(ABC):
     def on_scenario_failed(self, scenario: Scenario, reason: FailureReason) -> None:
         pass
 
+    def on_app_evaluated(self, app_name: str) -> None:
+        pass
+
     @abstractmethod
-    def judge_app(self, app: Application) -> JudgeResult:
+    def judge_app(self, app_name: str, contracts: List[RunningTimeContract]) -> JudgeResult:
         pass
 
 
@@ -97,7 +100,7 @@ class FakeScenarioPlanner(ScenarioPlanner):
         logger.error("Scenario %s failed on %s", scenario, reason)
         self.on_scenario_done(scenario)
 
-    def judge_app(self, app: Application) -> JudgeResult:
+    def judge_app(self, app_name: str, contracts: List[RunningTimeContract]) -> JudgeResult:
         return JudgeResult.ACCEPTED
 
 
@@ -156,7 +159,7 @@ class SimpleScenarioPlanner(ScenarioPlanner):
         logger.error("Scenario %s failed on %s", scenario, reason)
         self.on_scenario_done(scenario)
 
-    def judge_app(self, app: Application) -> JudgeResult:
+    def judge_app(self, app_name: str, contracts: List[RunningTimeContract]) -> JudgeResult:
         return JudgeResult.ACCEPTED
 
 

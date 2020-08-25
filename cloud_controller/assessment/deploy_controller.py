@@ -26,7 +26,7 @@ from cloud_controller.assessment import CTL_HOST, CTL_PORT
 from cloud_controller.assessment import PUBLISHER_HOST, PUBLISHER_PORT
 from cloud_controller.assessment.deploy_controller_pb2_grpc import DeployControllerServicer
 from cloud_controller.assessment.deploy_controller_pb2_grpc import DeployPublisherServicer
-from cloud_controller.assessment.model import AppDatabase, Scenario, AppStatus
+from cloud_controller.assessment.model import AppDatabase, Scenario, AppStatus, RunningTimeContract
 from cloud_controller.assessment.scenario_planner import ScenarioPlanner, JudgeResult
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import Application
@@ -71,6 +71,16 @@ class DeployController(DeployControllerServicer):
 
         # Sends reply
         logger.info("An app %s was successfully received" % architecture.name)
+        return deploy_pb.DeployReply(rc=deploy_pb.RC_OK)
+
+    def SubmitRequirements(self, request, context) -> deploy_pb.DeployReply:
+        status = self._app_db.get_app_status(request.name)
+        if status == AppStatus.MEASURED:
+            contracts = []
+            for contract in request.contracts:
+                contracts.append(RunningTimeContract(contract.time, contract.percentile))
+            self._app_db.add_contracts(request.name, contracts)
+            self._app_judge.judge_and_rule(request.name)
         return deploy_pb.DeployReply(rc=deploy_pb.RC_OK)
 
     def RegisterHwConfig(self, hw_config: deploy_pb.HwConfig, context) -> deploy_pb.DeployReply:
@@ -138,9 +148,7 @@ class AppJudge:
         self._planner = planner
         self._lock = Lock()
 
-    def _has_remaining_scenarios(self, app: Application) -> bool:
-        app_name = app.name
-
+    def _has_remaining_scenarios(self, app_name: str) -> bool:
         # Checks plans
         for scenario in self._planner.fetch_scenarios():
             if scenario.controlled_probe.component.application.name == app_name:
@@ -148,18 +156,18 @@ class AppJudge:
 
         return False
 
-    def _judge_and_rule(self, app: Application) -> None:
-        judgement = self._planner.judge_app(app)
+    def judge_and_rule(self, app_name: str) -> None:
+        judgement = self._planner.judge_app(app_name, self._app_db.get_contracts(app_name))
         if judgement == JudgeResult.ACCEPTED:
-            self._app_db.update_app_status(app.name, AppStatus.ACCEPTED)
-            logger.info("App %s accepted", app.name)
+            self._app_db.update_app_status(app_name, AppStatus.ACCEPTED)
+            logger.info("App %s accepted", app_name)
         elif judgement == JudgeResult.REJECTED:
-            self._app_db.update_app_status(app.name, AppStatus.REJECTED)
-            logger.warn("App %s rejected", app.name)
+            self._app_db.update_app_status(app_name, AppStatus.REJECTED)
+            logger.warn("App %s rejected", app_name)
         elif judgement == JudgeResult.NEEDS_DATA:
-            logger.warn("App %s needs more data for judgement", app.name)
+            logger.warn("App %s needs more data for judgement", app_name)
             # Planner found out that needs more data
-            assert self._has_remaining_scenarios(app)
+            assert self._has_remaining_scenarios(app_name)
         else:
             raise NotImplementedError("Unsupported judgement %s" % judgement)
 
@@ -168,18 +176,15 @@ class AppJudge:
             status = self._app_db.get_app_status(app.name)
             if status == AppStatus.RECEIVED:
                 # Check if app could be judged
-                if not self._has_remaining_scenarios(app):
-                    self._judge_and_rule(app)
+                if not self._has_remaining_scenarios(app.name):
+                    self._planner.on_app_evaluated(app.name)
+                    self._app_db.update_app_status(app.name, AppStatus.MEASURED)
+                    if app.name in self._app_db.contracts:
+                        self.judge_and_rule(app.name)
 
     def notify_scenario_finished(self, scenario: Scenario) -> None:
-        with self._lock:
-            status = self._app_db.get_app_status(scenario.controlled_probe.component.application.name)
-            if status == AppStatus.RECEIVED:
-                # Check if app could be judged
-                app = scenario.controlled_probe.component.application
-
-                if not self._has_remaining_scenarios(app):
-                    self._judge_and_rule(app)
+        app = scenario.controlled_probe.component.application
+        self.notify_new_application(app)
 
 
 def start_publisher_server(app_db: AppDatabase) -> None:

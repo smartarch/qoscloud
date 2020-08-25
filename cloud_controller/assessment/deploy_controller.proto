@@ -17,6 +17,7 @@ import "cloud_controller/middleware/ivis.proto";
 // Avocadoctl stuff
 service DeployController {
     rpc SubmitArchitecture (cloud_controller.Architecture) returns (DeployReply);
+    rpc SubmitRequirements (ApplicationTimingRequirements) returns (DeployReply);
     rpc RegisterHwConfig (HwConfig) returns (DeployReply);
     rpc DeleteApplication (AppName) returns (DeployReply);
     rpc GetApplicationStats (AppName) returns (AppStats);
@@ -42,6 +43,7 @@ enum AppAdmissionStatus {
     REJECTED = 2;
     ACCEPTED = 3;
     PUBLISHED = 4;
+    MEASURED = 5;
 }
 
 message DeployReply {

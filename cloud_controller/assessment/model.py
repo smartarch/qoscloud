@@ -22,6 +22,14 @@ class AppStatus(IntEnum):
     REJECTED = 2
     ACCEPTED = 3
     PUBLISHED = 4
+    MEASURED = 5
+
+
+class RunningTimeContract:
+
+    def __init__(self, time: int, percentile: int):
+        self.time = time
+        self.percentile = percentile
 
 
 class AppEntry:
@@ -41,6 +49,7 @@ class AppDatabase:
         self._update_lock = Lock()
         self._app_removal_cache: List[str] = []
         self.probes_by_alias: Dict[str, Probe] = {}
+        self.contracts: Dict[str, List[RunningTimeContract]] = {}
 
     def __contains__(self, item: object) -> bool:
         return self._apps.__contains__(item)
@@ -75,6 +84,15 @@ class AppDatabase:
 
             # Delete app from db
             del self._apps[name]
+
+    def add_contracts(self, app_name: str, contracts: List[RunningTimeContract]):
+        if app_name not in self._apps:
+            raise RuntimeError(f"Attempt to add contract for a non-existing application: "
+                               f"there is no application named {app_name}.")
+        self.contracts[app_name] = contracts
+
+    def get_contracts(self, app_name: str) -> List[RunningTimeContract]:
+        return self.contracts[app_name]
 
     def publish_new_architectures(self) -> List[arch_pb.Architecture]:
         architectures: List[arch_pb.Architecture] = []
@@ -119,7 +137,7 @@ probe_aliases = set()
 
 class Scenario:
     def __init__(self, controlled_probe: Probe, background_probes: List[Probe], hw_id: str, scenario_id: str = None,
-                 app_name: str = None, warm_up_cycles: int = 10, measured_cycles: int = 40, cpu_events=None):
+                 app_name: str = None, warm_up_cycles: int = 0, measured_cycles: int = 40, cpu_events=None):
         self.controlled_probe = controlled_probe
         self.background_probes = background_probes
         self.hw_id = hw_id

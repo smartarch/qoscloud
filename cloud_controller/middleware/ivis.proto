@@ -119,6 +119,8 @@ service IvisInterface {
 
     rpc SubmitJob (Architecture) returns (SubmissionAck) {}
 
+    rpc DeployJob (ApplicationTimingRequirements) returns (SubmissionAck) {}
+
     rpc GetJobStatus (JobID) returns (JobStatus) {}
 
     rpc RunJob (RunParameters) returns (RunJobAck) {}
@@ -148,6 +150,7 @@ enum JobAdmissionStatus {
     DEPLOYED = 3;
     NO_RESOURCES = 4;
     NOT_PRESENT = 5;
+    MEASURED = 6;
 }
 
 

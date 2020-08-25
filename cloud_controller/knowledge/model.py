@@ -464,8 +464,7 @@ class IvisApplication(Application):
 
         self._job_component = Component(self, job_id, job_id, ComponentType.MANAGED,
                                         container_spec=(JOB_DEPLOYMENT_TEMPLATE % container_name))
-        # TODO: remove +1 in time limit
-        self._probe = Probe(name=job_id, component=self._job_component, time_limit=(interval+1) * 1000, alias=f"JOB{job_id}")
+        self._probe = Probe(name=job_id, component=self._job_component, time_limit=interval * 1000, alias=f"JOB{job_id}")
         self._job_component.probes.append(self._probe)
         self._components[self._job_component.name] = self._job_component
 

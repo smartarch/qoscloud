@@ -92,3 +92,13 @@ message Limit {
     double probability = 1;
     double time = 2;
 }
+
+message Contract {
+    int32 time = 1;
+    int32 percentile = 2;
+}
+
+message ApplicationTimingRequirements {
+    string name = 1;
+    repeated Contract contracts = 2;
+}
