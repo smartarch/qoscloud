@@ -69,7 +69,7 @@ class ScenarioExecutor:
     def _start_probe(ip: str, probe: Probe, warm_up_cycles: int, measured_cycles: int,
                      cpu_events: List[str] = None) -> None:
         # Open connection
-        probe_msg = mw_protocols.ProbeDescriptor(name=probe.name, waitPerRequest=probe.wait_per_request)
+        probe_msg = mw_protocols.ProbeDescriptor(name=probe.name)
         measure_msg = mw_protocols.ProbeMeasurement(probe=probe_msg, warmUpCycles=warm_up_cycles,
                                                     measuredCycles=measured_cycles)
         if cpu_events is not None:
@@ -98,7 +98,7 @@ class ScenarioExecutor:
         # Open connection
         if probe is not None:
             # Start new probe workload
-            probe_msg = mw_protocols.ProbeDescriptor(name=probe.name, waitPerRequest=probe.wait_per_request)
+            probe_msg = mw_protocols.ProbeDescriptor(name=probe.name)
             workload_msg = mw_protocols.ProbeWorkload(probe=probe_msg)
         else:
             # Stop any probe workload

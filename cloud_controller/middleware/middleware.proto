@@ -75,7 +75,6 @@ message AddressAck {}
 
 message ProbeDescriptor {
     string name = 1;
-    uint32 waitPerRequest = 2;
 }
 
 message ProbeMeasurement {

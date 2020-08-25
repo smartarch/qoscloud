@@ -917,7 +917,6 @@ class Probe:
     name: str
     time_limit: float
     alias: str
-    wait_per_request: int = 0
 
     @staticmethod
     def init_from_pb(probe_pb: arch_pb.Probe, applications: Dict[str, Application]) -> "Probe":
