@@ -94,10 +94,9 @@ def yaml_to_grpc_architecture(architecture_yaml) -> Optional[arch_pb.Architectur
                 for req in item['timingRequirements']:
                     requirement_grpc = architecture_grpc.components[_name].timingRequirements.add()
                     requirement_grpc.name = req['name']
-                    requirement_grpc.probe = req['probe']
                     for limit in req['limits']:
-                        limit_grpc = requirement_grpc.limits.add()
-                        limit_grpc.probability = limit['probability']
+                        limit_grpc = requirement_grpc.contracts.add()
+                        limit_grpc.percentile = limit['probability']
                         limit_grpc.time = limit['time']
         elif _type == "unmanaged":
             if 'UEMPolicy' in item:

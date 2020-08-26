@@ -30,7 +30,7 @@ message Architecture {
 message Component {
     string deployment = 1;
     repeated Probe probes = 2;
-    repeated Requirement timingRequirements = 3;
+    repeated ApplicationTimingRequirements timingRequirements = 3;
     repeated string dependsOn = 4;
     string name = 5;
     Cardinality cardinality = 6;
@@ -77,19 +77,8 @@ message Probe {
     string name = 1;
     string application = 2;
     string component = 3;
-    double time_limit = 5;
+    repeated ApplicationTimingRequirements requirements = 5;
     string alias = 6;
-}
-
-message Requirement {
-    string name = 1;
-    string probe = 2;
-    repeated Limit limits = 3;
-}
-
-message Limit {
-    double probability = 1;
-    double time = 2;
 }
 
 message Contract {
