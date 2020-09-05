@@ -13,7 +13,7 @@ import random
 
 import cloud_controller.architecture_pb2 as arch_pb
 from cloud_controller.assessment import RESULTS_PATH
-from cloud_controller.knowledge.model import Application, Probe
+from cloud_controller.knowledge.model import Application, Probe, RunningTimeContract
 from cloud_controller.analysis.predictor_interface import predictor_pb2
 
 
@@ -23,13 +23,6 @@ class AppStatus(IntEnum):
     ACCEPTED = 3
     PUBLISHED = 4
     MEASURED = 5
-
-
-class RunningTimeContract:
-
-    def __init__(self, time: int, percentile: int):
-        self.time = time
-        self.percentile = percentile
 
 
 class AppEntry:
@@ -214,7 +207,6 @@ class Scenario:
         scenario_pb.controlled_probe.name = self.controlled_probe.name
         scenario_pb.controlled_probe.application = self.controlled_probe.component.application.name
         scenario_pb.controlled_probe.component = self.controlled_probe.component.name
-        scenario_pb.controlled_probe.time_limit = self.controlled_probe.time_limit
         scenario_pb.controlled_probe.alias = self.controlled_probe.alias
         scenario_pb.filename = self.filename_data
         for bg_probe in self.background_probes:
@@ -222,7 +214,6 @@ class Scenario:
             probe_pb.name = bg_probe.name
             probe_pb.component = bg_probe.component.name
             probe_pb.application = bg_probe.component.application.name
-            probe_pb.time_limit = bg_probe.time_limit
             probe_pb.alias = bg_probe.alias
         return scenario_pb
 

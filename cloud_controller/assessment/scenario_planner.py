@@ -10,9 +10,9 @@ from enum import IntEnum
 from threading import Lock
 from typing import List, Set
 
-from cloud_controller.assessment.model import Scenario, RunningTimeContract
+from cloud_controller.assessment.model import Scenario
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import Application, Probe
+from cloud_controller.knowledge.model import Application, Probe, RunningTimeContract
 
 logger = logging.getLogger("SP")
 

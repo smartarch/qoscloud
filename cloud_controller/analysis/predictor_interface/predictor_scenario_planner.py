@@ -10,10 +10,10 @@ from cloud_controller.analysis.predictor_interface.predictor_pb2 import Scenario
 from cloud_controller.analysis.predictor_interface.predictor_pb2_grpc import PredictorStub
 from cloud_controller.architecture_pb2 import ApplicationTimingRequirements
 from cloud_controller.assessment.deploy_controller_pb2 import HwConfig
-from cloud_controller.assessment.model import Scenario, RunningTimeContract
+from cloud_controller.assessment.model import Scenario
 from cloud_controller.assessment.scenario_planner import ScenarioPlanner, JudgeResult, FailureReason
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import Application
+from cloud_controller.knowledge.model import Application, RunningTimeContract
 
 
 class PredictorScenarioPlanner(ScenarioPlanner):

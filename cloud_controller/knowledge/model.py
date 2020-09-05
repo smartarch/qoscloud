@@ -26,6 +26,13 @@ class Statefulness(Enum):
     MONGO = 3
 
 
+class RunningTimeContract:
+
+    def __init__(self, time: int, percentile: int):
+        self.time = time
+        self.percentile = percentile
+
+
 class Datacenter:
     """
     Represents a datacenter in the cluster. See constructor documentation for attributes.
@@ -464,7 +471,7 @@ class IvisApplication(Application):
 
         self._job_component = Component(self, job_id, job_id, ComponentType.MANAGED,
                                         container_spec=(JOB_DEPLOYMENT_TEMPLATE % container_name))
-        self._probe = Probe(name=job_id, component=self._job_component, time_limit=interval * 1000, alias=f"JOB{job_id}")
+        self._probe = Probe(name=job_id, component=self._job_component, alias=job_id, requirements=[])
         self._job_component.probes.append(self._probe)
         self._components[self._job_component.name] = self._job_component
 
@@ -915,8 +922,8 @@ class CloudState:
 class Probe:
     component: Component
     name: str
-    time_limit: float
     alias: str
+    requirements: List[RunningTimeContract]
 
     @staticmethod
     def init_from_pb(probe_pb: arch_pb.Probe, applications: Dict[str, Application]) -> "Probe":
@@ -929,7 +936,7 @@ class Probe:
     @staticmethod
     def init_from_pb_direct(probe_pb: arch_pb.Probe, component: Component):
         assert probe_pb.alias != ""
-        return Probe(name=probe_pb.name, component=component, time_limit=probe_pb.time_limit, alias=probe_pb.alias)
+        return Probe(name=probe_pb.name, component=component, alias=probe_pb.alias, requirements=[])
 
     def __str__(self) -> str:
         return f"{self.component.name}/{self.name}"

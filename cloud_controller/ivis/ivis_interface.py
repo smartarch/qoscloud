@@ -61,6 +61,7 @@ class IvisInterface(IvisInterfaceServicer):
         job_compin = self._knowledge.actual_state.get_job_compin(request.job_id)
         if job_compin is None or job_compin.phase != CompinPhase.READY:
             return RunJobAck()
+        logging.info(f"Running job {job_compin.id}")
         job_agent: JobMiddlewareAgentStub = connect_to_grpc_server(JobMiddlewareAgentStub, job_compin.ip, AGENT_PORT)
         return job_agent.RunJob(request)
 

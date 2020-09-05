@@ -87,7 +87,6 @@ def yaml_to_grpc_architecture(architecture_yaml) -> Optional[arch_pb.Architectur
                 for probe in item['probes']:
                     probe_grpc = architecture_grpc.components[_name].probes.add()
                     probe_grpc.name = probe['name']
-                    probe_grpc.time_limit = probe['limit']
                     probe_grpc.application = architecture_grpc.name
                     probe_grpc.component = _name
             if 'timingRequirements' in item:

@@ -14,7 +14,7 @@ from cloud_controller.architecture_pb2 import ApplicationType, ApplicationTiming
 from cloud_controller.assessment.model import Scenario
 from cloud_controller.ivis.statistical_predictor import PercentilePredictor
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import Application, Probe, IvisApplication
+from cloud_controller.knowledge.model import Application, Probe, IvisApplication, RunningTimeContract
 from cloud_controller.middleware.helpers import start_grpc_server, connect_to_grpc_server, setup_logging
 import predictor
 
@@ -39,7 +39,6 @@ class StatisticalPredictor(Predictor):
                 ct_ = assignment.components.add()
                 ct_.component_id = probe.alias
                 ct_.count = count
-                ct_.time_limit = math.ceil(probe.time_limit)
         return self._predictor_service.Predict(assignment).result
         # TODO: PROBLEM: no way to specify different percentiles for each prediction
 
@@ -48,6 +47,7 @@ class PredictorService(PredictorServicer):
 
     def __init__(self):
         self._single_process_predictor = PercentilePredictor()
+        # TODO: plug in the old predictor back
         self._predictor = None
         self.probes: Dict[str, List[Probe]] = {}
         self._jobs: Dict[str, Probe] = {}
@@ -83,8 +83,13 @@ class PredictorService(PredictorServicer):
         if len(request.components) == 1:
             component = request.components[0]
             if component.count == 1:
-                prediction = self._single_process_predictor.predict(component.component_id, component.time_limit, component.percentile)
-                return predictor_pb.Prediction(result=prediction)
+                assert component.component_id in self._jobs
+                probe = self._jobs[component.component_id]
+                for requirement in probe.requirements:
+                    prediction = self._single_process_predictor.predict(probe.name, requirement.time, requirement.percentile)
+                    if not prediction:
+                        return predictor_pb.Prediction(result=False)
+                return predictor_pb.Prediction(result=True)
             else:
                 return predictor_pb.Prediction(result=False)
         else:
@@ -176,6 +181,8 @@ class PredictorService(PredictorServicer):
                     prediction = self._single_process_predictor.predict(request.name, contract.time, contract.percentile)
                     if not prediction:
                         return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("REJECTED"))
+                for contract in request.contracts:
+                    probe.requirements.append(RunningTimeContract(contract.time, contract.percentile))
             return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("ACCEPTED"))
 
     def OnScenarioDone(self, request, context):
