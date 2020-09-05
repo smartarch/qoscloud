@@ -14,6 +14,8 @@ import logging
 
 import json
 
+from elasticsearch import Elasticsearch
+
 from cloud_controller.middleware import AGENT_PORT, AGENT_HOST
 from cloud_controller.middleware.helpers import start_grpc_server, setup_logging
 from cloud_controller.middleware.ivis_pb2 import InitJobAck, RunJobAck, RunStatus, InstanceStatus, RunParameters
@@ -57,6 +59,8 @@ class JobAgent(JobMiddlewareAgentServicer):
 
         self._current_process: Optional[str] = None
         self._last_run_start_time: float = 0
+        self._total_run_time = 0
+        self._run_count = 0
         self._runs: Dict[str, RunStatus] = {}
         self._wait_thread: Optional[Thread] = None
         self._requests_thread: Optional[Thread] = None
@@ -65,6 +69,10 @@ class JobAgent(JobMiddlewareAgentServicer):
         self._ivis_ip = IVIS_HOST
         self._ivis_core_url = f"http://{IVIS_HOST}:{IVIS_PORT}/ccapi"
         self._access_token: str = ""
+
+        self._stats_ss = ""
+        self._execution_time_signal = ""
+        self._run_count_signal = ""
 
         self._probe_monitor = None
 
@@ -89,14 +97,68 @@ class JobAgent(JobMiddlewareAgentServicer):
                 headers=headers, json=payload
             )
 
+    def create_statistics_ss(self):
+        msg = {
+            'type': 'create_signals',
+            'signalSets': {
+                "cid": f"{self._job_id}_stats",
+                "name": f"Statistics for {self._job_id}",
+                "namespace": "1",
+                "description": f"Statistics for f{self._job_id}",
+                "aggs": "0"
+            }
+        }
+        # Request new signal set creation
+        signals = []
+        signals.append({
+            "cid": f"{self._job_id}_execution_time",
+            "name": f"Execution time for {self._job_id}",
+            "description": f"Execution time for {self._job_id}",
+            "namespace": "1",
+            "type": "double",
+            "indexed": True,
+            "settings": {}
+        })
+        signals.append({
+            "cid": f"{self._job_id}_run_count",
+            "name": f"Number of {self._job_id} runs",
+            "description": f"Number of {self._job_id} runs",
+            "namespace": "1",
+            "type": "integer",
+            "indexed": True,
+            "settings": {}
+        })
+        msg['signalSets']['signals'] = signals
+        message_str = json.dumps(msg) + '\n'
+        response = self.send_request(Request.RUNTIME, {
+            'jobId': self._job_id,
+            'request': message_str
+        })
+        response = json.loads(response['response'])
+        logging.info(f"Created statistics signal set. Response: {response}.")
+        self._stats_ss = response[f"{self._job_id}_stats"]['index']
+        self._execution_time_signal = response[f"{self._job_id}_stats"]['fields'][f"{self._job_id}_execution_time"]
+        self._run_count_signal = response[f"{self._job_id}_stats"]['fields'][f"{self._job_id}_run_count"]
+
+    def submit_running_time(self, time):
+        self._total_run_time += time
+        self._run_count += 1
+        es = Elasticsearch([{'host': self._config['es']['host'], 'port': int(self._config['es']['port'])}])
+        doc = {
+            self._execution_time_signal: time,
+            self._run_count_signal: self._run_count
+        }
+        es.index(index=self._stats_ss, doc_type='_doc', body=doc)
+
     def wait_for_process(self):
         assert self._current_process is not None
-        run_status = {}
-        run_status['config'] = ""
-        run_status['jobId'] = self._job_id
-        run_status['runId'] = self._current_process
-        run_status['endTime'] = perf_counter()
-        run_status['startTime'] = self._last_run_start_time
+        run_status = {
+            'config': "",
+            'jobId': self._job_id,
+            'runId': self._current_process,
+            'endTime': perf_counter(),
+            'startTime': self._last_run_start_time
+        }
 
         while self._process.poll() is None:
             time.sleep(0.1)
@@ -112,6 +174,7 @@ class JobAgent(JobMiddlewareAgentServicer):
             run_status['status'] = RunStatus.Status.Value('FAILED')
             logging.info(f"Run failed. STDERR: {run_status['error']}")
             self.send_request(Request.FAIL, run_status)
+        self.submit_running_time(perf_counter() - self._last_run_start_time)
         self._runs[self._current_process] = run_status
         self._current_process = None
 
@@ -140,27 +203,28 @@ class JobAgent(JobMiddlewareAgentServicer):
         self._access_token = request.access_token
         with open(self._job_file, "w") as code_file:
             code_file.write(request.code)
+        self.create_statistics_ss()
         self._phase = Phase.Value('READY')
         logging.info("Job initialized")
         return InitJobAck()
 
     def RunJob(self, request, context):
         if self._current_process is not None:
-            run_status = {}
-            run_status['config'] = ""
-            run_status['jobId'] = self._job_id
-            run_status['runId'] = request.run_id
-            run_status['startTime'] = perf_counter()
-            run_status['endTime'] = perf_counter()
-            run_status['output'] = ""
-            run_status['error'] = "The job is already running."
-            run_status['returnCode'] = -1
-            run_status['status'] = RunStatus.Status.Value('FAILED')
+            run_status = {
+                'config': "",
+                'jobId': self._job_id,
+                'runId': request.run_id,
+                'startTime': perf_counter(),
+                'endTime': perf_counter(),
+                'output': "",
+                'error': "The job is already running.",
+                'returnCode': -1,
+                'status': RunStatus.Status.Value('FAILED')
+            }
             logging.info(f"Cannot run the job. {run_status['error']}")
             self.send_request(Request.FAIL, run_status)
             self._runs[self._current_process] = run_status
             return RunJobAck()
-
         self._current_process = request.run_id
         logging.info(f"Running job with state {request.state}")
         self._last_run_start_time = perf_counter()
@@ -179,7 +243,6 @@ class JobAgent(JobMiddlewareAgentServicer):
         self._wait_thread.start()
         self._requests_thread: Thread = Thread(target=self.process_runtime_requests, args=(fdr, self._process.stdin))
         self._requests_thread.start()
-
 
         return RunJobAck()
 
