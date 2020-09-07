@@ -446,7 +446,8 @@ class PlanExecutor:
             access_token=self.knowledge.ivis_access_token,
             signal_set=app.signal_set,
             execution_time_signal=app.execution_time_signal,
-            run_count_signal=app.run_count_signal
+            run_count_signal=app.run_count_signal,
+            run_count=app.run_count
         )
         stub.InitializeJob(init_data)
         compin.phase = CompinPhase.READY

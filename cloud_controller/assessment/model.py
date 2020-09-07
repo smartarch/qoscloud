@@ -12,6 +12,7 @@ from typing import Dict, List, Optional, Tuple
 import random
 
 import cloud_controller.architecture_pb2 as arch_pb
+from cloud_controller import DEFAULT_WARMUP_RUNS, DEFAULT_MEASURED_RUNS
 from cloud_controller.assessment import RESULTS_PATH
 from cloud_controller.knowledge.model import Application, Probe, RunningTimeContract
 from cloud_controller.analysis.predictor_interface import predictor_pb2
@@ -130,7 +131,8 @@ probe_aliases = set()
 
 class Scenario:
     def __init__(self, controlled_probe: Probe, background_probes: List[Probe], hw_id: str, scenario_id: str = None,
-                 app_name: str = None, warm_up_cycles: int = 0, measured_cycles: int = 40, cpu_events=None):
+                 app_name: str = None, warm_up_cycles: int = DEFAULT_WARMUP_RUNS,
+                 measured_cycles: int = DEFAULT_MEASURED_RUNS, cpu_events=None):
         self.controlled_probe = controlled_probe
         self.background_probes = background_probes
         self.hw_id = hw_id

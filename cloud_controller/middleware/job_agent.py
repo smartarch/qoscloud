@@ -163,6 +163,7 @@ class JobAgent(JobMiddlewareAgentServicer):
         self._signal_set = request.signal_set
         self._execution_time_signal = request.execution_time_signal
         self._run_count_signal = request.run_count_signal
+        self._run_count = request.run_count
         self._phase = Phase.Value('READY')
         logging.info("Job initialized")
         return InitJobAck()

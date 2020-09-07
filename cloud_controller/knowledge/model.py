@@ -484,6 +484,7 @@ class IvisApplication(Application):
         self._signal_set = signal_set
         self._execution_time_signal = execution_time_signal
         self._run_count_signal = run_count_signal
+        self.run_count = 0
 
     @property
     def signal_set(self) -> str:

@@ -6,6 +6,7 @@ import logging
 from typing import Dict, Set, Optional, Iterable
 from typing import List
 
+from cloud_controller import DEFAULT_MEASURED_RUNS
 from cloud_controller.knowledge.model import Component, UnmanagedCompin, check_datacenters, construct_datacenters, \
     Datacenter, IvisApplication
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer, UserEquipment
@@ -109,6 +110,8 @@ class Knowledge:
         app = Application.init_from_pb(app_pb)
         self.applications[app_pb.name] = app
         if isinstance(app, IvisApplication):
+            if self.client_support:
+                app.run_count = DEFAULT_MEASURED_RUNS
             self.ivis_jobs[app.name] = app
         for component in self.applications[app_pb.name].components.values():
             self.components[component.id] = component

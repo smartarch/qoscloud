@@ -48,6 +48,7 @@ message JobDescriptor {
     string signal_set = 9;
     string execution_time_signal = 10;
     string run_count_signal = 11;
+    int32 run_count = 12;
 }
 
 message InitJobAck {}
