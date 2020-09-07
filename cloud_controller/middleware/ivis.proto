@@ -45,6 +45,9 @@ message JobDescriptor {
     string ivis_core_ip = 6;
     int32 ivis_core_port = 7;
     string access_token = 8;
+    string signal_set = 9;
+    string execution_time_signal = 10;
+    string run_count_signal = 11;
 }
 
 message InitJobAck {}

@@ -411,7 +411,11 @@ class Application:
         """
         if application_pb.type == ApplicationType.Value("IVIS"):
             application = IvisApplication(application_pb.job_id, application_pb.code, application_pb.parameters,
-                                          application_pb.config, application_pb.minimal_interval,
+                                          application_pb.config,
+                                          application_pb.signal_set,
+                                          application_pb.execution_time_signal,
+                                          application_pb.run_count_signal,
+                                          application_pb.minimal_interval,
                                           application_pb.docker_container,
                                           application_pb.min_memory,
                                           application_pb.max_memory,
@@ -462,7 +466,10 @@ spec:
 
 class IvisApplication(Application):
 
-    def __init__(self, job_id: str, code: str, parameters: str, config: str, interval: int, container_name: str = 'dankhalev/ivis-job:latest', min_memory="", max_memory="", min_cpu="", max_cpu="", k8s_labels=""):
+    def __init__(self, job_id: str, code: str, parameters: str, config: str,
+                 signal_set: str, execution_time_signal: str, run_count_signal: str,
+                 interval: int, container_name: str = 'dankhalev/ivis-job:latest',
+                 min_memory="", max_memory="", min_cpu="", max_cpu="", k8s_labels=""):
         super().__init__(job_id)
         self._code = code
         self._parameters = parameters
@@ -474,6 +481,21 @@ class IvisApplication(Application):
         self._probe = Probe(name=job_id, component=self._job_component, alias=job_id, requirements=[])
         self._job_component.probes.append(self._probe)
         self._components[self._job_component.name] = self._job_component
+        self._signal_set = signal_set
+        self._execution_time_signal = execution_time_signal
+        self._run_count_signal = run_count_signal
+
+    @property
+    def signal_set(self) -> str:
+        return self._signal_set
+
+    @property
+    def execution_time_signal(self) -> str:
+        return self._execution_time_signal
+
+    @property
+    def run_count_signal(self) -> str:
+        return self._run_count_signal
 
     @property
     def code(self) -> str:

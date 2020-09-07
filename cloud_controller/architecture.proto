@@ -25,6 +25,9 @@ message Architecture {
     string min_cpu = 13;
     string max_cpu = 14;
     string k8s_labels = 15;
+    string signal_set = 16;
+    string execution_time_signal = 17;
+    string run_count_signal = 18;
 }
 
 message Component {

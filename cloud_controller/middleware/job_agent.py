@@ -70,7 +70,7 @@ class JobAgent(JobMiddlewareAgentServicer):
         self._ivis_core_url = f"http://{IVIS_HOST}:{IVIS_PORT}/ccapi"
         self._access_token: str = ""
 
-        self._stats_ss = ""
+        self._signal_set = ""
         self._execution_time_signal = ""
         self._run_count_signal = ""
 
@@ -96,50 +96,7 @@ class JobAgent(JobMiddlewareAgentServicer):
                 f"{self._ivis_core_url}{request_names[request]}",
                 headers=headers, json=payload
             )
-
-    def create_statistics_ss(self):
-        msg = {
-            'type': 'create_signals',
-            'signalSets': {
-                "cid": f"{self._job_id}_stats",
-                "name": f"Statistics for {self._job_id}",
-                "namespace": "1",
-                "description": f"Statistics for f{self._job_id}",
-                "aggs": "0"
-            }
-        }
-        # Request new signal set creation
-        signals = []
-        signals.append({
-            "cid": f"{self._job_id}_execution_time",
-            "name": f"Execution time for {self._job_id}",
-            "description": f"Execution time for {self._job_id}",
-            "namespace": "1",
-            "type": "double",
-            "indexed": True,
-            "settings": {}
-        })
-        signals.append({
-            "cid": f"{self._job_id}_run_count",
-            "name": f"Number of {self._job_id} runs",
-            "description": f"Number of {self._job_id} runs",
-            "namespace": "1",
-            "type": "integer",
-            "indexed": True,
-            "settings": {}
-        })
-        msg['signalSets']['signals'] = signals
-        message_str = json.dumps(msg) + '\n'
-        response = self.send_request(Request.RUNTIME, {
-            'jobId': self._job_id,
-            'request': message_str
-        })
-        response = json.loads(response['response'])
-        logging.info(f"Created statistics signal set. Response: {response}.")
-        self._stats_ss = response[f"{self._job_id}_stats"]['index']
-        self._execution_time_signal = response[f"{self._job_id}_stats"]['fields'][f"{self._job_id}_execution_time"]
-        self._run_count_signal = response[f"{self._job_id}_stats"]['fields'][f"{self._job_id}_run_count"]
-
+            
     def submit_running_time(self, time):
         self._total_run_time += time
         self._run_count += 1
@@ -148,7 +105,7 @@ class JobAgent(JobMiddlewareAgentServicer):
             self._execution_time_signal: time,
             self._run_count_signal: self._run_count
         }
-        es.index(index=self._stats_ss, doc_type='_doc', body=doc)
+        es.index(index=self._signal_set, doc_type='_doc', body=doc)
 
     def wait_for_process(self):
         assert self._current_process is not None
@@ -203,7 +160,9 @@ class JobAgent(JobMiddlewareAgentServicer):
         self._access_token = request.access_token
         with open(self._job_file, "w") as code_file:
             code_file.write(request.code)
-        self.create_statistics_ss()
+        self._signal_set = request.signal_set
+        self._execution_time_signal = request.execution_time_signal
+        self._run_count_signal = request.run_count_signal
         self._phase = Phase.Value('READY')
         logging.info("Job initialized")
         return InitJobAck()

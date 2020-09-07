@@ -443,7 +443,10 @@ class PlanExecutor:
             minimal_interval=app.interval,
             ivis_core_ip=IVIS_CORE_IP,
             ivis_core_port=IVIS_CORE_PORT,
-            access_token=self.knowledge.ivis_access_token
+            access_token=self.knowledge.ivis_access_token,
+            signal_set=app.signal_set,
+            execution_time_signal=app.execution_time_signal,
+            run_count_signal=app.run_count_signal
         )
         stub.InitializeJob(init_data)
         compin.phase = CompinPhase.READY
