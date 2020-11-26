@@ -33,7 +33,6 @@ message Architecture {
 message Component {
     string deployment = 1;
     repeated Probe probes = 2;
-    repeated ApplicationTimingRequirements timingRequirements = 3;
     repeated string dependsOn = 4;
     string name = 5;
     Cardinality cardinality = 6;
@@ -80,16 +79,28 @@ message Probe {
     string name = 1;
     string application = 2;
     string component = 3;
-    repeated ApplicationTimingRequirements requirements = 5;
+    repeated Contract requirements = 5;
     string alias = 6;
 }
 
-message Contract {
+message TimeContract {
     int32 time = 1;
     int32 percentile = 2;
 }
 
+message ThroughputContract {
+    int32 requests = 1;
+    int32 per = 2;
+}
+
+message Contract {
+    oneof type {
+        TimeContract time = 1;
+        ThroughputContract throughput = 2;
+    }
+}
+
 message ApplicationTimingRequirements {
     string name = 1;
-    repeated Contract contracts = 2;
+    repeated TimeContract contracts = 2;
 }

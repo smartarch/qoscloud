@@ -25,12 +25,33 @@ class Statefulness(Enum):
     NONE = 1
     MONGO = 3
 
+class QoSContract:
 
-class RunningTimeContract:
+    def __init__(self):
+        pass
+
+
+class TimeContract(QoSContract):
 
     def __init__(self, time: int, percentile: int):
+        super().__init__()
         self.time = time
         self.percentile = percentile
+
+
+class ThroughputContract(QoSContract):
+
+    def __init__(self, requests: int, per: int):
+        super().__init__()
+        self.requests = requests
+        self.per = per
+        self.mean_request_time = self.per / self.requests
+
+# class RunningTimeContract:
+#
+#     def __init__(self, time: int, percentile: int):
+#         self.time = time
+#         self.percentile = percentile
 
 
 class Datacenter:
@@ -946,7 +967,11 @@ class Probe:
     component: Component
     name: str
     alias: str
-    requirements: List[RunningTimeContract]
+    requirements: List[QoSContract]
+
+    @staticmethod
+    def generate_alias(probe_pb: arch_pb.Probe, component: Component) -> str:
+        return f"{component.application.name}_{component.name}_{probe_pb.name}"
 
     @staticmethod
     def init_from_pb(probe_pb: arch_pb.Probe, applications: Dict[str, Application]) -> "Probe":
@@ -958,8 +983,39 @@ class Probe:
 
     @staticmethod
     def init_from_pb_direct(probe_pb: arch_pb.Probe, component: Component):
-        assert probe_pb.alias != ""
-        return Probe(name=probe_pb.name, component=component, alias=probe_pb.alias, requirements=[])
+        requirements = []
+        for requirement_pb in probe_pb.requirements:
+            type = requirement_pb.WhichOneof('type')
+            requirement = None
+            if type == "time":
+                requirement = TimeContract(requirement_pb.time.time, requirement_pb.time.percentile)
+            elif type == "throughput":
+                requirement = ThroughputContract(requirement_pb.throughput.requests, requirement_pb.throughput.per)
+            assert requirement is not None
+            requirements.append(requirement)
+        return Probe(
+            name=probe_pb.name,
+            component=component,
+            alias=Probe.generate_alias(probe_pb, component),
+            requirements=requirements
+        )
+
+    def pb_representation(self) -> arch_pb.Probe:
+        probe_pb = arch_pb.Probe()
+        probe_pb.name = self.name
+        probe_pb.application = self.component.application.name
+        probe_pb.component = self.component.name
+        probe_pb.alias = self.alias
+        for requirement in self.requirements:
+            requirement_pb = probe_pb.requirements.add()
+            if isinstance(requirement, TimeContract):
+                requirement_pb.time.time = requirement.time
+                requirement_pb.time.percentile = requirement.percentile
+            else:
+                assert isinstance(requirement, ThroughputContract)
+                requirement_pb.throughput.requests = requirement.requests
+                requirement_pb.throughput.per = requirement.per
+        return probe_pb
 
     def __str__(self) -> str:
         return f"{self.component.name}/{self.name}"
