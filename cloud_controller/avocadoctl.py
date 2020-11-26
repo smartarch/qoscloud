@@ -10,7 +10,7 @@ import argparse
 import base64
 import logging
 import sys
-from typing import Optional
+from typing import Optional, Dict
 
 import grpc
 import yaml
@@ -21,6 +21,12 @@ import cloud_controller.assessment.deploy_controller_pb2_grpc as deploy_grpc
 from cloud_controller.assessment import CTL_HOST, CTL_PORT
 from cloud_controller.middleware.helpers import setup_logging
 
+time_periods: Dict[str, int] = {
+    "second": 1000,
+    "minute": 60 * 1000,
+    "hour": 60 * 60 * 1000,
+    "day": 24 * 60 * 60 * 1000
+}
 
 def yaml_to_grpc_architecture(architecture_yaml) -> Optional[arch_pb.Architecture]:
     """
@@ -84,19 +90,24 @@ def yaml_to_grpc_architecture(architecture_yaml) -> Optional[arch_pb.Architectur
             else:
                 architecture_grpc.components[_name].cardinality = arch_pb.Cardinality.Value("MULTIPLE")
             if 'probes' in item:
+                probes: Dict = {}
                 for probe in item['probes']:
                     probe_grpc = architecture_grpc.components[_name].probes.add()
                     probe_grpc.name = probe['name']
                     probe_grpc.application = architecture_grpc.name
                     probe_grpc.component = _name
-            if 'timingRequirements' in item:
-                for req in item['timingRequirements']:
-                    requirement_grpc = architecture_grpc.components[_name].timingRequirements.add()
-                    requirement_grpc.name = req['name']
-                    for limit in req['limits']:
-                        limit_grpc = requirement_grpc.contracts.add()
-                        limit_grpc.percentile = limit['probability']
-                        limit_grpc.time = limit['time']
+                    probes[probe_grpc.name] = probe_grpc
+                if 'QoSrequirements' in item:
+                    for req in item['QoSrequirements']:
+                        probe = probes[req['probe']]
+                        requirement_grpc = probe.requirements.add()
+                        if req['type'].lower() == "time":
+                            requirement_grpc.time.time = req['time']
+                            requirement_grpc.time.percentile = req['probability']
+                        elif req['type'].lower() == "throughput":
+                            requirement_grpc.throughput.requests = req['requests']
+                            requirement_grpc.throughput.per = time_periods[req['per']]
+                        requirement_grpc.name = req['probe']
         elif _type == "unmanaged":
             if 'UEMPolicy' in item:
                 uem_policy = item['UEMPolicy'].upper()
