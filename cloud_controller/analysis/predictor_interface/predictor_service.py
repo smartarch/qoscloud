@@ -1,7 +1,7 @@
 import math
 from enum import Enum
 from threading import RLock
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import logging
 
@@ -42,25 +42,58 @@ class StatisticalPredictor(Predictor):
         return self._predictor_service.Predict(assignment).result
         # TODO: PROBLEM: no way to specify different percentiles for each prediction
 
+THROUGHPUT_ENABLED = True
+THROUGHPUT_PERCENTILES = [50.0, 90.0, 99.0, 99.9]
 
-class PredictorService(PredictorServicer):
+class MultiPredictor:
 
     def __init__(self):
-        self._single_process_predictor = PercentilePredictor()
-        # TODO: plug in the old predictor back
-        self._predictor = None
-        self.probes: Dict[str, List[Probe]] = {}
-        self._jobs: Dict[str, Probe] = {}
-        self._scenarios_by_app: Dict[str, List[str]] = {}
-        self._scenarios_by_id: Dict[str, Scenario] = {}
-        self._measuring_phases: Dict[str, MeasuringPhase] = {}
+        self.lock = RLock()
+        self.percentiles: List[float] = []
+        if THROUGHPUT_ENABLED:
+            self.percentiles.extend(THROUGHPUT_PERCENTILES)
+        self.hw_ids: List[str] = [DEFAULT_HARDWARE_ID]
+        self._predictors: Dict[Tuple[str, float], predictor.Predictor] = {}
+        for hw_id in self.hw_ids:
+            for percentile in self.percentiles:
+                self._add_predictor(hw_id, percentile)
 
-        self._probes_by_id: Dict[str, Probe] = {}
-        self._last_scenario_id: int = 0
-        self._lock = RLock()
+    def _add_predictor(self, hw_id: str, percentile:float) -> None:
+        self._predictors[(hw_id, percentile)] = self._create_predictor(hw_id, percentile)
 
-    def _create_predictor(self) -> predictor.Predictor:
-        _predictor = predictor.Predictor(nodetype=DEFAULT_HARDWARE_ID, percentile=GLOBAL_PERCENTILE)
+    def add_hw_id(self, hw_id: str):
+        for percentile in self.percentiles:
+            self._add_predictor(hw_id, percentile)
+
+    def add_percentile(self, percentile: float):
+        for hw_id in self.hw_ids:
+            self._add_predictor(hw_id, percentile)
+
+    def predict_time(self, hw_id: str, combination: List[str], time_limit: int, percentile: float) -> bool:
+        with self.lock:
+            verdict, _ = self._predictors[(hw_id, percentile)].predict_combination(comb=combination, time_limit=time_limit)
+        return verdict is not None and verdict
+
+    def predict_throughput(self, hw_id: str, combination: List[str], max_value: int) -> bool:
+        assert THROUGHPUT_ENABLED and len(THROUGHPUT_PERCENTILES) > 0
+        total_time = 0.0
+        previous = 0.0
+        time = None
+        for percentile in THROUGHPUT_PERCENTILES:
+            with self.lock:
+                _, prediction = self._predictors[(hw_id, percentile)].predict_combination(comb=combination, time_limit=0)
+            time = prediction.combined
+            if time is None:
+                return False
+            total_time += (percentile - previous) * time
+            previous = percentile
+        total_time += (100 - previous) * time
+
+        return total_time < max_value * 100 # we multiply it by 100 since the percentiles are 1 to 100, not 0 to 1.
+
+    @staticmethod
+    def _create_predictor(hw_id: str, percentile: float) -> predictor.Predictor:
+        _predictor = predictor.Predictor(nodetype=hw_id, percentile=percentile)
         _predictor.assign_headers("headers.json")
         _predictor.assign_groundtruth("groundtruth.json")
         _predictor.assign_user_boundary("user_boundary.json")
@@ -79,19 +112,46 @@ class PredictorService(PredictorServicer):
             boundary_percentage=140)
         return _predictor
 
+    def prepare_predictor(self):
+        predictors: Dict[Tuple[str, float], predictor.Predictor] = {}
+        for hw_id in self.hw_ids:
+            for percentile in self.percentiles:
+                predictors[(hw_id, percentile)] = self._create_predictor(hw_id, percentile)
+        with self.lock:
+            self._predictors = predictors
+
+    def provide_data_matrix(self, path):
+        with self.lock:
+            for predictor in self._predictors.values():
+                predictor.provide_data_matrix(path)
+
+class PredictorService(PredictorServicer):
+
+    def __init__(self):
+        self._single_process_predictor = PercentilePredictor()
+        # TODO: plug in the old predictor back
+        self._predictor = MultiPredictor()
+        self.probes: Dict[str, List[Probe]] = {}
+        self._jobs: Dict[str, Probe] = {}
+        self._scenarios_by_app: Dict[str, List[str]] = {}
+        self._scenarios_by_id: Dict[str, Scenario] = {}
+        self._measuring_phases: Dict[str, MeasuringPhase] = {}
+
+        self._probes_by_id: Dict[str, Probe] = {}
+        self._last_scenario_id: int = 0
+        self._lock = RLock()
+
     def Predict(self, request, context):
-        if len(request.components) == 1:
+        if len(request.components) == 1 and request.components[0].count == 1:
             component = request.components[0]
-            if component.count == 1:
-                assert component.component_id in self._jobs
-                probe = self._jobs[component.component_id]
-                for requirement in probe.requirements:
-                    prediction = self._single_process_predictor.predict(probe.name, requirement.time, requirement.percentile)
-                    if not prediction:
-                        return predictor_pb.Prediction(result=False)
-                return predictor_pb.Prediction(result=True)
-            else:
-                return predictor_pb.Prediction(result=False)
+            assert component.component_id in self._jobs
+            probe = self._jobs[component.component_id]
+            for requirement in probe.requirements:
+                # if requirement.type == RequirementType.Value("TIME"):
+                prediction = self._single_process_predictor.predict(probe.name, requirement.time, requirement.percentile)
+                if not prediction:
+                    return predictor_pb.Prediction(result=False)
+            return predictor_pb.Prediction(result=True)
         else:
             return predictor_pb.Prediction(result=False)
         assignment = {}
