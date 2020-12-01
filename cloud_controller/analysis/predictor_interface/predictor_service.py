@@ -1,28 +1,34 @@
-import math
+import random
+import threading
+import time
+from collections import Counter
 from enum import Enum
 from threading import RLock
-from typing import Dict, List, Tuple
+from typing import Dict, List, Tuple, Iterator, Set, FrozenSet, Optional
 
 import logging
 
 import cloud_controller.analysis.predictor_interface.predictor_pb2 as predictor_pb
-from cloud_controller import DEFAULT_HARDWARE_ID, GLOBAL_PERCENTILE, PREDICTOR_HOST, PREDICTOR_PORT
+from cloud_controller import DEFAULT_HARDWARE_ID, PREDICTOR_HOST, PREDICTOR_PORT, THROUGHPUT_ENABLED, \
+    THROUGHPUT_PERCENTILES
 from cloud_controller.analysis.predictor import Predictor
 from cloud_controller.analysis.predictor_interface.predictor_pb2_grpc import PredictorServicer, \
     add_PredictorServicer_to_server, PredictorStub
-from cloud_controller.architecture_pb2 import ApplicationType, ApplicationTimingRequirements
+from cloud_controller.architecture_pb2 import ApplicationTimingRequirements
 from cloud_controller.assessment.model import Scenario
 from cloud_controller.ivis.statistical_predictor import PercentilePredictor
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import Application, Probe, IvisApplication, RunningTimeContract
+from cloud_controller.knowledge.model import Application, Probe, TimeContract, ThroughputContract
 from cloud_controller.middleware.helpers import start_grpc_server, connect_to_grpc_server, setup_logging
 import predictor
 
+MAX_ARITY = 5
+
 
 class MeasuringPhase(Enum):
-    INIT = 1
-    ADVANCED = 2
-    COMPLETED = 3
+    ISOLATION = 1
+    COMBINATIONS = 2
+    REGISTERED = 3
 
 
 class StatisticalPredictor(Predictor):
@@ -40,10 +46,7 @@ class StatisticalPredictor(Predictor):
                 ct_.component_id = probe.alias
                 ct_.count = count
         return self._predictor_service.Predict(assignment).result
-        # TODO: PROBLEM: no way to specify different percentiles for each prediction
 
-THROUGHPUT_ENABLED = True
-THROUGHPUT_PERCENTILES = [50.0, 90.0, 99.0, 99.9]
 
 class MultiPredictor:
 
@@ -112,85 +115,222 @@ class MultiPredictor:
             boundary_percentage=140)
         return _predictor
 
-    def prepare_predictor(self):
-        predictors: Dict[Tuple[str, float], predictor.Predictor] = {}
-        for hw_id in self.hw_ids:
-            for percentile in self.percentiles:
-                predictors[(hw_id, percentile)] = self._create_predictor(hw_id, percentile)
-        with self.lock:
-            self._predictors = predictors
+    def provide_new_files(self, files: Dict[str, List[str]]) -> None:
+        for ((hw_id, _), predictor) in self._predictors.items():
+            if hw_id in files:
+                for filename in files[hw_id]:
+                    predictor.provide_data_matrix(filename)
+                predictor.prepare_predictor()
 
-    def provide_data_matrix(self, path):
-        with self.lock:
-            for predictor in self._predictors.values():
-                predictor.provide_data_matrix(path)
+
+class PredictorUpdater:
+
+    def __init__(self, predictor_: MultiPredictor):
+        self._files: Dict[str, List[str]] = {}
+        self._update_time: bool = False
+        self._predictor: MultiPredictor = predictor_
+        self._file_count: int = 0
+        self._lock = RLock()
+
+    @property
+    def file_count(self) -> int:
+        return self._file_count
+
+    def start(self) -> None:
+        threading.Thread(target=self._run, args=(), daemon=True).start()
+
+    def _run(self) -> None:
+        if self._update_time:
+            with self._lock:
+                self._update_time = False
+                files = self._files
+                self._files = {}
+                self._file_count = 0
+            self._predictor.provide_new_files(files)
+
+        else:
+            time.sleep(1)
+
+    def provide_file(self, hw_id: str, filename:str):
+        with self._lock:
+            if hw_id not in self._files:
+                self._files[hw_id] = []
+            self._files[hw_id].append(filename)
+            self._file_count += 1
+
+    def update_predictor(self) -> None:
+        with self._lock:
+            self._update_time = True
+
+
+class ScenarioGenerator:
+
+    def __init__(self, _predictor: MultiPredictor):
+        import typing
+        self._combination_counter: typing.Counter[Tuple[str, str, int]] = Counter()
+        self._probes: Dict[str, Probe] = {}
+        self._measured_combinations: Dict[str, Set[str]] = {}
+        self._isolation_scenarios: List[str] = []
+        self._combination_scenarios: List[Tuple[str, List[str]]] = []
+        self._predictor_updater = PredictorUpdater(_predictor)
+        self._predictor_updater.start()
+        self.next_scenario_id = 0
+        self._INITIAL_SCENARIOS_COUNT = 4
+
+    def register_probe(self, probe: Probe) -> None:
+        self._probes[probe.alias] = probe
+        self._measured_combinations[probe.alias] = set()
+        self._isolation_scenarios.append(probe.alias)
+        for i in range(1, self._INITIAL_SCENARIOS_COUNT):
+            self._combination_scenarios.append((probe.alias, self.generate_random_load(i)))
+
+    def scenario_completed(self, scenario: Scenario) -> None:
+        probe_id = scenario.controlled_probe.alias
+        bg_probe_ids: List[str] = [probe.alias for probe in scenario.background_probes]
+        self._measured_combinations[probe_id].add(self._bg_load_id(bg_probe_ids))
+        self._predictor_updater.provide_file(scenario.hw_id, scenario.filename_data)
+        if len(self._measured_combinations[probe_id]) == self._INITIAL_SCENARIOS_COUNT or \
+            self._predictor_updater.file_count >= 10:
+            self._predictor_updater.update_predictor()
+
+    def generate_random_load(self, probe_count):
+        bg_probes: List[str] = []
+        for i in range(probe_count):
+            bg_probe_id = random.choice(self._probes)
+            bg_probes.append(bg_probe_id)
+        bg_probes.sort()
+        return bg_probes
+
+    def increase_count(self, hw_id: str, probe_id: str, arity: int) -> None:
+        if 1 < arity <= MAX_ARITY:
+            if (hw_id, probe_id, arity) not in self._combination_counter:
+                self._combination_counter[(hw_id, probe_id, arity)] = 1
+            else:
+                self._combination_counter[(hw_id, probe_id, arity)] += 1
+
+    @staticmethod
+    def _bg_load_id(bg_load: List[str]):
+        bg_load.sort()
+        return "-".join(bg_load)
+
+    def _create_scenario(self, probe_id: str, bg_probes: List[str], hw_id: str):
+        scenario: Scenario = Scenario(
+            controlled_probe=self._probes[probe_id],
+            background_probes=[self._probes[bg_probe_id] for bg_probe_id in bg_probes],
+            hw_id=hw_id,
+            scenario_id=str(self.next_scenario_id),
+            app_name=self._probes[probe_id].component.application.name
+        )
+        self.next_scenario_id += 1
+        return scenario
+
+    def next_scenario(self) -> Optional[Scenario]:
+        if len(self._isolation_scenarios) > 0:
+            probe_id = self._isolation_scenarios.pop(0)
+            return self._create_scenario(probe_id, [], DEFAULT_HARDWARE_ID)
+        if len(self._combination_scenarios) > 0:
+            probe_id, bg_load = self._combination_scenarios.pop(0)
+            return self._create_scenario(probe_id, bg_load, DEFAULT_HARDWARE_ID)
+        if len(self._combination_counter) > 0:
+            (hw_id, probe_id, arity), count = self._combination_counter.most_common(1)[0]
+            del self._combination_counter[(hw_id, probe_id, arity)]
+            bg_probes: List[str] = []
+            for i in range(arity - 1):
+                bg_probe_id = random.choice(self._probes)
+                bg_probes.append(bg_probe_id)
+            if self._bg_load_id(bg_probes) in self._measured_combinations[probe_id]:
+                return self.next_scenario()
+            return self._create_scenario(probe_id, bg_probes, hw_id)
+        return None
+
 
 class PredictorService(PredictorServicer):
 
     def __init__(self):
         self._single_process_predictor = PercentilePredictor()
-        # TODO: plug in the old predictor back
         self._predictor = MultiPredictor()
-        self.probes: Dict[str, List[Probe]] = {}
-        self._jobs: Dict[str, Probe] = {}
-        self._scenarios_by_app: Dict[str, List[str]] = {}
-        self._scenarios_by_id: Dict[str, Scenario] = {}
-        self._measuring_phases: Dict[str, MeasuringPhase] = {}
-
+        self.applications: Dict[str, Application] = {}
+        self._probes_by_component: Dict[str, Set[str]] = {}
         self._probes_by_id: Dict[str, Probe] = {}
-        self._last_scenario_id: int = 0
+        self._scenario_generator = ScenarioGenerator(self._predictor)
         self._lock = RLock()
 
-    def Predict(self, request, context):
-        if len(request.components) == 1 and request.components[0].count == 1:
-            component = request.components[0]
-            assert component.component_id in self._jobs
-            probe = self._jobs[component.component_id]
-            for requirement in probe.requirements:
-                # if requirement.type == RequirementType.Value("TIME"):
-                prediction = self._single_process_predictor.predict(probe.name, requirement.time, requirement.percentile)
-                if not prediction:
-                    return predictor_pb.Prediction(result=False)
-            return predictor_pb.Prediction(result=True)
-        else:
-            return predictor_pb.Prediction(result=False)
-        assignment = {}
-        for component in request.components:
-            assignment[component.component_id] = (component.time_limit, component.count)
-        prediction = self._predictor.predict(assignment)
-        return predictor_pb.Prediction(result=prediction)
+    def assignment_from_pb(self, assignment_pb: predictor_pb.Assignment) -> Tuple[str, Dict[str, int]]:
+        assignment: Dict[str, int] = {}
+        for component_pb in assignment_pb.components:
+            assert component_pb.component_id in self._probes_by_component
+            assignment[component_pb.component_id] = component_pb.count
+        return assignment_pb.hw_id, assignment
 
-    def _add_scenario(self, probe: Probe, bg_load: List[Probe], app_name: str):
-        scenario = Scenario(probe, bg_load, DEFAULT_HARDWARE_ID,
-                            scenario_id=str(self._last_scenario_id), app_name=app_name)
-        self._last_scenario_id += 1
-        self._scenarios_by_app[app_name].append(scenario.id_)
-        self._scenarios_by_id[scenario.id_] = scenario
+    def generate_combinations(self, assignment: Dict[str, int]) -> Iterator[List[str]]:
+        def generate_probe_combinations(probes: List[str], size: int, combination: List[str]) -> List[str]:
+            if len(combination) == size:
+                yield combination
+                return
+            if len(probes) == 0:
+                return
+            for i in range(size + 1):
+                if len(combination) + i <= size:
+                    for probe_combination in generate_probe_combinations(probes[1:], size, combination + [probes[0]] * i):
+                        yield probe_combination
+
+        def generate_component_combinations(
+                components: List[Tuple[str, int]],
+                combination: List[str],
+                main_component: str
+        ) -> List[str]:
+            if len(components) == 0:
+                yield combination
+                return
+            component, count = components[0]
+            if component == main_component:
+                count = count - 1
+            probes = list(self._probes_by_component[component])
+            for probe_combination in generate_probe_combinations(probes, count, []):
+                for full_combination in generate_component_combinations(components[1:], combination + probe_combination,
+                                                                        main_component):
+                    yield full_combination
+
+        for component in assignment:
+            for full_combination in generate_component_combinations(list(assignment.items()), [], component):
+                for probe_id in self._probes_by_component[component]:
+                    yield [probe_id] + full_combination
+
+    def Predict(self, request: predictor_pb.Assignment, context):
+        if len(request.components) == 1 and request.components[0].count == 1 and request.hw_id == DEFAULT_HARDWARE_ID:
+            assert request.components[0].component_id in self._probes_by_component
+            return predictor_pb.Prediction(result=True)
+        hw_id, assignment = self.assignment_from_pb(request)
+        for combination in self.generate_combinations(assignment=assignment):
+            probe = self._probes_by_id[combination[0]]
+            for requirement in probe.requirements:
+                prediction: bool = False
+                if isinstance(requirement, TimeContract):
+                    prediction = self._predictor.predict_time(
+                        hw_id=hw_id,
+                        combination=combination,
+                        time_limit=requirement.time,
+                        percentile=requirement.percentile
+                    )
+                elif isinstance(requirement, ThroughputContract):
+                    prediction = self._predictor.predict_throughput(
+                        hw_id=hw_id,
+                        combination=combination,
+                        max_value=requirement.mean_request_time
+                    )
+                if not prediction:
+                    self._scenario_generator.increase_count(hw_id, combination[0], len(combination))
+                    return predictor_pb.Prediction(result=False)
+        return predictor_pb.Prediction(result=True)
 
     def RegisterApp(self, request, context):
+        app = Application.init_from_pb(request)
         with self._lock:
-            app = Application.init_from_pb(request)
-            self._scenarios_by_app[app.name] = []
-            self._measuring_phases[app.name] = MeasuringPhase.INIT
-            if request.type == ApplicationType.Value("REGULAR"):
-                self.probes[app.name] = []
-                for component in app.components.values():
-                    for probe in component.probes:
-                        self._register_probe(probe)
-                        self.probes[app.name].append(probe)
-                        for bg_load in [], [probe], [probe, probe]:
-                            self._add_scenario(probe, bg_load, app.name)
-            elif isinstance(app, IvisApplication):
-                self._add_scenario(app.probe, [], app.name)
-                # TODO: implement a better strategy for jobs assessment
-                # for probe_1 in self._jobs.values():
-                #     self._add_scenario(app.probe, [probe_1], app.name)
-                #     self._add_scenario(probe_1, [app.probe], app.name)
-                #     for probe_2 in self._jobs.values():
-                #         if probe_2.name != probe_1.name:
-                #             self._add_scenario(app.probe, [probe_1, probe_2], app.name)
-                #             self._add_scenario(probe_1, [app.probe, probe_2], app.name)
-                self._jobs[app.name] = app.probe
+            self.applications[app.name] = app
+            for component in app.components.values():
+                for probe in component.probes:
+                    self._register_probe(probe)
+                    self._scenario_generator.register_probe(probe)
         return predictor_pb.RegistrationAck()
 
     def UnregisterApp(self, request, context):
@@ -199,98 +339,82 @@ class PredictorService(PredictorServicer):
 
     def RegisterHwConfig(self, request, context):
         # TODO: implement RegisterHwConfig
+        # TODO: implement RegisterPercentile
+        hw_id: str = request.name
+        self._predictor.add_hw_id(hw_id)
         return predictor_pb.RegistrationAck()
 
     def FetchScenarios(self, request, context):
         with self._lock:
-            for list in self._scenarios_by_app.values():
-                for scenario_id in list:
-                    logging.info(f"Sending scenario description for scenario {scenario_id}")
-                    yield self._scenarios_by_id[scenario_id].pb_representation(predictor_pb.Scenario())
+            scenario = self._scenario_generator.next_scenario()
+            if scenario is None:
+                yield
+            logging.info(f"Sending scenario description for scenario {scenario.id_}")
+            yield scenario.pb_representation()
 
     def ReportPercentiles(self, request, context):
         response = ApplicationTimingRequirements()
         response.name = request.name
         for percentile in request.contracts:
-            time = self._single_process_predictor.predict_time(request.name, percentile.percentile)
+            time = self._single_process_predictor.running_time_at_percentile(request.name, percentile.percentile)
             contract = response.contracts.add()
             contract.time = time
             contract.percentile = percentile.percentile
+        context.mean = self._single_process_predictor.mean_running_time(request.name)
         return response
 
     def JudgeApp(self, request, context):
-        if len(self._scenarios_by_app[request.name]) == 0:
-            self._measuring_phases[request.name] = MeasuringPhase.COMPLETED
+        app = Application.init_from_pb(request)
+        # The application has to be already registered before, otherwise we cannot judge it
+        assert app.name in self.applications
         with self._lock:
-            if self._measuring_phases[request.name] != MeasuringPhase.COMPLETED:
-                return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("NEEDS_DATA"))
-            if self._predictor is not None:
-                self._predictor.prepare_predictor()
-            if request.name in self.probes:
-                # TODO: add support for new requirements format
-                for probe in self.probes[request.name]:
-                    prediction = self._predictor.predict({probe.alias: (math.ceil(probe.time_limit), 1)})
-                    if prediction is None:
-                        # This should never happen
-                        raise Exception("Predictor needs data for single process prediction!")
-                    elif prediction is False:
-                        return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("REJECTED"))
-            else:
-                probe = self._jobs[request.name]
-                for contract in request.contracts:
-                    prediction = self._single_process_predictor.predict(request.name, contract.time, contract.percentile)
-                    if not prediction:
-                        return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("REJECTED"))
-                for contract in request.contracts:
-                    probe.requirements.append(RunningTimeContract(contract.time, contract.percentile))
-            return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("ACCEPTED"))
+            # All isolation measurements need to be finished before we can judge the app.
+            # if self._measuring_phases[app.name] == MeasuringPhase.ISOLATION:
+            # Check every QoS requirement one-by-one:
+            for component in app.components.values():
+                for probe in component.probes:
+                    if self._single_process_predictor.has_probe(probe.alias):
+                        return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("NEEDS_DATA"))
+                    for requirement in probe.requirements:
+                        prediction = False
+                        if isinstance(requirement, TimeContract):
+                            prediction = self._single_process_predictor.predict_time(
+                                probe_name=probe.alias,
+                                time_limit=requirement.time,
+                                percentile=requirement.percentile
+                            )
+                        elif isinstance(requirement, ThroughputContract):
+                            prediction = self._single_process_predictor.predict_throughput(
+                                probe_name=probe.alias,
+                                max_mean_time=requirement.mean_request_time
+                            )
+                        if not prediction:
+                            return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("REJECTED"))
+            # Application is accepted now
+            # However, some QoS requirements may have been added between app registration and app evaluation.
+            # Thus, we re-register all the probes to include these requirements
+            self.applications[app.name] = app
+            for component in app.components.values():
+                self._probes_by_component[probe.component.id] = set()
+                for probe in component.probes:
+                    assert probe.alias in self._probes_by_id
+                    self._register_probe(probe)
+                    self._probes_by_component[probe.component.id].add(probe.alias)
+        return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("ACCEPTED"))
 
     def OnScenarioDone(self, request, context):
-        if len(request.scenario.background_probes) == 0:
-            self._single_process_predictor.add_job(request.scenario.application, request.scenario.filename)
+        scenario: Scenario = Scenario.init_from_pb(request.scenario, self.applications)
+        app_name = scenario.controlled_probe.component.application.name
+        logging.info(f"Received ScenarioDone notification for scenario {scenario.id_} of app {app_name}")
         with self._lock:
-            if self._predictor is not None:
-                self._predictor.provide_data_matrix(request.scenario.filename)
             # Remove scenario from the list of to-be-done scenarios
-            app = request.scenario.application
-            logging.info(f"Received ScenarioDone notification for scenario {request.scenario.id} of app {app}")
-            assert request.scenario.id in self._scenarios_by_app[app]
-            self._scenarios_by_app[app].remove(request.scenario.id)
-            # If there are no more scenarios for this app, proceed to the next measurement phase
-            if len(self._scenarios_by_app[app]) == 0:
-                if self._measuring_phases[app] == MeasuringPhase.INIT:
-                    if self._get_new_scenarios():
-                        self._measuring_phases[app] = MeasuringPhase.ADVANCED
-                    else:
-                        self._measuring_phases[app] = MeasuringPhase.COMPLETED
-                else:
-                    assert self._measuring_phases[app] == MeasuringPhase.ADVANCED
-                    self._measuring_phases[app] = MeasuringPhase.COMPLETED
+            self._scenario_generator.scenario_completed(scenario)
+            if len(scenario.background_probes) == 0:
+                self._single_process_predictor.add_probe(scenario.controlled_probe.alias, scenario.filename_data)
         return predictor_pb.CallbackAck()
-
-    def OnScenarioFailure(self, request, context):
-        # TODO: implement OnScenarioFailure
-        return super().OnScenarioFailure(request, context)
 
     def _register_probe(self, probe: Probe) -> None:
         self._probes_by_id[probe.alias] = probe
-
-    def _get_new_scenarios(self) -> bool:
-        measurements = []  # self._predictor.get_requested_measurements()
-        if len(measurements) == 0:
-            return False
-        for hw_id in measurements:
-            for plan in measurements[hw_id]:
-                controlled_probe = self._probes_by_id[plan[0]]
-                background_probes = []
-                for probe_name in plan[1:]:
-                    background_probes.append(self._probes_by_id[probe_name])
-                scenario = Scenario(controlled_probe, background_probes, hw_id, scenario_id=str(self._last_scenario_id))
-                self._last_scenario_id += 1
-                self._scenarios_by_id[scenario.id_] = scenario
-                app_name = controlled_probe.component.application.name
-                self._scenarios_by_app[app_name].append(scenario.id_)
-        return True
 
 
 if __name__ == "__main__":

@@ -970,8 +970,8 @@ class Probe:
     requirements: List[QoSContract]
 
     @staticmethod
-    def generate_alias(probe_pb: arch_pb.Probe, component: Component) -> str:
-        return f"{component.application.name}_{component.name}_{probe_pb.name}"
+    def generate_alias(probe_name: str, component: Component) -> str:
+        return f"{component.application.name.upper()}_{component.name.upper()}_{probe_name.upper()}"
 
     @staticmethod
     def init_from_pb(probe_pb: arch_pb.Probe, applications: Dict[str, Application]) -> "Probe":
@@ -993,6 +993,11 @@ class Probe:
                 requirement = ThroughputContract(requirement_pb.throughput.requests, requirement_pb.throughput.per)
             assert requirement is not None
             requirements.append(requirement)
+        for probe in component.probes:
+            if probe.name == probe_pb.name:
+                probe.alias = Probe.generate_alias(probe_pb.name, component)
+                probe.requirements = requirements
+                return probe
         return Probe(
             name=probe_pb.name,
             component=component,

@@ -61,9 +61,7 @@ class PredictorScenarioPlanner(ScenarioPlanner):
         self._predictor_stub.OnScenarioDone(scenario_pb)
 
     def on_scenario_failed(self, scenario: Scenario, reason: FailureReason) -> None:
-        scenario_pb = self._compose_scenario_completion(scenario)
-        scenario_pb.outcome = ScenarioOutcome.Value(reason.name)
-        self._predictor_stub.OnScenarioFailure(scenario_pb)
+        logging.error("Scenario %s failed on %s", scenario, reason)
 
     def on_app_evaluated(self, app_name: str):
         request = ApplicationTimingRequirements(name=app_name)

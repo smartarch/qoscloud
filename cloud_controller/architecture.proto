@@ -103,4 +103,5 @@ message Contract {
 message ApplicationTimingRequirements {
     string name = 1;
     repeated TimeContract contracts = 2;
+    int32 mean = 3;
 }

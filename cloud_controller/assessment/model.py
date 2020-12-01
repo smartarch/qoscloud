@@ -198,7 +198,9 @@ class Scenario:
         )
         return scenario
 
-    def pb_representation(self, scenario_pb):
+    def pb_representation(self, scenario_pb = None):
+        if scenario_pb is None:
+            scenario_pb = predictor_pb2.Scenario()
         scenario_pb.hw_id = self.hw_id
         scenario_pb.measured_cycles = self.measured_cycles
         scenario_pb.warm_up_cycles = self.warm_up_cycles
