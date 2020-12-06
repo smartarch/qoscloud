@@ -14,7 +14,6 @@ from cloud_controller.assessment import RESULTS_PATH
 from cloud_controller.assessment.model import Scenario
 from cloud_controller.knowledge.model import Compin, Probe
 from cloud_controller.middleware.helpers import connect_to_grpc_server_with_channel
-from cloud_controller.middleware.ivis_pb2_grpc import JobMiddlewareAgentStub
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
 
 
@@ -53,7 +52,7 @@ class ResultStorage:
     @staticmethod
     def _collect_probe_results(ip: str, probe: Probe) -> Iterable[Tuple[Optional[str], Optional[str]]]:
         # Open connection
-        stub, channel = connect_to_grpc_server_with_channel(JobMiddlewareAgentStub, ip, middleware.AGENT_PORT, True, production=False)
+        stub, channel = connect_to_grpc_server_with_channel(MiddlewareAgentStub, ip, middleware.AGENT_PORT, True, production=False)
         probe_msg = mw_protocols.ProbeDescriptor(name=probe.name)
 
         for reply in stub.CollectProbeResults(probe_msg):

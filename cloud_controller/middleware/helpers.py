@@ -9,7 +9,6 @@ from enum import Enum
 import grpc
 import yaml
 
-from cloud_controller.middleware.ivis_pb2_grpc import JobMiddlewareAgentStub
 from cloud_controller.middleware.middleware_pb2 import Pong
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
 
@@ -44,8 +43,7 @@ def connect_to_grpc_server_with_channel(stub_class, host, port, block=False, pro
     stub = stub_class(channel)
     if block:
         channel_ready_future = grpc.channel_ready_future(channel)
-        # TODO: MiddlewareAgent
-        if isinstance(stub, JobMiddlewareAgentStub):
+        if isinstance(stub, MiddlewareAgentStub):
             while True:
                 try:
                     stub.Ping(Pong(production=production))

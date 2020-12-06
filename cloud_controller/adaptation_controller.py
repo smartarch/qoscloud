@@ -22,7 +22,7 @@ from cloud_controller.execution.executor import Executor
 from cloud_controller.ivis.ivis_interface import IvisInterface
 from cloud_controller.ivis.ivis_mock import IVIS_INTERFACE_HOST, IVIS_INTERFACE_PORT
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.middleware.ivis_pb2_grpc import add_IvisInterfaceServicer_to_server
+from cloud_controller.ivis.ivis_pb2_grpc import add_IvisInterfaceServicer_to_server
 from cloud_controller.monitoring.monitor import Monitor
 from cloud_controller.planning.execution_planner import ExecutionPlanner
 from cloud_controller.middleware.helpers import setup_logging, start_grpc_server
@@ -177,6 +177,7 @@ class AdaptationController:
 
 
 if __name__ == "__main__":
+    # TONOWDO: move ivis interface start elsewhere
     setup_logging()
     adaptation_ctl = AdaptationController()
     adaptation_ctl.clean_cluster()

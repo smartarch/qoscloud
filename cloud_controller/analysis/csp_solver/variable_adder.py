@@ -82,10 +82,10 @@ class VariableAdder:
             rcn_vars_by_node_and_compin=self.running_vars_by_node_and_compin,
             client_dc_vars_by_tier=self.client_dc_vars_by_tier,
 
-            job_vars_by_compin=self.job_vars_by_compin,
-            job_vars_by_node=self.job_vars_by_node,
-            job_vars_by_node_and_compin=self.job_vars_by_node_and_compin,
-            job_vars=self.job_vars,
+            unique_vars_by_compin=self.unique_vars_by_compin,
+            unique_vars_by_node=self.unique_vars_by_node,
+            unique_vars_by_node_and_compin=self.unique_vars_by_node_and_compin,
+            unique_vars=self.unique_vars,
         )
 
     def _create_compin_node_variables(self) -> List[CompNodeVar]:
@@ -115,10 +115,10 @@ class VariableAdder:
         self.client_dc_vars: Dict[str, Dict[str, CompDCVar]] = {}  # DC : client : var
         self.client_dc_vars_by_tier: Dict[int, List[CompDCVar]] = {}  # Tier: [var]
 
-        self.job_vars_by_compin: Dict[str, List[CompNodeVar]] = {}  # compin : [var]
-        self.job_vars_by_node: Dict[str, List[CompNodeVar]] = {}  # node : [var]
-        self.job_vars_by_node_and_compin: Dict[str, Dict[str, CompNodeVar]] = {}  # node : compin : var
-        self.job_vars: List[CompNodeVar] = []
+        self.unique_vars_by_compin: Dict[str, List[CompNodeVar]] = {}  # compin : [var]
+        self.unique_vars_by_node: Dict[str, List[CompNodeVar]] = {}  # node : [var]
+        self.unique_vars_by_node_and_compin: Dict[str, Dict[str, CompNodeVar]] = {}  # node : compin : var
+        self.unique_vars: List[CompNodeVar] = []
 
         for datacenter in self._datacenters:
             self.node_vars_by_dc[datacenter] = {}
@@ -140,8 +140,8 @@ class VariableAdder:
             self.vars_by_node_and_compin[node.name] = {}
             self.running_vars_by_node_and_compin[node.name] = {}
 
-            self.job_vars_by_node[node.name] = []
-            self.job_vars_by_node_and_compin[node.name] = {}
+            self.unique_vars_by_node[node.name] = []
+            self.unique_vars_by_node_and_compin[node.name] = {}
 
         for compin in self._knowledge.actual_state.list_all_managed_compins():
             if compin.component.application.name in self._knowledge.applications:
@@ -174,13 +174,13 @@ class VariableAdder:
 
         for component in self._knowledge.components:
             if self._knowledge.components[component].cardinality == ComponentCardinality.SINGLE:
-                self.job_vars_by_compin[component] = []
+                self.unique_vars_by_compin[component] = []
                 for node in self._nodes:
                     var_ = CompNodeVar(self._solver, component_id=component, chain_id=component, node=node.name)
-                    self.job_vars_by_compin[component].append(var_)
-                    self.job_vars_by_node[node.name].append(var_)
-                    self.job_vars_by_node_and_compin[node.name][component] = var_
-                    self.job_vars.append(var_)
+                    self.unique_vars_by_compin[component].append(var_)
+                    self.unique_vars_by_node[node.name].append(var_)
+                    self.unique_vars_by_node_and_compin[node.name][component] = var_
+                    self.unique_vars.append(var_)
         self.node_role_vars: Dict[str, NodeRoleVar] = {}
         for node in self._nodes:
             self.node_role_vars[node.name] = NodeRoleVar(self._solver, node.name)

@@ -106,7 +106,7 @@ class RunningNodeVar(Var):
 
 class NodeRoleVar(Var):
     """
-    When this variable is set to 1, it means that this node is allocated for jobs only, otherwise for regular
+    When this variable is set to 1, it means that this node is allocated for unique instances only, otherwise for regular
     compins only.
     """
     def __init__(self, solver: Solver, node: str):
@@ -136,10 +136,10 @@ class Variables:
                  cn_vars_by_node_and_compin,
                  rcn_vars_by_node_and_compin,
                  client_dc_vars_by_tier,
-                 job_vars_by_compin,
-                 job_vars_by_node,
-                 job_vars_by_node_and_compin,
-                 job_vars,
+                 unique_vars_by_compin,
+                 unique_vars_by_node,
+                 unique_vars_by_node_and_compin,
+                 unique_vars,
     ):
         self.comp_node_vars: List[CompNodeVar] = comp_node_vars
         self.vars_by_compin: Dict[str, List[CompNodeVar]] = cn_vars_by_compin
@@ -156,10 +156,10 @@ class Variables:
         self.cdc_vars: Dict[str, Dict[str, CompDCVar]] = cdc_vars
         self._collector: SolutionCollector = None
 
-        self.job_vars_by_compin: Dict[str, List[CompNodeVar]] = job_vars_by_compin
-        self.job_vars_by_node: Dict[str, List[CompNodeVar]] = job_vars_by_node
-        self.job_vars_by_node_and_compin: Dict[str, Dict[str, CompNodeVar]] = job_vars_by_node_and_compin
-        self.job_vars: List[CompNodeVar] = job_vars
+        self.unique_vars_by_compin: Dict[str, List[CompNodeVar]] = unique_vars_by_compin
+        self.unique_vars_by_node: Dict[str, List[CompNodeVar]] = unique_vars_by_node
+        self.unique_vars_by_node_and_compin: Dict[str, Dict[str, CompNodeVar]] = unique_vars_by_node_and_compin
+        self.unique_vars: List[CompNodeVar] = unique_vars
 
     def get_all_variables(self) -> List[Var]:
         """
@@ -173,7 +173,7 @@ class Variables:
             for var_ in node_vars.values():
                 var_list.append(var_)
         var_list += self.comp_node_vars
-        var_list += self.job_vars
+        var_list += self.unique_vars
         for dc in self.dc_vars_by_chain.values():
             for lst in dc.values():
                 var_list += lst
@@ -214,11 +214,11 @@ class Variables:
                                         id_=generate_managed_compin_id(component, var),
                                         node=var.node,
                                         chain_id=var.chain_id))
-            for var in iterate_set_vars(self.job_vars):
+            for var in iterate_set_vars(self.unique_vars):
                 component = knowledge.components[var.component_id]
                 managed_compins.append(model.ManagedCompin(
                     component=component,
-                    id_=f"job{var.component_id}",
+                    id_=var.component_id,
                     node=var.node,
                     chain_id=var.chain_id
                 ))

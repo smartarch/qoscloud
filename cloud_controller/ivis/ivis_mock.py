@@ -9,14 +9,16 @@ from cloud_controller.ivis.ivis_data import SAMPLE_JOB_CODE, SAMPLE_JOB_PARAMETE
     SAMPLE_JOB_CONFIG, SAMPLE_JOB_CREATE_SS_RESPONSE
 from cloud_controller.middleware import AGENT_HOST, AGENT_PORT
 from cloud_controller.middleware.helpers import connect_to_grpc_server, setup_logging
-from cloud_controller.middleware.ivis_pb2 import JobAdmissionStatus, JobStatus, JobID, RunParameters, JobDescriptor
-from cloud_controller.middleware.ivis_pb2_grpc import IvisInterfaceStub, JobMiddlewareAgentStub
-from cloud_controller.middleware.job_agent import IVIS_HOST, IVIS_PORT
+from cloud_controller.ivis.ivis_pb2 import JobAdmissionStatus, JobStatus, JobID, RunParameters, JobDescriptor
+from cloud_controller.ivis.ivis_pb2_grpc import IvisInterfaceStub, JobMiddlewareAgentStub
 
 from flask import Flask, request, g, json
 
 app = Flask(__name__)
 state = None
+
+IVIS_HOST = "0.0.0.0"
+IVIS_PORT = 8082
 
 IVIS_INTERFACE_HOST = "0.0.0.0"
 IVIS_INTERFACE_PORT = 62533

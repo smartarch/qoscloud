@@ -459,24 +459,24 @@ class Application:
         application._pb_representation = application_pb
         return application
 
-
+# TONOWDO: template usage
 JOB_DEPLOYMENT_TEMPLATE = """
 kind: Deployment
 metadata:
-  name: job
+  name: %s
   labels:
-    app: ivisjob
+    app: %s
 spec:
   selector:
     matchLabels:
-      app: ivisjob
+      app: %s
   template:
     metadata:
       labels:
-        app: ivisjob
+        app: %s
     spec:
       containers:
-      - name: job
+      - name: container
         image: %s
         imagePullPolicy: Always
         args: []
@@ -493,68 +493,6 @@ def add_resource_requirements(template: str, min_memory="", max_memory="",
                               min_cpu="", max_cpu="", k8s_labels="") -> str:
     # TONOWDO
     return template
-
-
-class IvisApplication(Application):
-
-    def __init__(self, job_id: str, code: str, parameters: str, config: str,
-                 signal_set: str, execution_time_signal: str, run_count_signal: str,
-                 interval: int, container_name: str = 'dankhalev/ivis-job:latest',
-                 min_memory="", max_memory="", min_cpu="", max_cpu="", k8s_labels=""):
-        super().__init__(job_id)
-        self._code = code
-        self._parameters = parameters
-        self._config = config
-        self._interval = interval
-
-        self._job_component = Component(self, job_id, job_id, ComponentType.MANAGED,
-                                        container_spec=(JOB_DEPLOYMENT_TEMPLATE % container_name))
-        self._probe = Probe(name=job_id, component=self._job_component, requirements=[])
-        self._job_component.probes.append(self._probe)
-        self._components[self._job_component.name] = self._job_component
-        self._signal_set = signal_set
-        self._execution_time_signal = execution_time_signal
-        self._run_count_signal = run_count_signal
-        self.run_count = 0
-
-    @property
-    def signal_set(self) -> str:
-        return self._signal_set
-
-    @property
-    def execution_time_signal(self) -> str:
-        return self._execution_time_signal
-
-    @property
-    def run_count_signal(self) -> str:
-        return self._run_count_signal
-
-    @property
-    def code(self) -> str:
-        return self._code
-
-    @property
-    def parameters(self) -> str:
-        return self._parameters
-
-    @property
-    def config(self) -> str:
-        return self._config
-
-    @property
-    def interval(self) -> int:
-        return self._interval
-
-    @property
-    def job_component(self) -> Component:
-        return self._job_component
-
-    @property
-    def probe(self) -> "Probe":
-        return self._probe
-
-    def add_component(self, component: Component) -> None:
-        raise NotImplementedError("Operation not supported!")
 
 
 class Compin:

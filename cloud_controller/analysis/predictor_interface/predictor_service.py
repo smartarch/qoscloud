@@ -4,7 +4,7 @@ import time
 from collections import Counter
 from enum import Enum
 from threading import RLock
-from typing import Dict, List, Tuple, Iterator, Set, FrozenSet, Optional
+from typing import Dict, List, Tuple, Iterator, Set, Optional
 
 import logging
 
@@ -16,7 +16,7 @@ from cloud_controller.analysis.predictor_interface.predictor_pb2_grpc import Pre
     add_PredictorServicer_to_server, PredictorStub
 from cloud_controller.architecture_pb2 import ApplicationTimingRequirements
 from cloud_controller.assessment.model import Scenario
-from cloud_controller.ivis.statistical_predictor import PercentilePredictor
+from cloud_controller.analysis.predictor_interface.statistical_predictor import PercentilePredictor
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import Application, Probe, TimeContract, ThroughputContract
 from cloud_controller.middleware.helpers import start_grpc_server, connect_to_grpc_server, setup_logging

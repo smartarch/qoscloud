@@ -12,7 +12,6 @@ option objc_class_prefix = "";
 package cloud_controller.assessment;
 
 import "cloud_controller/architecture.proto";
-import "cloud_controller/middleware/ivis.proto";
 
 // Avocadoctl stuff
 service DeployController {
@@ -21,8 +20,14 @@ service DeployController {
     rpc RegisterHwConfig (HwConfig) returns (DeployReply);
     rpc DeleteApplication (AppName) returns (DeployReply);
     rpc GetApplicationStats (AppName) returns (AppStats);
-    rpc UpdateAccessToken (cloud_controller.middleware.AccessToken) returns (cloud_controller.middleware.AccessTokenAck) {}
+    rpc UpdateAccessToken (AccessToken) returns (AccessTokenAck) {}
 }
+
+message AccessToken {
+    string token = 1;
+}
+
+message AccessTokenAck {}
 
 message AppName {
     string name = 1;

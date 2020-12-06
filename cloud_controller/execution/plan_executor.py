@@ -22,7 +22,6 @@ import cloud_controller.knowledge.knowledge_pb2_grpc as servicers
 from cloud_controller.knowledge.model import ManagedCompin, CompinPhase, UnmanagedCompin
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer
 from cloud_controller.middleware import AGENT_PORT
-from cloud_controller.middleware.ivis_pb2_grpc import JobMiddlewareAgentStub
 from cloud_controller.middleware.middleware_pb2 import Pong, DependencyAddress
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
 from cloud_controller.middleware.helpers import connect_to_grpc_server
@@ -121,7 +120,7 @@ class PlanExecutor:
             except grpc.RpcError:
                 time.sleep(self.WAIT_BEFORE_RETRY)
 
-    def ping_compin(self, stub: Union[MiddlewareAgentStub, JobMiddlewareAgentStub]) -> CompinPhase:
+    def ping_compin(self, stub: MiddlewareAgentStub) -> CompinPhase:
         """
         Checks whether managed compin answers to the ping, and its current phase.
         :param stub: MiddlewareAgentStub of compin to check.

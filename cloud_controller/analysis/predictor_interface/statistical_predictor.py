@@ -46,10 +46,10 @@ class PercentilePredictor:
             return True
         return False
 
-    def running_time_at_percentile(self, job_name: str, percentile: int) -> int:
-        time_array = self._measurements[job_name]
+    def running_time_at_percentile(self, probe_name: str, percentile: int) -> int:
+        time_array = self._measurements[probe_name]
         index = math.ceil(len(time_array) * percentile / 100) - 1
-        logging.info(f"Predicted running time of {time_array[index]} for process {job_name} at {percentile} percentile.")
+        logging.info(f"Predicted running time of {time_array[index]} for process {probe_name} at {percentile} percentile.")
         return time_array[index]
     
     def mean_running_time(self, name: str) -> int:

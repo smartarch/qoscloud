@@ -21,7 +21,6 @@ import cloud_controller.middleware.middleware_pb2 as mw_protocols
 from cloud_controller.middleware import CLIENT_CONTROLLER_EXTERNAL_HOST, CLIENT_CONTROLLER_EXTERNAL_PORT, \
     AGENT_PORT, AGENT_HOST
 from cloud_controller.middleware.helpers import connect_to_grpc_server, start_grpc_server, OrderedEnum
-from cloud_controller.middleware.ivis_pb2 import RunStatus, RunJobAck
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentServicer, \
     add_MiddlewareAgentServicer_to_server, ClientControllerExternalStub
 from cloud_controller.middleware.mongo_agent import MongoAgent
@@ -43,7 +42,7 @@ request_names = {
     Request.SUCCESS: "/on-success",
     Request.FAIL: "/on-fail",
     Request.RUNTIME: "/run-request",
-    Request.STATE: "/job-state/"
+    Request.STATE: "/instance-state/"
 }
 
 
@@ -190,16 +189,15 @@ class Interpreter:
     def _report_already_running(self, run_id: str):
         run_status = {
             'config': "",
-            'jobId': self._config.instance_id,
+            'instanceId': self._config.instance_id,
             'runId': run_id,
             'startTime': time.perf_counter(),
             'endTime': time.perf_counter(),
             'output': "",
-            'error': "The job is already running.",
+            'error': "This instance is already running a probe.",
             'returnCode': -1,
-            'status': RunStatus.Status.Value('FAILED')
         }
-        logging.info(f"Cannot run the job. {run_status['error']}")
+        logging.info(f"Cannot run the probe. {run_status['error']}")
         self._send_request(Request.FAIL, run_status)
 
     def _run_python_interpreter(self, probe: RunnableProbe):
@@ -240,7 +238,7 @@ class Interpreter:
         assert self._current_process is not None
         run_status = {
             'config': "",
-            'jobId': self._config.instance_id,
+            'instanceId': self._config.instance_id,
             'runId': self._current_process,
             'startTime': self._last_run_start_time
         }
@@ -263,11 +261,9 @@ class Interpreter:
 
         run_status['endTime'] = time.perf_counter()
         if success:
-            run_status['status'] = RunStatus.Status.Value('COMPLETED')
             logging.info(f"Run completed successfully. STDOUT: {run_status['output']}")
             self._send_request(Request.SUCCESS, run_status)
         else:
-            run_status['status'] = RunStatus.Status.Value('FAILED')
             logging.info(f"Run failed. STDERR: {run_status['error']}")
             self._send_request(Request.FAIL, run_status)
         probe.submit_running_time(run_status['endTime'] - self._last_run_start_time, self._elasticsearch)
@@ -283,7 +279,7 @@ class Interpreter:
             line = fr.readline()
             print(f"Processing a runtime request: {line}")
             response = self._send_request(Request.RUNTIME, {
-                'jobId': self._config.instance_id,
+                'instanceId': self._config.instance_id,
                 'request': line
             })
             print(f"Writing a runtime response: {response['response']}")
@@ -387,7 +383,7 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         if not self._config.production:
             self._probe_monitor = ProbeMonitor(interpreter=self._interpreter)
         self.set_ready()
-        logging.info("Job initialized")
+        logging.info("Instance initialized")
         return InitAck()
 
     def Ping(self, request, context):

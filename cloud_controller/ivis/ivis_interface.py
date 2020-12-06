@@ -10,9 +10,9 @@ from cloud_controller.knowledge.model import ManagedCompin, CompinPhase, JOB_DEP
     add_resource_requirements
 from cloud_controller.middleware import AGENT_PORT
 from cloud_controller.middleware.helpers import connect_to_grpc_server
-from cloud_controller.middleware.ivis_pb2 import SubmissionAck, JobStatus, JobAdmissionStatus, UnscheduleJobAck, \
+from cloud_controller.ivis.ivis_pb2 import SubmissionAck, JobStatus, JobAdmissionStatus, UnscheduleJobAck, \
     RunJobAck, AccessTokenAck
-from cloud_controller.middleware.ivis_pb2_grpc import IvisInterfaceServicer, JobMiddlewareAgentStub
+from cloud_controller.ivis.ivis_pb2_grpc import IvisInterfaceServicer, JobMiddlewareAgentStub
 
 
 class IvisInterface(IvisInterfaceServicer):

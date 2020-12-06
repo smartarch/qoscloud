@@ -65,10 +65,10 @@ class PredictorScenarioPlanner(ScenarioPlanner):
             "Content-Type": "application/json",
             "access-token": self._knowledge.api_endpoint_access_token
         }
-        payload = {"jobId": app_name}
+        payload = {"instanceId": app_name}
         for contract in response.contracts:
             payload[f"percentile_{contract.percentile}"] = contract.time
         requests.post(
-            f"http://{API_ENDPOINT_IP}:{API_ENDPOINT_PORT}/ccapi/job-stats",
+            f"http://{API_ENDPOINT_IP}:{API_ENDPOINT_PORT}/ccapi/instance-stats",
             headers=headers, json=payload
         )

@@ -1,0 +1,87 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "cz.cuni.mff.avocado.api";
+
+package cloud_controller.ivis;
+
+service IvisInterface {
+
+    rpc SubmitJob (IvisJobDescription) returns (SubmissionAck) {}
+
+    rpc DeployJob (QoSRequirements) returns (SubmissionAck) {}
+
+    rpc GetJobStatus (JobID) returns (JobStatus) {}
+
+    rpc RunJob (RunParameters) returns (RunJobAck) {}
+
+    rpc UnscheduleJob (JobID) returns (UnscheduleJobAck) {}
+
+    rpc UpdateAccessToken (AccessToken) returns (AccessTokenAck) {}
+
+}
+
+message RunParameters {
+    string job_id = 1;
+    string run_id = 2;
+    string state = 3;
+}
+
+message RunJobAck {}
+
+
+message QoSRequirements {
+    string job_id = 1;
+    int32 percentile = 2;
+    int32 time = 3;
+}
+
+message IvisJobDescription {
+    string job_id = 5;
+    string code = 6;
+    string config = 8;
+    string docker_container = 10;
+    string min_memory = 11;
+    string max_memory = 12;
+    string min_cpu = 13;
+    string max_cpu = 14;
+    string k8s_labels = 15;
+    string signal_set = 16;
+    string execution_time_signal = 17;
+    string run_count_signal = 18;
+}
+
+message AccessToken {
+    string token = 1;
+}
+
+message AccessTokenAck {
+    bool success = 1;
+}
+
+message SubmissionAck {
+    bool success = 1;
+}
+
+enum JobAdmissionStatus {
+    MEASURING = 0;
+    REJECTED = 1;
+    ACCEPTED = 2;
+    DEPLOYED = 3;
+    NO_RESOURCES = 4;
+    NOT_PRESENT = 5;
+    MEASURED = 6;
+}
+
+
+message JobStatus {
+    JobAdmissionStatus status = 1;
+}
+
+message JobID {
+    string job_id = 1;
+}
+
+message UnscheduleJobAck {}
+
+// -----------------------------------------------------------------------------

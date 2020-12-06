@@ -72,12 +72,12 @@ class ConstraintAdder:
     def _add_node_separation_constraints(self) -> None:
         for node_name in self._node_names:
             # node_role_var = self._variables.node_role_vars[node_name]
-            job_vars_for_node: List[IntVar] = [var_.int_var for var_ in self._variables.job_vars_by_node[node_name]]
+            unique_vars_for_node: List[IntVar] = [var_.int_var for var_ in self._variables.unique_vars_by_node[node_name]]
             vars_for_node: List[IntVar] = [var_.int_var for var_ in self._variables.vars_by_node[node_name]]
             # "":
-            if len(job_vars_for_node) != 0 and len(vars_for_node) != 0:
-                self._solver.Add(self._solver.Max(vars_for_node) == 0 or self._solver.Max(job_vars_for_node) == 0)
-            # self._solver.Add(self._solver.Max(job_vars_for_node) == 0 or node_role_var.int_var == 1)
+            if len(unique_vars_for_node) != 0 and len(vars_for_node) != 0:
+                self._solver.Add(self._solver.Max(vars_for_node) == 0 or self._solver.Max(unique_vars_for_node) == 0)
+            # self._solver.Add(self._solver.Max(unique_vars_for_node) == 0 or node_role_var.int_var == 1)
 
     def _add_whole_chain_in_single_datacenter(self) -> None:
         """
@@ -114,7 +114,7 @@ class ConstraintAdder:
             vars = [var_.int_var for var_ in compin]
             if len(vars) > 0:
                 self._solver.Add(self._solver.SumEquality(vars, 1))
-        for compin in self._variables.job_vars_by_compin.values():
+        for compin in self._variables.unique_vars_by_compin.values():
             # "The compin can be deployed only on one node":
             vars = [var_.int_var for var_ in compin]
             if len(vars) > 0:
@@ -133,10 +133,10 @@ class ConstraintAdder:
                         self._variables.running_vars_by_node_and_compin[node_][compin_].int_var !=
                         self._variables.vars_by_node_and_compin[node_][compin_].int_var
                     )
-                # "Jobs cannot be redeployed"
-                elif node_ in self._variables.job_vars_by_node_and_compin and \
-                        compin_ in self._variables.job_vars_by_node_and_compin[node_]:
-                    self._solver.Add(self._variables.job_vars_by_node_and_compin[node_][compin_].int_var == 1)
+                # "Unique instances cannot be redeployed"
+                elif node_ in self._variables.unique_vars_by_node_and_compin and \
+                        compin_ in self._variables.unique_vars_by_node_and_compin[node_]:
+                    self._solver.Add(self._variables.unique_vars_by_node_and_compin[node_][compin_].int_var == 1)
                 # This works, because we create RunningCompNodeVars only for already existing compins (from the actual
                 # state
 
@@ -151,9 +151,9 @@ class ConstraintAdder:
             if len(vars_for_node) > 0:
                 self._solver.Add(NodePredictConstraint(solver=self._solver, vars_for_node=vars_for_node,
                                                    node=node, predictor=self._predictor))
-            job_vars_for_node: List[CompNodeVar] = self._variables.job_vars_by_node[node.name]
-            if len(job_vars_for_node) > 0:
-                self._solver.Add(NodePredictConstraint(solver=self._solver, vars_for_node=job_vars_for_node,
+            unique_vars_for_node: List[CompNodeVar] = self._variables.unique_vars_by_node[node.name]
+            if len(unique_vars_for_node) > 0:
+                self._solver.Add(NodePredictConstraint(solver=self._solver, vars_for_node=unique_vars_for_node,
                                                    node=node, predictor=self._predictor))
 
     def _add_running_nodes_constraints(self) -> None:

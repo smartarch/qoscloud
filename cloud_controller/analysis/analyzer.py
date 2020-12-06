@@ -77,8 +77,8 @@ class Analyzer:
                 pass
             else:
                 for component in self.knowledge.components.values():
-                    job_compin = self.knowledge.actual_state.get_unique_compin(component)
-                    if job_compin is None:
+                    unique_compin = self.knowledge.actual_state.get_unique_compin(component)
+                    if unique_compin is None:
                         self.knowledge.no_resources_for_component(component.name)
 
         if desired_state is None:

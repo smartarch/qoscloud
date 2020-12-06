@@ -6,12 +6,11 @@ from itertools import chain
 from typing import Iterable
 
 from cloud_controller import DEBUG
-from cloud_controller.knowledge.model import CloudState, NamespacePhase, IvisApplication
+from cloud_controller.knowledge.model import CloudState, NamespacePhase
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.planning.cloud_state_diff import get_application_diff
 from cloud_controller.planning.execution_plan_factory import ExecutionPlanFactory
 import cloud_controller.knowledge.knowledge_pb2 as protocols
-from cloud_controller.planning.job_execution_plan_factory import JobExecutionPlanFactory
 
 
 def delete_ns_plan(ns_name: str) -> protocols.ExecutionPlan:
