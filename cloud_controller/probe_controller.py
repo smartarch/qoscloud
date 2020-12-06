@@ -8,7 +8,7 @@ import threading
 import logging
 
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import ManagedCompin
+from cloud_controller.knowledge.model import ManagedCompin, TimeContract
 from cloud_controller.middleware import AGENT_PORT, middleware_pb2
 from cloud_controller.middleware.helpers import connect_to_grpc_server
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
@@ -87,11 +87,17 @@ class StatisticsCollector:
         if compin.id not in self.compin_data:
             self.compin_data[compin.id] = []
             assert len(compin.component.probes) == 1
-            self.compin_time_limits[compin.id] = compin.component.probes[0].time_limit
+            assert len(compin.component.probes[0].requirements) == 1
+            requirement = compin.component.probes[0].requirements[0]
+            assert isinstance(requirement, TimeContract)
+            self.compin_time_limits[compin.id] = requirement.time
         if component_id not in self.component_data:
             self.component_data[component_id] = []
             assert len(compin.component.probes) == 1
-            self.time_limits[component_id] = compin.component.probes[0].time_limit
+            assert len(compin.component.probes[0].requirements) == 1
+            requirement = compin.component.probes[0].requirements[0]
+            assert isinstance(requirement, TimeContract)
+            self.time_limits[component_id] = requirement.time
         for line in data:
             items = line.split(';')
             assert len(items) >= 5

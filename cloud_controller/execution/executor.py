@@ -14,7 +14,6 @@ from cloud_controller.execution.plan_executor import PlanExecutor
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.knowledge_pb2 import ExecutionPlan
 from cloud_controller.middleware.helpers import connect_to_grpc_server
-from cloud_controller.probe_controller import ProbeController
 
 
 class Executor:
@@ -41,9 +40,6 @@ class Executor:
                                                         CLIENT_CONTROLLER_HOST, CLIENT_CONTROLLER_PORT)
         self.mongo_controller = MongoController(mongos_ip)
         self.mongo_controller.start()
-        self.probe_controller = ProbeController(self.knowledge)
-        if self.knowledge.client_support:
-            self.probe_controller.start()
 
     def execute_plan(self, execution_plan: ExecutionPlan) -> None:
         """
@@ -61,7 +57,6 @@ class Executor:
             knowledge=self.knowledge,
             mongo_controller=self.mongo_controller,
             pool=self.pool,
-            probe_controller=self.probe_controller
         )
         plan_executor.run()
 
@@ -85,7 +80,6 @@ class Executor:
                 knowledge=self.knowledge,
                 mongo_controller=self.mongo_controller,
                 pool=self.pool,
-                probe_controller=self.probe_controller
             )
             future_result = self.pool.apply_async(plan_executor.run, ())
             executors.append(plan_executor)

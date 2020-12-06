@@ -25,7 +25,6 @@ from cloud_controller.middleware import AGENT_PORT
 from cloud_controller.middleware.middleware_pb2 import Pong, DependencyAddress
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
 from cloud_controller.middleware.helpers import connect_to_grpc_server
-from cloud_controller.probe_controller import ProbeController
 
 
 PING_TIMEOUT = 2  # Seconds
@@ -49,7 +48,7 @@ class PlanExecutor:
     """
 
     def __init__(self, tasks, namespace, basic_api, extensions_api, client_controller_stub, knowledge, mongo_controller,
-                 pool, probe_controller):
+                 pool):
         """
         :param tasks: List of tasks to execute
         :param namespace: Namespace on which K8S-related tasks have to be executed
@@ -95,8 +94,6 @@ class PlanExecutor:
             'INITIALIZE_JOB': self.execute_initialize_job,
         }
         self.WAIT_BEFORE_RETRY = 2
-
-        self.probe_controller: ProbeController = probe_controller
 
     def run(self) -> None:
         """
@@ -487,7 +484,6 @@ class PlanExecutor:
         compin.ip = api_response.spec.cluster_ip
         logging.info(f"Service {compin.service_name()} created")
         self.knowledge.actual_state.add_instance(compin)
-        self.probe_controller.add_compin(compin)
         return True
 
     def execute_delete_compin(self, task: protocols.Task) -> bool:
@@ -502,7 +498,6 @@ class PlanExecutor:
             task.DELETE_COMPIN.id
         )
         assert isinstance(compin, ManagedCompin)
-        self.probe_controller.remove_compin(compin)
         if not task.DELETE_COMPIN.force:
             stub = connect_to_grpc_server(MiddlewareAgentStub, compin.ip, AGENT_PORT)
             phase = self.ping_compin(stub)
