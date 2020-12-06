@@ -18,9 +18,9 @@ service JobMiddlewareAgent {
 
     rpc RunJob (RunParameters) returns (RunJobAck) {}
 
-    rpc GetRunStatus (RunStatusRequest) returns (RunStatus) {}
-
-    rpc GetInstanceStatus (InstanceStatusRequest) returns (InstanceStatus) {}
+//    rpc GetRunStatus (RunStatusRequest) returns (RunStatus) {}
+//
+//    rpc GetInstanceStatus (InstanceStatusRequest) returns (InstanceStatus) {}
 
 // --- Regular middleware agent methods
 
@@ -39,9 +39,9 @@ service JobMiddlewareAgent {
 message JobDescriptor {
     string job_id = 1;
     string code = 2;
-    string parameters = 3;
+//    string parameters = 3;
     string config = 4;
-    int32 minimal_interval = 5;
+//    int32 minimal_interval = 5;
     string ivis_core_ip = 6;
     int32 ivis_core_port = 7;
     string access_token = 8;
@@ -121,9 +121,9 @@ message RunFinalStateAck {}
 
 service IvisInterface {
 
-    rpc SubmitJob (Architecture) returns (SubmissionAck) {}
+    rpc SubmitJob (IvisJobDescription) returns (SubmissionAck) {}
 
-    rpc DeployJob (ApplicationTimingRequirements) returns (SubmissionAck) {}
+    rpc DeployJob (QoSRequirements) returns (SubmissionAck) {}
 
     rpc GetJobStatus (JobID) returns (JobStatus) {}
 
@@ -133,6 +133,29 @@ service IvisInterface {
 
     rpc UpdateAccessToken (AccessToken) returns (AccessTokenAck) {}
 
+}
+
+message QoSRequirements {
+    string job_id = 1;
+    int32 percentile = 2;
+    int32 time = 3;
+//    repeated TimeContract contracts = 2;
+//    int32 mean = 3;
+}
+
+message IvisJobDescription {
+    string job_id = 5;
+    string code = 6;
+    string config = 8;
+    string docker_container = 10;
+    string min_memory = 11;
+    string max_memory = 12;
+    string min_cpu = 13;
+    string max_cpu = 14;
+    string k8s_labels = 15;
+    string signal_set = 16;
+    string execution_time_signal = 17;
+    string run_count_signal = 18;
 }
 
 message AccessToken {
@@ -165,7 +188,7 @@ message JobStatus {
 
 message JobStats {
     // Run times for different percentiles without additional background workloads (Min acceptable periods)
-    map<int32, float> percentiles = 1;
+    map<int32, int32> percentiles = 1;
 }
 
 message JobID {

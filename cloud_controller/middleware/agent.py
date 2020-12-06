@@ -2,23 +2,293 @@
 This module contains the Agents: classes that integrate the managed and unmanaged component instances into the Avocado
 framework.
 """
+import json
 import logging
 import os
 import threading
+from enum import Enum
+from threading import Thread
 import time
 from abc import ABC, abstractmethod
+from subprocess import Popen, PIPE
 from threading import RLock
 from typing import Optional, Callable, Dict, Generator, List
+
+import requests
+from elasticsearch import Elasticsearch
 
 import cloud_controller.middleware.middleware_pb2 as mw_protocols
 from cloud_controller.middleware import CLIENT_CONTROLLER_EXTERNAL_HOST, CLIENT_CONTROLLER_EXTERNAL_PORT, \
     AGENT_PORT, AGENT_HOST
 from cloud_controller.middleware.helpers import connect_to_grpc_server, start_grpc_server, OrderedEnum
+from cloud_controller.middleware.ivis_pb2 import RunStatus, RunJobAck
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentServicer, \
     add_MiddlewareAgentServicer_to_server, ClientControllerExternalStub
 from cloud_controller.middleware.mongo_agent import MongoAgent
 from cloud_controller.middleware.probe_monitor import ProbeMonitor, DataCollector, IOEventsNotSupportedException, \
     CPUEventsNotSupportedException
+
+PYTHON_EXEC = "/bin/python3"
+
+IVIS_HOST = "0.0.0.0"
+IVIS_PORT = 8082
+
+class Request(Enum):
+    SUCCESS = 1
+    FAIL = 2
+    RUNTIME = 3
+    STATE = 4
+
+request_names = {
+    Request.SUCCESS: "/on-success",
+    Request.FAIL: "/on-fail",
+    Request.RUNTIME: "/run-request",
+    Request.STATE: "/job-state/"
+}
+
+
+class ProbeConfig:
+
+    def __init__(self, name: str, signal_set: str, et_signal: str, rc_signal: str, run_count: int):
+        self.name = name
+        self.signal_set = signal_set
+        self.execution_time_signal = et_signal
+        self.run_count_signal = rc_signal
+        self.run_count = run_count
+
+    def submit_running_time(self, time: float, report_service: Elasticsearch) -> None:
+        time *= 1000
+        self.run_count += 1
+        doc = {
+            self.execution_time_signal: time,
+            self.run_count_signal: self.run_count
+        }
+        report_service.index(index=self.run_count, doc_type='_doc', body=doc)
+
+
+class CallableProbe(ProbeConfig):
+
+    def __init__(self, name: str, signal_set: str, et_signal: str, rc_signal: str, run_count: int, procedure: Callable):
+        super(CallableProbe, self).__init__(name, signal_set, et_signal, rc_signal, run_count)
+        self.procedure: Callable = procedure
+
+
+class RunnableProbe(ProbeConfig):
+
+    def __init__(self, name: str, signal_set: str, et_signal: str, rc_signal: str, run_count: int, code: str, config: str):
+        super(RunnableProbe, self).__init__(name, signal_set, et_signal, rc_signal, run_count)
+        self.filename = f"./{self.name}.py"
+        with open(self.filename, "w") as code_file:
+            code_file.write(code)
+        self._config = json.loads(config)
+        # self._elasticsearch: Optional[Elasticsearch] = None
+
+    def config(self) -> str:
+        return json.dumps(self._config)
+
+    def update_state(self, state: Optional[str] = None) -> None:
+        if state is not None and state != "":
+            self._config['state'] = json.loads(state)
+        else:
+            self._config['state'] = None
+
+    def set_es_ip(self, ip: str) -> None:
+        self._config['es']['host'] = ip
+
+
+class InstanceConfig:
+
+    def __init__(self, instance_id: str, api_endpoint_ip: str, api_endpoint_port: int, access_token:str,
+                 production: bool):
+        self.instance_id: str = instance_id
+        self.api_endpoint_url: str = f"http://{api_endpoint_ip}:{api_endpoint_port}/ccapi"
+        self.access_token: str = access_token
+        self.production: bool = production
+        self.probes: Dict[str, ProbeConfig] = {}
+
+    @staticmethod
+    def init_from_pb(config_pb, procedures: Dict[str, Callable]) -> "InstanceConfig":
+        config = InstanceConfig(
+            config_pb.instance_id,
+            config_pb.api_endpoint_ip,
+            config_pb.api_endpoint_port,
+            config_pb.access_token,
+            config_pb.production
+        )
+        for probe_pb in config_pb.probes:
+            if probe_pb.type == mw_protocols.ProbeType.Value('PROCEDURE'):
+                assert probe_pb.name in procedures
+                probe = CallableProbe(
+                    name=probe_pb.name,
+                    signal_set=probe_pb.signal_set,
+                    et_signal=probe_pb.execution_time_signal,
+                    rc_signal=probe_pb.run_count_signal,
+                    run_count=probe_pb.run_count,
+                    procedure=procedures[probe_pb.name]
+                )
+
+            else:
+                assert probe_pb.type == mw_protocols.ProbeType.Value('CODE')
+                probe = RunnableProbe(
+                    name=probe_pb.name,
+                    signal_set=probe_pb.signal_set,
+                    et_signal=probe_pb.execution_time_signal,
+                    rc_signal=probe_pb.run_count_signal,
+                    run_count=probe_pb.run_count,
+                    code=probe_pb.code,
+                    config=probe_pb.config
+                )
+                probe.set_es_ip(config_pb.api_endpoint_ip)
+            config.probes[probe.name] = probe
+        return config
+
+
+class Interpreter:
+
+    def __init__(self, config: InstanceConfig, agent: "MiddlewareAgent", es_host, es_port):
+        self._config: InstanceConfig = config
+        self._agent: MiddlewareAgent = agent
+        self._wait_thread: Optional[Thread] = None
+        self._requests_thread: Optional[Thread] = None
+        self._process: Optional[Popen] = None
+
+        self._current_process: Optional[str] = None
+        self._last_run_start_time: float = 0
+        self._elasticsearch = Elasticsearch([{'host': es_host, 'port': int(es_port)}])
+        self._measurement_iteration_number = 0
+
+    @property
+    def current_process(self) -> Optional[str]:
+        return self._current_process
+
+    def run_measurement(self, probe_name: str):
+        logging.info(f"Running run {self._measurement_iteration_number}")
+        probe = self._config.probes[probe_name]
+        if isinstance(probe, RunnableProbe):
+            state = self._send_request(Request.STATE)
+        else:
+            state = None
+        self.run_probe(probe_name, f"run{self._measurement_iteration_number}", json.dumps(state))
+        while self._current_process is not None:
+            time.sleep(.01)
+        self._measurement_iteration_number += 1
+
+    def run_probe(self, probe_name: str, run_id: str, state: str) -> None:
+        if self._current_process is not None:
+            self._report_already_running(run_id)
+            return
+        self._current_process = probe_name
+        self._last_run_start_time = time.perf_counter()
+        probe = self._config.probes[probe_name]
+        if isinstance(probe, RunnableProbe):
+            probe.update_state(state)
+            self._run_python_interpreter(probe)
+        elif isinstance(probe, CallableProbe):
+            self._wait_thread: Thread = Thread(target=self._wait_for_process, args=(probe,), daemon=True)
+            self._wait_thread.start()
+
+    def _report_already_running(self, run_id: str):
+        run_status = {
+            'config': "",
+            'jobId': self._config.instance_id,
+            'runId': run_id,
+            'startTime': time.perf_counter(),
+            'endTime': time.perf_counter(),
+            'output': "",
+            'error': "The job is already running.",
+            'returnCode': -1,
+            'status': RunStatus.Status.Value('FAILED')
+        }
+        logging.info(f"Cannot run the job. {run_status['error']}")
+        self._send_request(Request.FAIL, run_status)
+
+    def _run_python_interpreter(self, probe: RunnableProbe):
+        fdr, fdw = os.pipe()
+        self._process = Popen([PYTHON_EXEC, probe.filename, str(fdw)], universal_newlines=True,
+                              stderr=PIPE, stdout=PIPE, stdin=PIPE, pass_fds=(fdw,))
+        self._process.stdin.write(f"{probe.config()}\n")
+        self._process.stdin.flush()
+
+        self._wait_thread: Thread = Thread(target=self._wait_for_process, args=(probe,), daemon=True)
+        self._wait_thread.start()
+        self._requests_thread: Thread = Thread(target=self._process_runtime_requests, args=(fdr, self._process.stdin),
+                                               daemon=True)
+        self._requests_thread.start()
+
+    def _send_request(self, request: Request, payload=None):
+        headers = {
+            "Content-Type": "application/json",
+            "access-token": self._config.access_token
+        }
+        if request == Request.STATE:
+            return requests.get(
+                f"{self._config.api_endpoint_url}{request_names[request]}{self._config.instance_id}",
+                headers=headers
+            ).json()
+        elif request == Request.RUNTIME:
+            return requests.post(
+                f"{self._config.api_endpoint_url}{request_names[request]}",
+                headers=headers, json=payload
+            ).json()
+        else:
+            requests.post(
+                f"{self._config.api_endpoint_url}{request_names[request]}",
+                headers=headers, json=payload
+            )
+
+    def _wait_for_process(self, probe: ProbeConfig):
+        assert self._current_process is not None
+        run_status = {
+            'config': "",
+            'jobId': self._config.instance_id,
+            'runId': self._current_process,
+            'startTime': self._last_run_start_time
+        }
+        if isinstance(probe, RunnableProbe):
+            while self._process.poll() is None:
+                time.sleep(0.1)
+
+            run_status['output'] = self._process.stdout.read()
+            run_status['error'] = self._process.stderr.read()
+            run_status['returnCode'] = self._process.returncode
+            success = self._process.returncode == 0
+        else:
+            assert isinstance(probe, CallableProbe)
+            try:
+                probe.procedure()
+                success = True
+            except Exception as e:
+                run_status['error'] = str(e)
+                success = False
+
+        run_status['endTime'] = time.perf_counter()
+        if success:
+            run_status['status'] = RunStatus.Status.Value('COMPLETED')
+            logging.info(f"Run completed successfully. STDOUT: {run_status['output']}")
+            self._send_request(Request.SUCCESS, run_status)
+        else:
+            run_status['status'] = RunStatus.Status.Value('FAILED')
+            logging.info(f"Run failed. STDERR: {run_status['error']}")
+            self._send_request(Request.FAIL, run_status)
+        probe.submit_running_time(run_status['endTime'] - self._last_run_start_time, self._elasticsearch)
+        if self._agent.phase == mw_protocols.Phase.Value('FINALIZING'):
+            self._agent.set_finished()
+        else:
+            self._current_process = None
+
+    def _process_runtime_requests(self, fdr, stdin):
+        # TODO: kill the thread at process end
+        fr = os.fdopen(fdr)
+        while not fr.closed:
+            line = fr.readline()
+            print(f"Processing a runtime request: {line}")
+            response = self._send_request(Request.RUNTIME, {
+                'jobId': self._config.instance_id,
+                'request': line
+            })
+            print(f"Writing a runtime response: {response['response']}")
+            stdin.write(f"{response['response']}\n")
+            stdin.flush()
 
 
 class MiddlewareAgent(MiddlewareAgentServicer):
@@ -28,7 +298,7 @@ class MiddlewareAgent(MiddlewareAgentServicer):
     """
 
     def __init__(self, dependency_map, lock, update_call, finalize_call, initialize_call,
-                 probes: Dict[str, Callable[[], None]]):
+                 probes: Dict[str, Callable[[], None]], standalone: bool = False):
         """
         :param dependency_map: a map of dependencies that will be updated on each dependency change
         :param lock: a lock to hold while setting a dependency value
@@ -47,7 +317,25 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         self._mongo_agent: Optional[MongoAgent] = None
         self._probes = probes
         self._probe_monitor = None
-        self._production = None
+        self._config: Optional[InstanceConfig] = None
+        self._interpreter: Optional[Interpreter] = None
+
+        self._ready_reported: bool = standalone
+        self._finished_reported: bool = standalone
+
+    def set_ready(self):
+        with self._dict_lock:
+            if self._ready_reported:
+                self.phase = mw_protocols.Phase.Value('READY')
+            else:
+                self._ready_reported = True
+
+    def set_finished(self):
+        with self._dict_lock:
+            if self._finished_reported:
+                self.phase = mw_protocols.Phase.Value('FINISHED')
+            else:
+                self._finished_reported = True
 
     def SetDependencyAddress(self, request, context):
         """
@@ -68,6 +356,9 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         if self.phase < mw_protocols.Phase.Value('FINISHED'):
             self.phase = mw_protocols.Phase.Value('FINALIZING')
             logging.info(f"Phase was switched to FINALIZING")
+            with self._dict_lock:
+                if self._interpreter.current_process is None:
+                    self.set_finished()
         if self._finalize_call is not None:
             self._finalize_call()
         return mw_protocols.AddressAck()
@@ -81,17 +372,29 @@ class MiddlewareAgent(MiddlewareAgentServicer):
             self._initialize_call(request.data)
         return mw_protocols.StateAck()
 
+    def RunProbe(self, request, context):
+        with self._dict_lock:
+            if self.phase == self.phase == mw_protocols.Phase.Value('READY'):
+                logging.info(f"Running probe {request.probe_id} with state {request.state}")
+                self._interpreter.run_probe(request.probe_id, request.run_id, request.state)
+            else:
+                logging.info(f"Cannot run probe: the instance is not in the correct lifecycle phase")
+        return RunAck()
+
+    def InitializeInstance(self, request, context):
+        self._config = InstanceConfig.init_from_pb(request, self._probes)
+        self._interpreter = Interpreter(self._config, self)
+        if not self._config.production:
+            self._probe_monitor = ProbeMonitor(interpreter=self._interpreter)
+        self.set_ready()
+        logging.info("Job initialized")
+        return InitAck()
+
     def Ping(self, request, context):
         """
         This method is used to check whether the instance is already running and to get its current phase
         :return: Current phase of the instance
         """
-        if self._probe_monitor is None:
-            self._production = request.production
-            self._probe_monitor = ProbeMonitor(production=self._production)
-            logging.info(f"Production: {self._production}")
-            for name, exe in self._probes.items():
-                self._probe_monitor.add_probe(name, exe)
         return mw_protocols.Pong(phase=self.phase)
 
     def SetMongoParameters(self, request, context):
@@ -109,20 +412,26 @@ class MiddlewareAgent(MiddlewareAgentServicer):
     def mongo_agent(self) -> Optional[MongoAgent]:
         return self._mongo_agent
 
-    def MeasureProbe(self, measurement: mw_protocols.ProbeMeasurement, context) -> mw_protocols.ProbeCallResult:
-        # Probe name
-        if not self._probe_monitor.has_probe(measurement.probe.name):
-            logging.error(f"Probe {measurement.probe.name} not found")
+    def _check_measurement_errors(self, probe_name: str):
+        if self._config.production:
+            logging.error(f"Probe measurement in production is not supported")
             return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.ERROR)
+        # Probe name
+        if probe_name not in self._config.probes:
+            logging.error(f"Probe {probe_name} not found")
+            return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.ERROR)
+        return None
 
+    def MeasureProbe(self, measurement: mw_protocols.ProbeMeasurement, context) -> mw_protocols.ProbeCallResult:
+        error = self._check_measurement_errors(measurement.probe.name)
+        if error:
+            return error
         # Execute
         try:
             if len(measurement.cpuEvents) == 0:
                 cpu_events: Optional[List[str]] = None
             else:
                 cpu_events: Optional[List[str]] = measurement.cpuEvents[:]
-            if not self._production:
-                self._probe_monitor.start_probe_workload(measurement.probe.name)
             time = self._probe_monitor.execute_probe(measurement.probe.name, measurement.warmUpCycles,
                                                      measurement.measuredCycles, cpu_events)
 
@@ -135,15 +444,17 @@ class MiddlewareAgent(MiddlewareAgentServicer):
     def SetProbeWorkload(self, workload: mw_protocols.ProbeWorkload, context) -> mw_protocols.ProbeCallResult:
         if workload.WhichOneof("newWorkload") == "probe":
             # Probe name
-            if not self._probe_monitor.has_probe(workload.probe.name):
-                logging.error(f"Probe {workload.probe.name} not found")
-                return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.ERROR)
-
+            error = self._check_measurement_errors(workload.probe.name)
+            if error:
+                return error
             # Start
             if self._probe_monitor.has_workload:
                 self._probe_monitor.stop_probe_workload()
             self._probe_monitor.start_probe_workload(workload.probe.name, workload.probe.name)
         else:
+            if self._config.production:
+                logging.error(f"Probe measurement in production is not supported")
+                return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.ERROR)
             # Check status
             if not self._probe_monitor.has_workload:
                 return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.NOTHING_RUNNING)
@@ -153,9 +464,8 @@ class MiddlewareAgent(MiddlewareAgentServicer):
 
     def CollectProbeResults(self, probe: mw_protocols.ProbeDescriptor, context) \
             -> Generator[mw_protocols.ProbeFullResult, None, None]:
-        # Probe name
-        if not self._probe_monitor.has_probe(probe.name):
-            logging.error(f"Probe {probe.name} not found")
+        error = self._check_measurement_errors(probe.name)
+        if error:
             yield mw_protocols.ProbeFullResult(nothing=True)
             return
         # Return data
@@ -228,6 +538,8 @@ class ServerAgent(Agent):
         super().__init__()
         self._mw_agent = MiddlewareAgent(self._dependencies, self._dependency_lock, update_call,
                                          finalize_call, initialize_call, probes)
+        self._ready_called = False
+        self._finished_called = False
 
     def _run(self) -> None:
         start_grpc_server(self._mw_agent, add_MiddlewareAgentServicer_to_server, AGENT_HOST, AGENT_PORT, 10, True)
@@ -245,8 +557,9 @@ class ServerAgent(Agent):
         Signalizes that the compin is ready to accept the incoming connections from the clients. The Avocado framework
         will direct the clients towards an instance only after it calls this method.
         """
-        if self._mw_agent.phase == mw_protocols.Phase.Value('INIT'):
-            self._mw_agent.phase = mw_protocols.Phase.Value('READY')
+        if not self._ready_called:
+            self._mw_agent.set_ready()
+            self._ready_called = True
             logging.info(f"Phase was switched to READY")
 
     def set_finished(self) -> None:
@@ -256,8 +569,9 @@ class ServerAgent(Agent):
             (1) No client ever received address of this instance as its dependency.
             (2) The client for which this component was created closed its connection to the Avocado framework.
         """
-        if self._mw_agent.phase != mw_protocols.Phase.Value('FINISHED'):
-            self._mw_agent.phase = mw_protocols.Phase.Value('FINISHED')
+        if not self._finished_called:
+            self._mw_agent.set_finished()
+            self._finished_called = True
             logging.info(f"Phase was switched to FINISHED")
 
     def get_phase(self) -> Phase:

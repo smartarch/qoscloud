@@ -5,7 +5,7 @@ execution plans that aim to bring the actual state to the desired state.
 """
 from typing import Tuple, List, Optional
 
-from cloud_controller.knowledge.model import CloudState, ManagedCompin, Compin, Statefulness
+from cloud_controller.knowledge.model import CloudState, ManagedCompin, Compin, Statefulness, CompinPhase
 
 
 def get_application_diff(actual_state: CloudState, desired_state: CloudState) -> Tuple[List[str], List[str]]:
@@ -23,7 +23,7 @@ def get_application_diff(actual_state: CloudState, desired_state: CloudState) ->
 
 
 def get_compin_diff(application_name, actual_state: CloudState, desired_state: CloudState) -> \
-        Tuple[List[ManagedCompin], List[ManagedCompin], List[ManagedCompin]]:
+        Tuple[List[ManagedCompin], List[ManagedCompin], List[ManagedCompin], List[ManagedCompin]]:
     """
     Calculates the differences in the compins of a given application present in the two cloud states.
     :param application_name: An application to calculate the difference for
@@ -41,14 +41,17 @@ def get_compin_diff(application_name, actual_state: CloudState, desired_state: C
 
     delete_instances: List[ManagedCompin] = []
     mongo_init_instances: List[ManagedCompin] = []
+    init_instances: List[ManagedCompin] = []
     for compin in actual_state.list_managed_compins(application_name):
         if not desired_state.compin_exists(application_name, compin.component.name, compin.id):
             if not compin.force_keep:
                 delete_instances.append(compin)
+        elif not compin.init_completed:
+            init_instances.append(compin)
         elif compin.component.statefulness == Statefulness.MONGO and not compin.mongo_init_completed:
             mongo_init_instances.append(compin)
 
-    return create_instances, delete_instances, mongo_init_instances
+    return create_instances, delete_instances, mongo_init_instances, init_instances
 
 
 def get_dependency_diff(application_name, actual_state: CloudState, desired_state: CloudState) -> \

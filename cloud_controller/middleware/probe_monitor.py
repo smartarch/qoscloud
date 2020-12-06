@@ -11,6 +11,8 @@ from pypapi import events as papi_events
 from pypapi import papi_high
 from pypapi.exceptions import PapiNoEventError
 
+from cloud_controller.middleware.agent import Interpreter
+
 """
 Collects probes data and controls probe measurement process. The results are saved as files in `./probes/`
 """
@@ -18,27 +20,24 @@ Collects probes data and controls probe measurement process. The results are sav
 
 class ProbeMonitor:
 
-    def __init__(self, production: bool):
+    def __init__(self, interpreter: Interpreter):
         self._workload_enabled = False
-        self._probes: {str, Callable[[], None]} = {}
-        self._production = production
+        self._interpreter = interpreter
         self._workload_thread = None
-        self._workload_thread_2 = None
 
     def execute_probe(self, probe_name: str, warm_up_cycles: int, measured_cycles: int,
                       cpu_events: Optional[List[str]] = None) -> int:
-        collector = DataCollector(probe_name, cpu_events, self._production)
+        collector = DataCollector(probe_name, cpu_events)
 
         # Warm up
-        executable = self._probes[probe_name]
         for _ in range(warm_up_cycles):
-            executable()
+            self._interpreter.run_measurement(probe_name)
 
         # Measured
         start = round(time.perf_counter() * 1000)
         for _ in range(measured_cycles):
             collector.before_iteration()
-            executable()
+            self._interpreter.run_measurement(probe_name)
             collector.after_iteration()
         collector.finish()
 
@@ -48,31 +47,20 @@ class ProbeMonitor:
     def has_workload(self) -> bool:
         return self._workload_enabled
 
-    def _workload(self, executable: "Callable[[], None]"):
+    def _workload(self, probe_name: str):
         while self._workload_enabled:
-            executable()
+            self._interpreter.run_measurement(probe_name)
 
-    def start_probe_workload(self, probe_name: str, probe_name_2: str = None) -> None:
+    def start_probe_workload(self, probe_name: str) -> None:
         assert not self._workload_enabled
         self._workload_enabled = True
-        for name, thread in (probe_name, self._workload_thread), (probe_name_2, self._workload_thread_2):
-            if name is not None:
-                executable = self._probes[name]
-                thread = Thread(target=self._workload, args=(executable,))
-                thread.start()
+        self._workload_thread = Thread(target=self._workload, args=(probe_name,))
+        self._workload_thread.start()
 
     def stop_probe_workload(self) -> None:
         assert self._workload_enabled
         self._workload_enabled = False
-        for thread in self._workload_thread, self._workload_thread_2:
-            if thread:
-                thread.join()
-
-    def add_probe(self, name: str, executable: "Callable[[], None]"):
-        self._probes[name] = executable
-
-    def has_probe(self, probe_name: str) -> bool:
-        return probe_name in self._probes
+        self._workload_thread.join()
 
 
 class IterativeMonitor(ABC):
@@ -245,12 +233,9 @@ class DataCollector:
     SEPARATOR = ";"
     RESULTS_DIR = "./probes/"
 
-    def __init__(self, probe_name: str, cpu_events: Optional[List[str]] = None, production: bool = False):
+    def __init__(self, probe_name: str, cpu_events: Optional[List[str]] = None):
         # Monitors
-        if not production:
-            self._monitors: List[IterativeMonitor] = [TimeMonitor(), CpuMonitor(cpu_events), DiskMonitor()]
-        else:
-            self._monitors: List[IterativeMonitor] = [TimeMonitor()]
+        self._monitors: List[IterativeMonitor] = [TimeMonitor(), CpuMonitor(cpu_events), DiskMonitor()]
 
         # Common header
         self._header: List[str] = []

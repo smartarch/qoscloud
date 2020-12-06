@@ -14,7 +14,7 @@ import random
 import cloud_controller.architecture_pb2 as arch_pb
 from cloud_controller import DEFAULT_WARMUP_RUNS, DEFAULT_MEASURED_RUNS
 from cloud_controller.assessment import RESULTS_PATH
-from cloud_controller.knowledge.model import Application, Probe, RunningTimeContract
+from cloud_controller.knowledge.model import Application, Probe
 from cloud_controller.analysis.predictor_interface import predictor_pb2
 
 
@@ -28,7 +28,7 @@ class AppStatus(IntEnum):
 
 class AppEntry:
     def __init__(self, architecture: arch_pb.Architecture):
-        self.architecture = architecture
+        self.application: Application = Application.init_from_pb(architecture)
         self._name: str = architecture.name
         self.status = AppStatus.RECEIVED
 
@@ -43,7 +43,6 @@ class AppDatabase:
         self._update_lock = Lock()
         self._app_removal_cache: List[str] = []
         self.probes_by_alias: Dict[str, Probe] = {}
-        self.contracts: Dict[str, List[RunningTimeContract]] = {}
 
     def __contains__(self, item: object) -> bool:
         return self._apps.__contains__(item)
@@ -57,7 +56,6 @@ class AppDatabase:
             id_ = ''.join(random.choice(string.ascii_uppercase) for _ in range(4))
         self.probes_by_alias[id_] = None
         return id_
-
 
     def add_app(self, architecture: arch_pb.Architecture) -> None:
         with self._update_lock:
@@ -79,28 +77,24 @@ class AppDatabase:
             # Delete app from db
             del self._apps[name]
 
-    def add_contracts(self, app_name: str, contracts: List[RunningTimeContract]):
-        if app_name not in self._apps:
-            raise RuntimeError(f"Attempt to add contract for a non-existing application: "
-                               f"there is no application named {app_name}.")
-        self.contracts[app_name] = contracts
+    def update_app(self, app: Application):
+        if app.name not in self._apps:
+            raise Exception(f"Attempt to update a non-existing application: there is no application named {app.name}.")
+        self._apps[app.name].application = app
 
-    def get_contracts(self, app_name: str) -> List[RunningTimeContract]:
-        return self.contracts[app_name]
+    def get_application(self, app_name: str) -> Application:
+        return self._apps[app_name].application
 
     def publish_new_architectures(self) -> List[arch_pb.Architecture]:
         architectures: List[arch_pb.Architecture] = []
-
         with self._update_lock:
             # Foreach app
             for app in self._apps.values():
                 if app.status == AppStatus.ACCEPTED:
                     # Append to list
-                    architectures.append(app.architecture)
-
+                    architectures.append(app.application.get_pb_representation())
                     # Update app status
                     app.status = AppStatus.PUBLISHED
-                    app.architecture = None
 
         return architectures
 
@@ -125,8 +119,6 @@ class AppDatabase:
         # Basic info
         status = "App name: %s\nApp status: %s\n" % (app_name, str(self._apps[app_name].status))
         return status
-
-probe_aliases = set()
 
 
 class Scenario:

@@ -6,9 +6,8 @@ import logging
 from typing import Dict, Set, Optional, Iterable
 from typing import List
 
-from cloud_controller import DEFAULT_MEASURED_RUNS
 from cloud_controller.knowledge.model import Component, UnmanagedCompin, check_datacenters, construct_datacenters, \
-    Datacenter, IvisApplication
+    Datacenter
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer, UserEquipment
 from cloud_controller.knowledge.model import CloudState, Node, Namespace, Application
 from cloud_controller.knowledge.network_topology import NetworkTopology, EuclidNetworkTopology
@@ -40,7 +39,6 @@ class Knowledge:
         if actual_state is None:
             actual_state = CloudState()
         self.applications: Dict[str, Application] = {}
-        self.ivis_jobs: Dict[str, IvisApplication] = {}
         self.components: Dict[str, Component] = {}
         self.actual_state: CloudState = actual_state
         self.nodes: Dict[str, Node] = {}
@@ -51,21 +49,20 @@ class Knowledge:
         self.secrets: Dict[str, str] = {}
         self._new_clients: List[UnmanagedCompin] = []
         self.client_support = True
-        self.jobs_without_resources: List[str] = []
-        self.ivis_access_token: Optional[str] = None
+        self.unique_components_without_resources: List[str] = []
+        self.api_endpoint_access_token: Optional[str] = None
 
     def update_access_token(self, token: str):
-        self.ivis_access_token = token
+        self.api_endpoint_access_token = token
 
-    def no_resources_for_job(self, job_id: str) -> None:
-        self.jobs_without_resources.append(job_id)
+    def no_resources_for_component(self, component_id: str) -> None:
+        self.unique_components_without_resources.append(component_id)
 
-    def all_jobs_scheduled(self) -> None:
-        self.jobs_without_resources.clear()
+    def all_components_scheduled(self) -> None:
+        self.unique_components_without_resources.clear()
 
-    def there_are_jobs(self) -> bool:
-        return len(self.ivis_jobs) > 0
-
+    def there_are_applications(self) -> bool:
+        return len(self.applications) == 0
 
     def set_network_topology(self, network_topology: NetworkTopology):
         """
@@ -109,10 +106,7 @@ class Knowledge:
         """
         app = Application.init_from_pb(app_pb)
         self.applications[app_pb.name] = app
-        if isinstance(app, IvisApplication):
-            if self.client_support:
-                app.run_count = DEFAULT_MEASURED_RUNS
-            self.ivis_jobs[app.name] = app
+        # TONOWDO: DEFAULT_MEASURED_RUNS
         for component in self.applications[app_pb.name].components.values():
             self.components[component.id] = component
         if app_pb.HasField("secret"):
@@ -130,8 +124,6 @@ class Knowledge:
             for component in self.applications[name].components.values():
                 del self.components[component.id]
             del self.applications[name]
-        if name in self.ivis_jobs:
-            del self.ivis_jobs[name]
         logging.info(f"A request for deletion of application {name} was processed.")
 
     def add_client(self, app_name: str, component_name: str, id_: str, ip: str) -> None:

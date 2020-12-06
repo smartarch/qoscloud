@@ -76,10 +76,10 @@ class Analyzer:
                 #     self._longterm_result_future = None
                 pass
             else:
-                for job in self.knowledge.ivis_jobs.values():
-                    job_compin = self.knowledge.actual_state.get_job_compin(job.name)
+                for component in self.knowledge.components.values():
+                    job_compin = self.knowledge.actual_state.get_unique_compin(component)
                     if job_compin is None:
-                        self.knowledge.no_resources_for_job(job.name)
+                        self.knowledge.no_resources_for_component(component.name)
 
         if desired_state is None:
             # If the result is still None, we just return the last desired state (for now, until the new assignment is
@@ -87,7 +87,7 @@ class Analyzer:
             logging.info("Using previous desired state.")
             desired_state = self._last_desired_state
         else:
-            self.knowledge.all_jobs_scheduled()
+            self.knowledge.all_components_scheduled()
         self._mark_force_keep_compins(desired_state)
         self._log_desired_state(desired_state)
         self._last_desired_state = desired_state

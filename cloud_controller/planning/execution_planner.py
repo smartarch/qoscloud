@@ -89,10 +89,7 @@ class ExecutionPlanner:
                         # was running. In production we just delete that namespace.
                         yield delete_ns_plan(app_name)
                         continue
-            if isinstance(self.knowledge.applications[app_name], IvisApplication):
-                self._factories[app_name] = JobExecutionPlanFactory(app_name, self.knowledge)
-            else:
-                self._factories[app_name] = ExecutionPlanFactory(app_name, self.knowledge)
+            self._factories[app_name] = ExecutionPlanFactory(app_name, self.knowledge)
             exec_plan = self._factories[app_name].create_application_creation_plan()
             yield exec_plan
         for app_name in delete_apps:

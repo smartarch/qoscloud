@@ -35,6 +35,7 @@ def yaml_to_grpc_architecture(architecture_yaml) -> Optional[arch_pb.Architectur
     :return: a protobuf representation of the application descriptor.
     """
     architecture_grpc = arch_pb.Architecture()
+    architecture_grpc.is_complete = True
     architecture_grpc.name = architecture_yaml['name']
     if 'dockersecret' in architecture_yaml:
         secret_string = f'{{"auths":{{"https://index.docker.io/v1/":{{' \

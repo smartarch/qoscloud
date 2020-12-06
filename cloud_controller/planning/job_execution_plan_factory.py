@@ -9,9 +9,7 @@ from cloud_controller.knowledge import knowledge_pb2 as protocols
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import ManagedCompin, CloudState, Compin, \
     Application, Statefulness, CompinPhase
-from cloud_controller.planning.cloud_state_diff import get_compin_diff, get_dependency_diff
 from cloud_controller.planning.execution_plan_factory import ExecutionPlanFactory
-from cloud_controller.planning.k8s_generators import create_deployment_for_compin, create_service_for_compin
 
 
 class JobExecutionPlanFactory(ExecutionPlanFactory):
@@ -52,22 +50,22 @@ class JobExecutionPlanFactory(ExecutionPlanFactory):
         """
         self._new_execution_plan()
         job_id = self._application.name
-        as_compin = self._knowledge.actual_state.get_job_compin(job_id)
-        ds_compin = desired_state.get_job_compin(job_id)
+        as_compin = self._knowledge.actual_state.get_unique_compin(job_id)
+        ds_compin = desired_state.get_unique_compin(job_id)
 
         if as_compin is None and ds_compin is not None:
             self._create_compin_creation_task(ds_compin, self._starting_task)
             self._job_deployed = True
             logging.info(f"Created a job deployment plan with {len(self._execution_plan.tasks)} tasks")
         elif as_compin is not None and as_compin.phase < CompinPhase.READY:
-            self._create_job_init_task(as_compin, self._starting_task)
+            self._create_instance_init_task(as_compin, self._starting_task)
         else:
             return None
 
         logging.info(f"Created a job deployment plan with {len(self._execution_plan.tasks)} tasks")
         return self._execution_plan
 
-    def _create_job_init_task(self, compin: ManagedCompin, parent_task: protocols.Task) -> None:
+    def _create_instance_init_task(self, compin: ManagedCompin, parent_task: protocols.Task) -> None:
         init_task = self._add_new_task()
         init_task.INITIALIZE_JOB = self._application.name
         self._add_dependency(parent_task, init_task)

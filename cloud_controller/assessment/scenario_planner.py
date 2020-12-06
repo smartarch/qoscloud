@@ -12,7 +12,7 @@ from typing import List, Set
 
 from cloud_controller.assessment.model import Scenario
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import Application, Probe, RunningTimeContract
+from cloud_controller.knowledge.model import Application, Probe
 
 logger = logging.getLogger("SP")
 
@@ -56,7 +56,7 @@ class ScenarioPlanner(ABC):
         pass
 
     @abstractmethod
-    def judge_app(self, app_name: str, contracts: List[RunningTimeContract]) -> JudgeResult:
+    def judge_app(self, application: Application) -> JudgeResult:
         pass
 
 
@@ -100,7 +100,7 @@ class FakeScenarioPlanner(ScenarioPlanner):
         logger.error("Scenario %s failed on %s", scenario, reason)
         self.on_scenario_done(scenario)
 
-    def judge_app(self, app_name: str, contracts: List[RunningTimeContract]) -> JudgeResult:
+    def judge_app(self, application: Application) -> JudgeResult:
         return JudgeResult.ACCEPTED
 
 
@@ -159,7 +159,7 @@ class SimpleScenarioPlanner(ScenarioPlanner):
         logger.error("Scenario %s failed on %s", scenario, reason)
         self.on_scenario_done(scenario)
 
-    def judge_app(self, app_name: str, contracts: List[RunningTimeContract]) -> JudgeResult:
+    def judge_app(self, application: Application) -> JudgeResult:
         return JudgeResult.ACCEPTED
 
 

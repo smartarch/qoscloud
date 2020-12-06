@@ -53,20 +53,20 @@ class JobAgent(JobMiddlewareAgentServicer):
     def __init__(self):
         self._job_file: str = "./job.py"
         self._job_id: Optional[int] = None
-        self._parameters: Optional[str] = None
+        # self._parameters: Optional[str] = None
         self._config: Optional[Dict] = None
-        self._minimal_interval: int = 0
+        # self._minimal_interval: int = 0
 
         self._current_process: Optional[str] = None
         self._last_run_start_time: float = 0
-        self._total_run_time = 0
+        # self._total_run_time = 0
         self._run_count = 0
-        self._runs: Dict[str, RunStatus] = {}
+        # self._runs: Dict[str, RunStatus] = {}
         self._wait_thread: Optional[Thread] = None
         self._requests_thread: Optional[Thread] = None
         self._process: Optional[Popen] = None
         self._phase: Phase = Phase.Value('INIT')
-        self._ivis_ip = IVIS_HOST
+        # self._ivis_ip = IVIS_HOST
         self._ivis_core_url = f"http://{IVIS_HOST}:{IVIS_PORT}/ccapi"
         self._access_token: str = ""
 
@@ -98,7 +98,8 @@ class JobAgent(JobMiddlewareAgentServicer):
             )
             
     def submit_running_time(self, time):
-        self._total_run_time += time
+        time *= 1000
+        # self._total_run_time += time
         self._run_count += 1
         es = Elasticsearch([{'host': self._config['es']['host'], 'port': int(self._config['es']['port'])}])
         doc = {
@@ -151,12 +152,12 @@ class JobAgent(JobMiddlewareAgentServicer):
 
     def InitializeJob(self, request, context):
         self._job_id = request.job_id
-        self._parameters = request.parameters
-        self._ivis_ip = request.ivis_core_ip
+        # self._parameters = request.parameters
+        ivis_ip = request.ivis_core_ip
         self._config = json.loads(request.config)
-        self._config['es']['host'] = self._ivis_ip
-        self._minimal_interval = request.minimal_interval
-        self._ivis_core_url = f"http://{self._ivis_ip}:{request.ivis_core_port}/ccapi"
+        self._config['es']['host'] = ivis_ip
+        # self._minimal_interval = request.minimal_interval
+        self._ivis_core_url = f"http://{ivis_ip}:{request.ivis_core_port}/ccapi"
         self._access_token = request.access_token
         with open(self._job_file, "w") as code_file:
             code_file.write(request.code)
@@ -206,47 +207,47 @@ class JobAgent(JobMiddlewareAgentServicer):
 
         return RunJobAck()
 
-    def compose_run_status(self, run_id: str, full_status: bool) -> RunStatus:
-        if run_id == self._current_process:
-            return RunStatus(
-                status=RunStatus.Status.Value('RUNNING'),
-                run_id=run_id,
-                start_time=self._last_run_start_time
-            )
-        elif run_id in self._runs:
-            if full_status:
-                return self._runs[run_id]
-            else:
-                full_status = self._runs[run_id]
-                return RunStatus(
-                    status=full_status.status,
-                    run_id=full_status.run_id,
-                    start_time=full_status.start_time,
-                    end_time=full_status.end_time
-                )
-        else:
-            return RunStatus()
-
-    def GetRunStatus(self, request, context):
-        return self.compose_run_status(request.run_id, request.full_status)
-
-    def GetInstanceStatus(self, request, context):
-        instance_status = InstanceStatus()
-        run_status: RunStatus
-        final_status: RunStatus
-        if self._current_process is not None:
-            run_status = self.compose_run_status(self._current_process, request.full_status)
-            instance_status.current_run.CopyFrom(run_status)
-        for run_id in self._runs.keys():
-            run_status = self.compose_run_status(run_id, request.full_status)
-            if run_status.status == RunStatus.Status.Value('COMPLETED'):
-                final_status = instance_status.completed_runs.add()
-            else:
-                assert run_status.status == RunStatus.Status.Value('FAILED')
-                final_status = instance_status.failed_runs.add()
-            final_status.CopyFrom(run_status)
-
-        return instance_status
+    # def compose_run_status(self, run_id: str, full_status: bool) -> RunStatus:
+    #     if run_id == self._current_process:
+    #         return RunStatus(
+    #             status=RunStatus.Status.Value('RUNNING'),
+    #             run_id=run_id,
+    #             start_time=self._last_run_start_time
+    #         )
+    #     elif run_id in self._runs:
+    #         if full_status:
+    #             return self._runs[run_id]
+    #         else:
+    #             full_status = self._runs[run_id]
+    #             return RunStatus(
+    #                 status=full_status.status,
+    #                 run_id=full_status.run_id,
+    #                 start_time=full_status.start_time,
+    #                 end_time=full_status.end_time
+    #             )
+    #     else:
+    #         return RunStatus()
+    #
+    # def GetRunStatus(self, request, context):
+    #     return self.compose_run_status(request.run_id, request.full_status)
+    #
+    # def GetInstanceStatus(self, request, context):
+    #     instance_status = InstanceStatus()
+    #     run_status: RunStatus
+    #     final_status: RunStatus
+    #     if self._current_process is not None:
+    #         run_status = self.compose_run_status(self._current_process, request.full_status)
+    #         instance_status.current_run.CopyFrom(run_status)
+    #     for run_id in self._runs.keys():
+    #         run_status = self.compose_run_status(run_id, request.full_status)
+    #         if run_status.status == RunStatus.Status.Value('COMPLETED'):
+    #             final_status = instance_status.completed_runs.add()
+    #         else:
+    #             assert run_status.status == RunStatus.Status.Value('FAILED')
+    #             final_status = instance_status.failed_runs.add()
+    #         final_status.CopyFrom(run_status)
+    #
+    #     return instance_status
 
     def _run_as_probe(self):
         while self._current_process is not None:

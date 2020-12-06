@@ -17,7 +17,7 @@ import "cloud_controller/middleware/ivis.proto";
 // Avocadoctl stuff
 service DeployController {
     rpc SubmitArchitecture (cloud_controller.Architecture) returns (DeployReply);
-    rpc SubmitRequirements (ApplicationTimingRequirements) returns (DeployReply);
+    rpc SubmitRequirements (cloud_controller.Architecture) returns (DeployReply);
     rpc RegisterHwConfig (HwConfig) returns (DeployReply);
     rpc DeleteApplication (AppName) returns (DeployReply);
     rpc GetApplicationStats (AppName) returns (AppStats);

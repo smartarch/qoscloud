@@ -14,14 +14,14 @@ import cloud_controller.knowledge.knowledge_pb2 as protocols
 
 from kubernetes import client
 
-from cloud_controller import DEFAULT_SECRET_NAME, SYSTEM_DATABASE_NAME, APPS_COLLECTION_NAME, IVIS_CORE_IP, IVIS_CORE_PORT
+from cloud_controller import DEFAULT_SECRET_NAME, SYSTEM_DATABASE_NAME, APPS_COLLECTION_NAME, API_ENDPOINT_IP, \
+    API_ENDPOINT_PORT, DEFAULT_MEASURED_RUNS
 from cloud_controller.execution.mongo_controller import MongoController
 from cloud_controller.knowledge.knowledge import Knowledge
 import cloud_controller.knowledge.knowledge_pb2_grpc as servicers
-from cloud_controller.knowledge.model import ManagedCompin, CompinPhase, UnmanagedCompin, IvisApplication
+from cloud_controller.knowledge.model import ManagedCompin, CompinPhase, UnmanagedCompin
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer
 from cloud_controller.middleware import AGENT_PORT
-from cloud_controller.middleware.ivis_pb2 import JobDescriptor
 from cloud_controller.middleware.ivis_pb2_grpc import JobMiddlewareAgentStub
 from cloud_controller.middleware.middleware_pb2 import Pong, DependencyAddress
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
@@ -426,32 +426,43 @@ class PlanExecutor:
         return True
 
     def execute_initialize_job(self, task: protocols.Task) -> bool:
-        job_id = task.INITIALIZE_JOB
-        compin = self.knowledge.actual_state.get_job_compin(job_id)
+        compin = self.knowledge.actual_state.get_compin(
+            self.namespace,
+            task.INITIALIZE_JOB.instanceType,
+            task.INITIALIZE_JOB.instanceId
+        )
         assert compin is not None
-        stub: JobMiddlewareAgentStub = connect_to_grpc_server(JobMiddlewareAgentStub, compin.ip, AGENT_PORT)
+        stub: MiddlewareAgentStub = connect_to_grpc_server(MiddlewareAgentStub, compin.ip, AGENT_PORT)
         phase = self.ping_compin(stub)
         if phase < CompinPhase.INIT:
             return False
-        app = self.knowledge.applications[task.INITIALIZE_JOB]
-        assert isinstance(app, IvisApplication)
-        init_data = JobDescriptor(
-            job_id=app.name,
-            code=app.code,
-            parameters=app.parameters,
-            config=app.config,
-            minimal_interval=app.interval,
-            ivis_core_ip=IVIS_CORE_IP,
-            ivis_core_port=IVIS_CORE_PORT,
-            access_token=self.knowledge.ivis_access_token,
-            signal_set=app.signal_set,
-            execution_time_signal=app.execution_time_signal,
-            run_count_signal=app.run_count_signal,
-            run_count=app.run_count
+        init_data = InstanceConfig(
+            instance_id=compin.id,
+            api_endpoint_ip=API_ENDPOINT_IP,
+            api_endpoint_port=API_ENDPOINT_PORT,
+            access_token=self.knowledge.api_endpoint_access_token,
+            production=self.knowledge.client_support
         )
-        stub.InitializeJob(init_data)
-        compin.phase = CompinPhase.READY
-        logging.info(f"Job {task.INITIALIZE_JOB} was successfully initialized")
+        for probe in compin.component.probes:
+            probe_pb = init_data.probes.add()
+            probe_pb.name = probe.name
+            probe_pb.signal_set = probe.signal_set
+            probe_pb.execution_time_signal = probe.execution_time_signal
+            probe_pb.run_count_signal = probe.run_count_signal
+            if self.knowledge.client_support:
+                probe_pb.run_count = DEFAULT_MEASURED_RUNS
+            else:
+                probe_pb.run_count = 0
+            if probe.code != "":
+                probe_pb.type = ProbeType.Value('CODE')
+                probe_pb.code = probe.code
+                probe_pb.config = probe.config
+            else:
+                probe_pb.type = ProbeType.Value('PROCEDURE')
+        stub.InitializeInstance(init_data)
+        compin.init_completed = True
+        compin.phase = self.ping_compin(stub)
+        logging.info(f"Instance {task.INITIALIZE_JOB.instanceId} was successfully initialized")
         return True
 
     def execute_create_compin(self, task: protocols.Task) -> bool:

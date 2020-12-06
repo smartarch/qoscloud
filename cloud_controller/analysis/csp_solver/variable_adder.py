@@ -13,6 +13,7 @@ from cloud_controller.analysis.csp_solver.variables import Variables, CompNodeVa
     RunningCompNodeVar, NodeRoleVar
 from cloud_controller.knowledge import model as model
 from cloud_controller.knowledge.knowledge import Knowledge
+from cloud_controller.knowledge.model import ComponentCardinality
 from cloud_controller.knowledge.network_distances import NetworkDistances
 
 
@@ -171,14 +172,15 @@ class VariableAdder:
                 self.client_dc_vars[datacenter][client.id] = var_
                 self.client_dc_vars_by_tier[self._tiers[client.id][datacenter]].append(var_)
 
-        for job in self._knowledge.ivis_jobs:
-            self.job_vars_by_compin[job] = []
-            for node in self._nodes:
-                var_ = CompNodeVar(self._solver, component_id=job, chain_id=job, node=node.name)
-                self.job_vars_by_compin[job].append(var_)
-                self.job_vars_by_node[node.name].append(var_)
-                self.job_vars_by_node_and_compin[node.name][job] = var_
-                self.job_vars.append(var_)
+        for component in self._knowledge.components:
+            if self._knowledge.components[component].cardinality == ComponentCardinality.SINGLE:
+                self.job_vars_by_compin[component] = []
+                for node in self._nodes:
+                    var_ = CompNodeVar(self._solver, component_id=component, chain_id=component, node=node.name)
+                    self.job_vars_by_compin[component].append(var_)
+                    self.job_vars_by_node[node.name].append(var_)
+                    self.job_vars_by_node_and_compin[node.name][component] = var_
+                    self.job_vars.append(var_)
         self.node_role_vars: Dict[str, NodeRoleVar] = {}
         for node in self._nodes:
             self.node_role_vars[node.name] = NodeRoleVar(self._solver, node.name)

@@ -154,12 +154,14 @@ class ExecutionPlanFactory:
         """
         self._new_execution_plan()
 
-        create_instances, delete_instances, mongo_init_instances = \
+        create_instances, delete_instances, mongo_init_instances, init_instances = \
             get_compin_diff(self._application.name, self._actual_state, desired_state)
         for compin in create_instances:
             self._create_compin_creation_task(compin, self._starting_task)
         for compin in delete_instances:
             self._create_compin_deletion_task(compin, self._starting_task)
+        for compin in init_instances:
+            self._create_instance_init_task(compin, self._starting_task)
         for compin in mongo_init_instances:
             self._add_mongo_init_task(compin)
 
@@ -170,6 +172,13 @@ class ExecutionPlanFactory:
             return None
         logging.info(f"Created a redeployment plan with {len(self._execution_plan.tasks)} tasks")
         return self._execution_plan
+
+    def _create_instance_init_task(self, compin: ManagedCompin, parent_task: protocols.Task) -> None:
+        init_task = self._add_new_task()
+        init_task.INITIALIZE_JOB.instanceId = compin.id
+        init_task.INITIALIZE_JOB.instanceType = compin.component.name
+        self._add_dependency(parent_task, init_task)
+        logging.debug(f"Created instance initialization task for instance {compin.id}. Task ID: {init_task.id}")
 
     def _create_compin_creation_task(self, compin: ManagedCompin, parent_task) -> None:
         """

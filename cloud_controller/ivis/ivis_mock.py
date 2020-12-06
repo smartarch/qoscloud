@@ -3,7 +3,7 @@ import time
 
 from threading import Thread
 
-from cloud_controller import IVIS_CORE_IP, IVIS_CORE_PORT
+from cloud_controller import API_ENDPOINT_IP, API_ENDPOINT_PORT
 from cloud_controller.architecture_pb2 import Architecture, ApplicationType
 from cloud_controller.ivis.ivis_data import SAMPLE_JOB_CODE, SAMPLE_JOB_PARAMETERS, SAMPLE_JOB_INTERVAL, \
     SAMPLE_JOB_CONFIG, SAMPLE_JOB_CREATE_SS_RESPONSE
@@ -108,8 +108,8 @@ if __name__ == "__main__":
             parameters=SAMPLE_JOB_PARAMETERS,
             config=json.dumps(json.loads(SAMPLE_JOB_CONFIG)),
             minimal_interval=SAMPLE_JOB_INTERVAL,
-            ivis_core_ip=IVIS_CORE_IP,
-            ivis_core_port=IVIS_CORE_PORT
+            ivis_core_ip=API_ENDPOINT_IP,
+            ivis_core_port=API_ENDPOINT_PORT
         ))
         logging.info("Job has been initialized")
     # Run the job 4 times

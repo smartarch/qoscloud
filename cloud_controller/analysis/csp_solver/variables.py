@@ -215,7 +215,7 @@ class Variables:
                                         node=var.node,
                                         chain_id=var.chain_id))
             for var in iterate_set_vars(self.job_vars):
-                component = knowledge.ivis_jobs[var.component_id].job_component
+                component = knowledge.components[var.component_id]
                 managed_compins.append(model.ManagedCompin(
                     component=component,
                     id_=f"job{var.component_id}",

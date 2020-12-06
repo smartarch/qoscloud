@@ -13,21 +13,7 @@ message Architecture {
     string name = 1;
     map<string, Component> components = 2;
     Secret secret = 3;
-    ApplicationType type = 4;
-    string job_id = 5;
-    string code = 6;
-    string parameters = 7;
-    string config = 8;
-    int32 minimal_interval = 9;
-    string docker_container = 10;
-    string min_memory = 11;
-    string max_memory = 12;
-    string min_cpu = 13;
-    string max_cpu = 14;
-    string k8s_labels = 15;
-    string signal_set = 16;
-    string execution_time_signal = 17;
-    string run_count_signal = 18;
+    bool is_complete = 4;
 }
 
 message Component {
@@ -41,11 +27,6 @@ message Component {
     Statefulness statefulness = 10;
     UEMPolicy policy = 11;
     repeated string whitelist = 12;
-}
-
-enum ApplicationType {
-    REGULAR = 0;
-    IVIS = 1;
 }
 
 enum Statefulness {
@@ -75,12 +56,23 @@ message Secret {
 
 //-----------------------------PROBES-------------------------------
 
+enum ProbeType {
+    PROCEDURE = 0;
+    CODE = 1;
+}
+
 message Probe {
     string name = 1;
     string application = 2;
     string component = 3;
+    ProbeType type = 4;
     repeated Contract requirements = 5;
     string alias = 6;
+    string code = 7;
+    string config = 8;
+    string signal_set = 16;
+    string execution_time_signal = 17;
+    string run_count_signal = 18;
 }
 
 message TimeContract {

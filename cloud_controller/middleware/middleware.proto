@@ -18,6 +18,10 @@ package cloud_controller.middleware;
 */
 service MiddlewareAgent {
 
+    rpc InitializeInstance (InstanceConfig) returns (InitAck) {}
+
+    rpc RunProbe (RunParameters) returns (RunAck) {}
+
     // Sets or updates an address of specified dependent component.
     rpc SetDependencyAddress (DependencyAddress) returns (AddressAck) {}
 
@@ -37,6 +41,44 @@ service MiddlewareAgent {
     rpc SetMongoParameters (MongoParameters) returns (MongoParametersAck) {}
 
 }
+
+message InstanceConfig {
+    string instance_id = 1;
+    string api_endpoint_ip = 2;
+    int32 api_endpoint_port = 3;
+    string access_token = 4;
+    repeated ProbeConfig probes = 5;
+    bool production = 6;
+}
+
+enum ProbeType {
+    PROCEDURE = 0;
+    CODE = 1;
+}
+
+message ProbeConfig {
+    string name = 1;
+    string signal_set = 2;
+    string execution_time_signal = 3;
+    string run_count_signal = 4;
+    int32 run_count = 5;
+    ProbeType type = 6;
+    string code = 7;
+    string config = 8;
+}
+
+message InitAck {}
+
+message RunParameters {
+    string instance_id = 1;
+    string run_id = 2;
+    string probe_id = 3;
+    string state = 4;
+}
+
+message RunAck {}
+
+
 
 enum Phase {
         NONE = 0;

@@ -163,6 +163,9 @@ def _assert_not_none_and_return(attr) -> Any:
     assert attr is not None
     return attr
 
+class ComponentCardinality(Enum):
+    MULTIPLE = 1
+    SINGLE = 2
 
 class Component:
     """
@@ -181,7 +184,8 @@ class Component:
 
     def __init__(self, application: "Application", name: str, id_: str, type_: ComponentType,
                  container_spec: str = None, dependencies: List["Component"] = None, probes = None,
-                 statefulness: Statefulness = Statefulness.NONE):
+                 statefulness: Statefulness = Statefulness.NONE,
+                 cardinality: ComponentCardinality = ComponentCardinality.MULTIPLE):
         """
         :param application: Application this component belongs to.
         :param name: Name of the component.
@@ -203,6 +207,7 @@ class Component:
         self._type: ComponentType = type_
         self._probes: List[Probe] = probes
         self._statefulness = statefulness
+        self._cardinality = cardinality
         self._dependencies: Dict[str, Component] = {}
         # The following attributes contains all the labels that were found in the Component's deployment descriptor
         # that may influence which nodes can be selected for the deployment of instances of this component.
@@ -222,6 +227,10 @@ class Component:
             return self.name == other.name and self.id == other.id
         else:
             return False
+
+    @property
+    def cardinality(self) -> ComponentCardinality:
+        return self._cardinality
 
     @property
     def statefulness(self) -> Statefulness:
@@ -308,7 +317,8 @@ class Component:
             type_=Component.type_map[component_pb.type],
             container_spec=component_pb.deployment,
             probes=probes,
-            statefulness=Component.statefulness_map[component_pb.statefulness]
+            statefulness=Component.statefulness_map[component_pb.statefulness],
+            cardinality=ComponentCardinality(component_pb.cardinality)
         )
         for probe in component_pb.probes:
             component.probes.append(Probe.init_from_pb_direct(probe, component))
@@ -379,7 +389,7 @@ class Application:
         _pb_representation: Protobuf representation of the application.
     """
 
-    def __init__(self, name, secret: str = None):
+    def __init__(self, name, secret: str = None, is_complete: bool = True):
         """
         :param name: Application name
         :param secret: Application docker secret (if needed)
@@ -388,6 +398,11 @@ class Application:
         self._name: str = name
         self._secret: Optional[str] = secret
         self._pb_representation: Optional[protocols.Architecture] = None
+        self._is_complete: bool = is_complete
+
+    @property
+    def is_complete(self) -> bool:
+        return self._is_complete
 
     @property
     def name(self) -> str:
@@ -430,27 +445,16 @@ class Application:
         """
         Creates an application object from protobuf representation.
         """
-        if application_pb.type == ApplicationType.Value("IVIS"):
-            application = IvisApplication(application_pb.job_id, application_pb.code, application_pb.parameters,
-                                          application_pb.config,
-                                          application_pb.signal_set,
-                                          application_pb.execution_time_signal,
-                                          application_pb.run_count_signal,
-                                          application_pb.minimal_interval,
-                                          application_pb.docker_container,
-                                          application_pb.min_memory,
-                                          application_pb.max_memory,
-                                          application_pb.min_cpu,
-                                          application_pb.max_cpu,
-                                          application_pb.k8s_labels
-            )
-        else:
-            application = Application(name=application_pb.name, secret=application_pb.secret)
-            for component_name in application_pb.components:
-                application.add_component(Component.init_from_pb(application, application_pb.components[component_name]))
-            for component_pb in application_pb.components.values():
-                for dependency in component_pb.dependsOn:
-                    application.get_component(component_pb.name).add_dependency(application.get_component(dependency))
+        application = Application(
+            name=application_pb.name,
+            secret=application_pb.secret,
+            is_complete=application_pb.is_complete
+        )
+        for component_name in application_pb.components:
+            application.add_component(Component.init_from_pb(application, application_pb.components[component_name]))
+        for component_pb in application_pb.components.values():
+            for dependency in component_pb.dependsOn:
+                application.get_component(component_pb.name).add_dependency(application.get_component(dependency))
 
         application._pb_representation = application_pb
         return application
@@ -485,6 +489,12 @@ spec:
 """
 
 
+def add_resource_requirements(template: str, min_memory="", max_memory="",
+                              min_cpu="", max_cpu="", k8s_labels="") -> str:
+    # TONOWDO
+    return template
+
+
 class IvisApplication(Application):
 
     def __init__(self, job_id: str, code: str, parameters: str, config: str,
@@ -499,7 +509,7 @@ class IvisApplication(Application):
 
         self._job_component = Component(self, job_id, job_id, ComponentType.MANAGED,
                                         container_spec=(JOB_DEPLOYMENT_TEMPLATE % container_name))
-        self._probe = Probe(name=job_id, component=self._job_component, alias=job_id, requirements=[])
+        self._probe = Probe(name=job_id, component=self._job_component, requirements=[])
         self._job_component.probes.append(self._probe)
         self._components[self._job_component.name] = self._job_component
         self._signal_set = signal_set
@@ -660,6 +670,7 @@ class ManagedCompin(Compin):
         self.dependants: List[Compin] = []
         self._is_serving: bool = False
         self.force_keep: bool = False
+        self.init_completed: bool = False
 
     def __str__(self) -> str:
         return f"ManagedCompin(id={self.id}, node_name={self.node_name}, chain_id={self._chain_id})"
@@ -829,10 +840,14 @@ class CloudState:
         else:
             return None
 
-    def get_job_compin(self, job_id: str) -> Optional[ManagedCompin]:
-        for compin in self.list_managed_compins(job_id):
-            return compin
-        return None
+    def get_unique_compin(self, component: Component) -> Optional[ManagedCompin]:
+        assert component.type == ComponentType.MANAGED
+        assert component.cardinality == ComponentCardinality.SINGLE
+        compins = list(self._state[component.application.name][component.name].values())
+        assert len(compins) == 1
+        compin = compins[0]
+        assert isinstance(compin, ManagedCompin)
+        return compin
 
     def add_instance(self, compin: Compin) -> None:
         """
@@ -930,7 +945,8 @@ class CloudState:
          """
         for application_name in self.list_applications():
             for managed_compin in self.list_managed_compins(application_name):
-                yield managed_compin
+                if managed_compin.component.cardinality == ComponentCardinality.MULTIPLE:
+                    yield managed_compin
 
     def list_managed_compins(self, application_name: str) -> Iterable[ManagedCompin]:
         """
@@ -962,12 +978,29 @@ class CloudState:
                     yield compin
 
 
-@dataclass
 class Probe:
-    component: Component
-    name: str
-    alias: str
-    requirements: List[QoSContract]
+    # TONOWDO: add code, config and signal set
+    def __init__(self,
+                 name: str,
+                 component: Component,
+                 requirements: List[QoSContract],
+                 code: str = "",
+                 config: str = "",
+                 signal_set: str = "",
+                 execution_time_signal: str = "",
+                 run_count_signal: str = ""
+    ):
+        self.name = name
+        self.component = component
+        self.requirements = requirements
+        self.alias = self.generate_alias(self.name, self.component)
+
+        self.code: str = code
+        self.config: str = config
+        self.signal_set: str = signal_set
+        self.execution_time_signal: str = execution_time_signal
+        self.run_count_signal: str = run_count_signal
+
 
     @staticmethod
     def generate_alias(probe_name: str, component: Component) -> str:
@@ -1001,16 +1034,30 @@ class Probe:
         return Probe(
             name=probe_pb.name,
             component=component,
-            alias=Probe.generate_alias(probe_pb, component),
-            requirements=requirements
+            requirements=requirements,
+            code=probe_pb.code,
+            config=probe_pb.config,
+            signal_set=probe_pb.signal_set,
+            execution_time_signal=probe_pb.execution_time_signal,
+            run_count_signal=probe_pb.run_count_signal
         )
 
-    def pb_representation(self) -> arch_pb.Probe:
-        probe_pb = arch_pb.Probe()
+    def pb_representation(self, probe_pb: arch_pb.Probe = None) -> arch_pb.Probe:
+        if probe_pb is None:
+            probe_pb = arch_pb.Probe()
         probe_pb.name = self.name
         probe_pb.application = self.component.application.name
         probe_pb.component = self.component.name
         probe_pb.alias = self.alias
+        if self.code != "":
+            probe_pb.type = ProbeType.Value('CODE')
+            probe_pb.code = self.code
+            probe_pb.config = self.config
+        else:
+            probe_pb.type = ProbeType.Value('PROCEDURE')
+        probe_pb.signal_set = self.signal_set
+        probe_pb.execution_time_signal = self.execution_time_signal
+        probe_pb.run_count_signal = self.run_count_signal
         for requirement in self.requirements:
             requirement_pb = probe_pb.requirements.add()
             if isinstance(requirement, TimeContract):

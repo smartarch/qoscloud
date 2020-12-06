@@ -29,7 +29,7 @@ from cloud_controller.assessment.deploy_controller_pb2_grpc import DeployPublish
 from cloud_controller.assessment.model import AppDatabase, Scenario, AppStatus
 from cloud_controller.assessment.scenario_planner import ScenarioPlanner, JudgeResult
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import Application, RunningTimeContract
+from cloud_controller.knowledge.model import Application
 from cloud_controller.middleware.helpers import start_grpc_server
 from cloud_controller.middleware.ivis_pb2 import AccessTokenAck
 
@@ -46,7 +46,7 @@ class DeployController(DeployControllerServicer):
         self._app_judge = app_judge
 
     def UpdateAccessToken(self, request, context):
-        if self._knowledge.there_are_jobs():
+        if self._knowledge.there_are_applications():
             logging.error(f"Cannot update the access token due to the jobs already deployed")
             return AccessTokenAck(success=False)
         self._knowledge.update_access_token(request.token)
@@ -67,8 +67,6 @@ class DeployController(DeployControllerServicer):
         app = self._knowledge.applications[architecture.name]
         self._scenario_pln.register_app(app)
 
-        self._app_judge.notify_new_application(app)
-
         # Sends reply
         logger.info("An app %s was successfully received" % architecture.name)
         return deploy_pb.DeployReply(rc=deploy_pb.RC_OK)
@@ -76,10 +74,7 @@ class DeployController(DeployControllerServicer):
     def SubmitRequirements(self, request, context) -> deploy_pb.DeployReply:
         status = self._app_db.get_app_status(request.name)
         if status == AppStatus.MEASURED:
-            contracts = []
-            for contract in request.contracts:
-                contracts.append(RunningTimeContract(contract.time, contract.percentile))
-            self._app_db.add_contracts(request.name, contracts)
+            self._app_db.update_app(Application.init_from_pb(request))
             self._app_judge.judge_and_rule(request.name)
         return deploy_pb.DeployReply(rc=deploy_pb.RC_OK)
 
@@ -148,43 +143,27 @@ class AppJudge:
         self._planner = planner
         self._lock = Lock()
 
-    def _has_remaining_scenarios(self, app_name: str) -> bool:
-        # Checks plans
-        for scenario in self._planner.fetch_scenarios():
-            if scenario.controlled_probe.component.application.name == app_name:
-                return True
-
-        return False
-
     def judge_and_rule(self, app_name: str) -> None:
-        judgement = self._planner.judge_app(app_name, self._app_db.get_contracts(app_name))
+        judgement = self._planner.judge_app(self._app_db.get_application(app_name))
         if judgement == JudgeResult.ACCEPTED:
             self._app_db.update_app_status(app_name, AppStatus.ACCEPTED)
-            logger.info("App %s accepted", app_name)
+            logger.info(f"App {app_name} accepted")
         elif judgement == JudgeResult.REJECTED:
             self._app_db.update_app_status(app_name, AppStatus.REJECTED)
-            logger.warn("App %s rejected", app_name)
-        elif judgement == JudgeResult.NEEDS_DATA:
-            logger.warn("App %s needs more data for judgement", app_name)
-            # Planner found out that needs more data
-            assert self._has_remaining_scenarios(app_name)
+            logger.warning(f"App {app_name} rejected")
         else:
-            raise NotImplementedError("Unsupported judgement %s" % judgement)
-
-    def notify_new_application(self, app: Application):
-        with self._lock:
-            status = self._app_db.get_app_status(app.name)
-            if status == AppStatus.RECEIVED:
-                # Check if app could be judged
-                if not self._has_remaining_scenarios(app.name):
-                    self._planner.on_app_evaluated(app.name)
-                    self._app_db.update_app_status(app.name, AppStatus.MEASURED)
-                    if app.name in self._app_db.contracts:
-                        self.judge_and_rule(app.name)
+            assert judgement == JudgeResult.NEEDS_DATA
+            logger.warning(f"App {app_name} needs more data for judgement")
 
     def notify_scenario_finished(self, scenario: Scenario) -> None:
-        app = scenario.controlled_probe.component.application
-        self.notify_new_application(app)
+        app_name = scenario.controlled_probe.component.application.name
+        if self._app_db.get_app_status(app_name) == AppStatus.RECEIVED:
+            self._app_db.update_app_status(app_name, AppStatus.MEASURED)
+            app = self._app_db.get_application(app_name)
+            if app.is_complete:
+                self.judge_and_rule(app_name)
+            else:
+                self._planner.on_app_evaluated(app_name)
 
 
 def start_publisher_server(app_db: AppDatabase) -> None:
