@@ -12,7 +12,9 @@ from cloud_controller.middleware import AGENT_PORT
 from cloud_controller.middleware.helpers import connect_to_grpc_server
 from cloud_controller.ivis.ivis_pb2 import SubmissionAck, JobStatus, JobAdmissionStatus, UnscheduleJobAck, \
     RunJobAck, AccessTokenAck
-from cloud_controller.ivis.ivis_pb2_grpc import IvisInterfaceServicer, JobMiddlewareAgentStub
+from cloud_controller.ivis.ivis_pb2_grpc import IvisInterfaceServicer
+from cloud_controller.middleware.middleware_pb2 import RunParameters
+from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
 
 
 class IvisInterface(IvisInterfaceServicer):
@@ -98,8 +100,14 @@ class IvisInterface(IvisInterfaceServicer):
         if job_compin is None or job_compin.phase != CompinPhase.READY:
             return RunJobAck()
         logging.info(f"Running job {job_compin.id}")
-        job_agent: JobMiddlewareAgentStub = connect_to_grpc_server(JobMiddlewareAgentStub, job_compin.ip, AGENT_PORT)
-        return job_agent.RunJob(request)
+        params = RunParameters(
+            instance_id=request.job_id,
+            probe_id=request.job_id,
+            run_id=request.run_id,
+            state=request.state
+        )
+        job_agent: MiddlewareAgentStub = connect_to_grpc_server(MiddlewareAgentStub, job_compin.ip, AGENT_PORT)
+        return job_agent.RunProbe(params)
 
     def UnscheduleJob(self, request, context):
         self._deploy_controller.DeleteApplication(AppName(name=request.job_id))

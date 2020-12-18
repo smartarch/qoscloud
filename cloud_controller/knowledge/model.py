@@ -11,7 +11,6 @@ import yaml
 
 import cloud_controller.architecture_pb2 as protocols
 from cloud_controller import MONGOS_LABEL, MONGO_SHARD_LABEL, architecture_pb2 as arch_pb
-from cloud_controller.architecture_pb2 import ApplicationType
 from cloud_controller.knowledge.user_equipment import UserEquipment
 from cloud_controller.middleware.helpers import OrderedEnum
 

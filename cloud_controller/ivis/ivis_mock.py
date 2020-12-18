@@ -4,15 +4,17 @@ import time
 from threading import Thread
 
 from cloud_controller import API_ENDPOINT_IP, API_ENDPOINT_PORT
-from cloud_controller.architecture_pb2 import Architecture, ApplicationType
-from cloud_controller.ivis.ivis_data import SAMPLE_JOB_CODE, SAMPLE_JOB_PARAMETERS, SAMPLE_JOB_INTERVAL, \
+from cloud_controller.ivis.ivis_data import SAMPLE_JOB_CODE, SAMPLE_JOB_INTERVAL, \
     SAMPLE_JOB_CONFIG, SAMPLE_JOB_CREATE_SS_RESPONSE
 from cloud_controller.middleware import AGENT_HOST, AGENT_PORT
 from cloud_controller.middleware.helpers import connect_to_grpc_server, setup_logging
-from cloud_controller.ivis.ivis_pb2 import JobAdmissionStatus, JobStatus, JobID, RunParameters, JobDescriptor
-from cloud_controller.ivis.ivis_pb2_grpc import IvisInterfaceStub, JobMiddlewareAgentStub
+from cloud_controller.ivis.ivis_pb2 import JobAdmissionStatus, JobStatus, JobID, RunParameters, IvisJobDescription
+from cloud_controller.ivis.ivis_pb2_grpc import IvisInterfaceStub
 
 from flask import Flask, request, g, json
+
+from cloud_controller.middleware.middleware_pb2 import InstanceConfig, ProbeType
+from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
 
 app = Flask(__name__)
 state = None
@@ -84,14 +86,11 @@ if __name__ == "__main__":
                                                                    IVIS_INTERFACE_HOST, IVIS_INTERFACE_PORT)
         # Submit the job
         ivis_interface.SubmitJob(
-            Architecture(
-                name="ivisjob",
-                type=ApplicationType.Value("IVIS"),
+            IvisJobDescription(
                 job_id="ivisjob",
                 code=SAMPLE_JOB_CODE,
-                parameters=SAMPLE_JOB_PARAMETERS,
                 config=json.dumps(json.loads(SAMPLE_JOB_CONFIG)),
-                minimal_interval=SAMPLE_JOB_INTERVAL
+                docker_container="dankhalev/ivis-job"
             )
         )
         logging.info("Job has been submitted")
@@ -102,17 +101,21 @@ if __name__ == "__main__":
             logging.info(f"Current job admission status: {JobAdmissionStatus.Name(status.status)}")
             time.sleep(1)
     else:
-        ivis_interface: JobMiddlewareAgentStub = connect_to_grpc_server(JobMiddlewareAgentStub,
+        init_config = InstanceConfig(
+            instance_id="ivisjob",
+            api_endpoint_ip=API_ENDPOINT_IP,
+            api_endpoint_port=API_ENDPOINT_PORT,
+            access_token="9ae62dcf4cb3f29f3c15cd946044162dfa60468b"
+        )
+
+        probe = init_config.probes.add()
+        probe.name = init_config.instance_id
+        probe.type = ProbeType.Value("CODE")
+        probe.code = SAMPLE_JOB_CODE
+        probe.config = json.dumps(json.loads(SAMPLE_JOB_CONFIG))
+        ivis_interface: MiddlewareAgentStub = connect_to_grpc_server(MiddlewareAgentStub,
                                                                         AGENT_HOST, AGENT_PORT)
-        ivis_interface.InitializeJob(JobDescriptor(
-            job_id="ivisjob",
-            code=SAMPLE_JOB_CODE,
-            parameters=SAMPLE_JOB_PARAMETERS,
-            config=json.dumps(json.loads(SAMPLE_JOB_CONFIG)),
-            minimal_interval=SAMPLE_JOB_INTERVAL,
-            ivis_core_ip=API_ENDPOINT_IP,
-            ivis_core_port=API_ENDPOINT_PORT
-        ))
+        ivis_interface.InitializeInstance(init_config)
         logging.info("Job has been initialized")
     # Run the job 4 times
     for i in range(4):
