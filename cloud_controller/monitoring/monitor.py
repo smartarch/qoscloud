@@ -4,6 +4,7 @@ Contains monitor class that is responsible for Monitoring phase of the mapek cyc
 import logging
 from typing import List, Dict
 
+import grpc
 from kubernetes import client
 
 from cloud_controller import CLIENT_CONTROLLER_HOST, CLIENT_CONTROLLER_PORT, \
@@ -86,25 +87,31 @@ class Monitor:
         Updates User Equipment records on client controller according to the current state of the UserEquipmentContainer
         in Knowledge
         """
-        for ue in self.knowledge.user_equipment.list_new_ue():
-            self.client_controller.AddNewUE(ue)
-        for ue in self.knowledge.user_equipment.list_removed_ue():
-            self.client_controller.RemoveUE(ue)
+        try:
+            for ue in self.knowledge.user_equipment.list_new_ue():
+                self.client_controller.AddNewUE(ue)
+            for ue in self.knowledge.user_equipment.list_removed_ue():
+                self.client_controller.RemoveUE(ue)
+        except grpc._channel._Rendezvous:
+            logging.info("Could not connect to the client controller. Proceeding without UE updates.")
 
     def update_clients(self) -> None:
         """
         Adds and removes the clients that were flagged for addition or removal by Client Controller
         """
-        for client_pb in self.client_controller.GetNewClientEvents(protocols.ClientsRequest()):
-            if client_pb.event == protocols.ClientEventType.Value("CONNECTION"):
-                assert client_pb.application in self.knowledge.applications
-                assert client_pb.type in self.knowledge.applications[client_pb.application].components
-                self.knowledge.add_client(client_pb.application, client_pb.type, client_pb.id, client_pb.ip)
-            elif client_pb.event == protocols.ClientEventType.Value("DISCONNECTION"):
-                assert client_pb.application in self.knowledge.applications
-                assert client_pb.type in self.knowledge.applications[client_pb.application].components
-                assert self.knowledge.actual_state.compin_exists(client_pb.application, client_pb.type, client_pb.id)
-                self.knowledge.remove_client(client_pb.application, client_pb.type, client_pb.id)
+        try:
+            for client_pb in self.client_controller.GetNewClientEvents(protocols.ClientsRequest()):
+                if client_pb.event == protocols.ClientEventType.Value("CONNECTION"):
+                    assert client_pb.application in self.knowledge.applications
+                    assert client_pb.type in self.knowledge.applications[client_pb.application].components
+                    self.knowledge.add_client(client_pb.application, client_pb.type, client_pb.id, client_pb.ip)
+                elif client_pb.event == protocols.ClientEventType.Value("DISCONNECTION"):
+                    assert client_pb.application in self.knowledge.applications
+                    assert client_pb.type in self.knowledge.applications[client_pb.application].components
+                    assert self.knowledge.actual_state.compin_exists(client_pb.application, client_pb.type, client_pb.id)
+                    self.knowledge.remove_client(client_pb.application, client_pb.type, client_pb.id)
+        except grpc._channel._Rendezvous:
+            logging.info("Could not connect to the client controller. Proceeding without client updates.")
 
     def update_applications(self) -> None:
         """
@@ -114,23 +121,25 @@ class Monitor:
             self.knowledge.add_application(app_pb)
         self.postponed_apps = []
         recently_deleted_apps = []
-        for request_pb in self.publisher.DownloadNewRemovals(Empty()):
-            self.knowledge.delete_application(request_pb.name)
-            recently_deleted_apps.append(request_pb.name)
-        for app_pb in self.publisher.DownloadNewArchitectures(Empty()):
-            for component in app_pb.components.values():
-                if component.policy == UEMPolicy.Value("DEFAULT"):
-                    component.policy = UEMPolicy.Value(DEFAULT_UE_MANAGEMENT_POLICY.name)
-                if component.policy == UEMPolicy.Value("WHITELIST"):
-                    for ip in component.whitelist:
-                        self.knowledge.user_equipment.add_app_to_ue(ip, f"{app_pb.name}.{component.name}")
+        try:
+            for request_pb in self.publisher.DownloadNewRemovals(Empty()):
+                self.knowledge.delete_application(request_pb.name)
+                recently_deleted_apps.append(request_pb.name)
+            for app_pb in self.publisher.DownloadNewArchitectures(Empty()):
+                for component in app_pb.components.values():
+                    if component.policy == UEMPolicy.Value("DEFAULT"):
+                        component.policy = UEMPolicy.Value(DEFAULT_UE_MANAGEMENT_POLICY.name)
+                    if component.policy == UEMPolicy.Value("WHITELIST"):
+                        for ip in component.whitelist:
+                            self.knowledge.user_equipment.add_app_to_ue(ip, f"{app_pb.name}.{component.name}")
 
-            if app_pb.name in recently_deleted_apps:
-                # Recently deleted apps need to wait until the next cycle
-                self.postponed_apps.append(app_pb)
-            else:
-                self.knowledge.add_application(app_pb)
-
+                if app_pb.name in recently_deleted_apps:
+                    # Recently deleted apps need to wait until the next cycle
+                    self.postponed_apps.append(app_pb)
+                else:
+                    self.knowledge.add_application(app_pb)
+        except grpc._channel._Rendezvous:
+            logging.info("Could not connect to the assessment controller. Proceeding without application updates.")
 
 class FakeMonitor(Monitor):
 
