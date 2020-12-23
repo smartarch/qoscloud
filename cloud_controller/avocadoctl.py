@@ -108,7 +108,6 @@ def yaml_to_grpc_architecture(architecture_yaml) -> Optional[arch_pb.Architectur
                         elif req['type'].lower() == "throughput":
                             requirement_grpc.throughput.requests = req['requests']
                             requirement_grpc.throughput.per = time_periods[req['per']]
-                        requirement_grpc.name = req['probe']
         elif _type == "unmanaged":
             if 'UEMPolicy' in item:
                 uem_policy = item['UEMPolicy'].upper()

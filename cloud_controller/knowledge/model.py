@@ -24,6 +24,7 @@ class Statefulness(Enum):
     NONE = 1
     MONGO = 3
 
+
 class QoSContract:
 
     def __init__(self):
@@ -32,7 +33,7 @@ class QoSContract:
 
 class TimeContract(QoSContract):
 
-    def __init__(self, time: int, percentile: int):
+    def __init__(self, time: int, percentile: float):
         super().__init__()
         self.time = time
         self.percentile = percentile
@@ -317,7 +318,7 @@ class Component:
             container_spec=component_pb.deployment,
             probes=probes,
             statefulness=Component.statefulness_map[component_pb.statefulness],
-            cardinality=ComponentCardinality(component_pb.cardinality)
+            cardinality=ComponentCardinality(component_pb.cardinality + 1)
         )
         for probe in component_pb.probes:
             component.probes.append(Probe.init_from_pb_direct(probe, component))

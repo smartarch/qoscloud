@@ -26,6 +26,15 @@ SAMPLE_JOB_PARAMETERS = '''
     }
 ]
 '''
+'''
+[
+    {
+      "id": "dataset",
+      "label": "Dataset",
+      "type": "string"
+    }
+]
+'''
 SAMPLE_JOB_CONFIG = '''
 {
   "params": {
@@ -75,6 +84,9 @@ SAMPLE_JOB_STATE = """
   "values": [1, 2, 3, 4]
 }
 """
+"""
+{"params": {"dataset": "ds1"}}
+"""
 SAMPLE_JOB_CREATE_SS_REQUEST = '''
 {
   "type": "sets",
@@ -118,6 +130,18 @@ SAMPLE_JOB_CREATE_SS_RESPONSE = '''
      "created_signal": "s3"
    }
  }
+}
+'''
+'''
+{
+    settings: { params: [], jsx: "'use strict';\n", scss: '' },
+    name: 'tmp',
+    elevated_access: 1,
+    type: 'jsx',
+    namespace: 1,
+    description: '',
+    originalHash: '7ea1949a41c2b0c3ddd392f5721234ccb6e879733f37b7e95738d98c5e7cd813',
+    id: 1
 }
 '''
 

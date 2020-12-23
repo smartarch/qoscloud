@@ -77,7 +77,7 @@ message Probe {
 
 message TimeContract {
     int32 time = 1;
-    int32 percentile = 2;
+    double percentile = 2;
 }
 
 message ThroughputContract {

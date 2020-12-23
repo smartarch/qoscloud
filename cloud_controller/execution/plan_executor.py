@@ -22,7 +22,7 @@ import cloud_controller.knowledge.knowledge_pb2_grpc as servicers
 from cloud_controller.knowledge.model import ManagedCompin, CompinPhase, UnmanagedCompin
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer
 from cloud_controller.middleware import AGENT_PORT
-from cloud_controller.middleware.middleware_pb2 import Pong, DependencyAddress
+from cloud_controller.middleware.middleware_pb2 import Pong, DependencyAddress, InstanceConfig, ProbeType
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
 from cloud_controller.middleware.helpers import connect_to_grpc_server
 

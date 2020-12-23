@@ -196,7 +196,7 @@ class ScenarioGenerator:
     def generate_random_load(self, probe_count):
         bg_probes: List[str] = []
         for i in range(probe_count):
-            bg_probe_id = random.choice(self._probes)
+            bg_probe_id = random.choice(list(self._probes))
             bg_probes.append(bg_probe_id)
         bg_probes.sort()
         return bg_probes

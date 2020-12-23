@@ -34,14 +34,14 @@ class ProbeMonitor:
             self._interpreter.run_measurement(probe_name)
 
         # Measured
-        start = round(time.perf_counter() * 1000)
+        start = time.perf_counter() * 1000
         for _ in range(measured_cycles):
             collector.before_iteration()
             self._interpreter.run_measurement(probe_name)
             collector.after_iteration()
         collector.finish()
 
-        return round(time.perf_counter() * 1000) - start
+        return round(time.perf_counter() * 1000 - start)
 
     @property
     def has_workload(self) -> bool:
