@@ -27,8 +27,11 @@ class ExtensionManager:
     """
 
     def __init__(self):
-        self._knowledge = Knowledge()
+        self.knowledge = Knowledge()
+        self._monitor = None
         self._analyzer = None
+        self._planner = None
+        self._executor = None
         self._solver_class = CSPSolver
         self._predictor = StraightforwardPredictorModel(DEFAULT_PREDICTOR_CONFIG)
         self._kubeconfig_file = PRODUCTION_KUBECONFIG
@@ -47,8 +50,11 @@ class ExtensionManager:
             self._phase = _Phase.DONE
             return AdaptationController(
                 kubeconfig_file=self._kubeconfig_file,
-                knowledge=self._knowledge,
+                knowledge=self.knowledge,
+                monitor=self._monitor,
                 analyzer=self._analyzer,
+                planner=self._planner,
+                executor=self._executor,
                 solver_class=self._solver_class,
                 predictor=self._predictor,
                 mongos_ip=self._mongos_ip,
@@ -74,7 +80,7 @@ class ExtensionManager:
 
     def set_network_topology(self, network_topology: NetworkTopology) -> None:
         def task():
-            self._knowledge.network_topology = network_topology
+            self.knowledge.network_topology = network_topology
         self._check_and_execute(task)
 
     def set_report_handover_hook(self, hook) -> None:
@@ -82,9 +88,24 @@ class ExtensionManager:
             UserEquipmentContainer.report_handover = hook
         self._check_and_execute(task)
 
+    def set_monitor(self, monitor) -> None:
+        def task():
+            self._monitor = monitor
+        self._check_and_execute(task)
+
     def set_analyzer(self, analyzer) -> None:
         def task():
             self._analyzer = analyzer
+        self._check_and_execute(task)
+
+    def set_planner(self, planner) -> None:
+        def task():
+            self._planner = planner
+        self._check_and_execute(task)
+
+    def set_executor(self, executor) -> None:
+        def task():
+            self._executor = executor
         self._check_and_execute(task)
 
     def set_solver_class(self, solver_class: Type) -> None:
@@ -104,7 +125,7 @@ class ExtensionManager:
 
     def set_client_support(self, enabled: bool) -> None:
         def task():
-            self._knowledge.client_support = enabled
+            self.knowledge.client_support = enabled
         self._check_and_execute(task)
 
     def set_default_ue_management_policy(self, policy: UEManagementPolicy):

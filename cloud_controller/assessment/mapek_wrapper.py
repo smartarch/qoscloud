@@ -11,6 +11,7 @@ from cloud_controller import ASSESSMENT_KUBECONFIG, ASSESSMENT_MONGOS_SERVER_IP
 from cloud_controller.extension_manager import ExtensionManager
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import CloudState
+from cloud_controller.monitoring.monitor import TopLevelMonitor, KubernetesMonitor
 
 logger = logging.getLogger("MW")
 
@@ -28,6 +29,9 @@ class MapekWrapper:
         extension_manager = ExtensionManager()
         extension_manager.set_client_support(False)
         extension_manager.set_analyzer(self._analyzer)
+        monitor = TopLevelMonitor(extension_manager.knowledge)
+        monitor.add_monitor(KubernetesMonitor())
+        extension_manager.set_monitor(monitor)
         extension_manager.set_kubeconfig(ASSESSMENT_KUBECONFIG)
         extension_manager.set_mongos_ip(ASSESSMENT_MONGOS_SERVER_IP)
         self._adaptation_ctl = extension_manager.get_adaptation_ctl()

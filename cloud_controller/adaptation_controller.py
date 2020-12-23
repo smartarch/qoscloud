@@ -23,7 +23,8 @@ from cloud_controller.ivis.ivis_interface import IvisInterface
 from cloud_controller.ivis.ivis_mock import IVIS_INTERFACE_HOST, IVIS_INTERFACE_PORT
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.ivis.ivis_pb2_grpc import add_IvisInterfaceServicer_to_server
-from cloud_controller.monitoring.monitor import Monitor
+from cloud_controller.monitoring.monitor import Monitor, TopLevelMonitor, ApplicationMonitor, KubernetesMonitor, \
+    UEMonitor, ClientMonitor
 from cloud_controller.planning.execution_planner import ExecutionPlanner
 from cloud_controller.middleware.helpers import setup_logging, start_grpc_server
 from cloud_controller.knowledge import knowledge_pb2 as protocols
@@ -87,7 +88,11 @@ class AdaptationController:
         self.planner = planner
         self.executor = executor
         if monitor is None:
-            self.monitor = Monitor(self.knowledge)
+            self.monitor = TopLevelMonitor(self.knowledge)
+            self.monitor.add_monitor(ApplicationMonitor())
+            self.monitor.add_monitor(ClientMonitor())
+            self.monitor.add_monitor(UEMonitor())
+            self.monitor.add_monitor(KubernetesMonitor())
         if self.analyzer is None:
             self.analyzer = Analyzer(self.knowledge, solver_class, predictor, self.pool)
         if self.planner is None:
@@ -109,11 +114,7 @@ class AdaptationController:
         documentation).
         """
         logging.info("--------------- MONITORING PHASE ---------------")
-        self.monitor.update_cluster_state()
-        if self.knowledge.client_support:
-            self.monitor.update_ue()
-            self.monitor.update_clients()
-            self.monitor.update_applications()
+        self.monitor.monitor()
 
     def analysis(self):
         """
