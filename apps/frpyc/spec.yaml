@@ -27,6 +27,17 @@ components:
                 value: "0"
               ports:
               - containerPort: 6666
+    probes: # probes
+    - name: recognize
+    QoSrequirements: # QoS requirements
+    - type: time
+      probe: recognize
+      probability: 0.99
+      time: 100 # Max. 100ms in 99% cases
+    - type: time
+      probe: recognize
+      probability: 0.90
+      time: 200 # Max. 200ms in 99% cases
   - name: image-client
     type: unmanaged
     dependsOn: # This component has a dependency on the recognizer-server:
