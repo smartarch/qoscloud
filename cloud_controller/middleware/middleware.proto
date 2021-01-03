@@ -30,6 +30,8 @@ service MiddlewareAgent {
     // Sets a probe as a workload ie. either starts the probe as a background workload or stops the probe.
     rpc SetProbeWorkload (ProbeWorkload) returns (ProbeCallResult) {}
 
+    rpc SetStatefulnessKey (MongoParameters) returns (MongoParametersAck) {}
+
     rpc CollectProbeResults (ProbeDescriptor) returns (stream ProbeFullResult) {}
 
     rpc FinalizeExecution (DependencyAddress) returns (AddressAck) {}

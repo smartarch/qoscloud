@@ -694,11 +694,13 @@ class UnmanagedCompin(Compin):
         ue: User Equipment on which this compin runs.
     """
 
-    def __init__(self, component: Component, id_: str, ue: UserEquipment = None):
+    def __init__(self, component: Component, id_: str, ue: UserEquipment = None, position_x: float = 0, position_y: float = 0):
         super().__init__(component, id_, id_)
         if ue is not None:
             self._ue: UserEquipment = ue
             self.ip = ue.ip
+        self.position_x: float = position_x
+        self.position_y: float = position_y
 
     @property
     def ue(self) -> UserEquipment:

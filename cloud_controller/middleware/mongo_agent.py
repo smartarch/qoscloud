@@ -30,16 +30,15 @@ class MongoAgent:
         collection.count_documents()
     """
 
-    def __init__(self, mongos_ip: str, shard_key: int, db_name, collection_name):
+    def __init__(self, mongos_ip: str, db_name, collection_name):
         """
 
         :param mongos_ip: The initial IP of mongos instance
-        :param shard_key: The key identifying this user. Determines which documents of the collection are accessible.
         :param db_name: DB to use
         :param collection_name: Collection to use
         """
         self._mongos_ip = mongos_ip
-        self._shard_key = shard_key
+        self._shard_key = None
         self._db_name = db_name
         self._collection_name = collection_name
         self._mongo_client: MongoClient = MongoClient(mongos_ip, MONGOS_PORT)
@@ -56,6 +55,13 @@ class MongoAgent:
             self._mongos_ip = mongos_ip
             self._mongo_client = MongoClient(mongos_ip, MONGOS_PORT)
             self._collection = self._mongo_client[self._db_name][self._collection_name]
+
+    def _set_shard_key(self, key):
+        """
+        :param key: The key identifying this user. Determines which documents of the collection are accessible.
+        """
+        with self._lock:
+            self._shard_key = key
 
     def _specialize_document(self, doc: Dict):
         """

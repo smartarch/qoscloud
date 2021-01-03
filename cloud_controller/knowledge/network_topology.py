@@ -39,6 +39,41 @@ class NetworkTopology(ABC):
 EUCLID_CLIENT_SPEED = 0.5  # Units per second
 
 
+class StaticNetworkTopology(NetworkTopology):
+
+    def __init__(self, input_file=DEFAULT_EUCLID_TOPOLOGY_CONFIG):
+        self._datacenters: Dict[str, Point] = {}
+        self._dc_positions: List[Point] = []
+        self._current_dc_position: int = 0
+        with open(input_file, "r") as file:
+            self._yaml_obj = yaml.load(file)
+        for dc in self._yaml_obj["datacenters"]:
+            self._dc_positions.append(Point(dc[0], dc[1]))
+
+        assert len(self._dc_positions) > 0
+
+    def _add_datacenter(self, name: str):
+        self._datacenters[name] = (self._dc_positions[self._current_dc_position])
+        self._current_dc_position += 1
+        self._current_dc_position %= len(self._dc_positions)
+
+    def _calculate_distance(self, client: UnmanagedCompin, datacenter: str, network_distances: NetworkDistances) -> None:
+        point = Point(client.position_x, client.position_y)
+        distance = point.distance(self._datacenters[datacenter])
+        network_distances.add_client_datacenter_distance(client.id, datacenter, distance)
+
+    def get_network_distances(self, clients: Iterable[UnmanagedCompin], nodes: Iterable[Node]) -> NetworkDistances:
+        nodes = list(nodes)
+        for node in nodes:
+            if node.data_center not in self._datacenters:
+                self._add_datacenter(node.data_center)
+        distances = NetworkDistances()
+        for client in clients:
+            for dc in self._datacenters:
+                self._calculate_distance(client, dc, distances)
+        return distances
+
+
 class EuclidNetworkTopology(NetworkTopology):
     """
     This implementation loads a configuration YAML file that defines the positions of the datacenters and the client
@@ -161,14 +196,6 @@ class EuclidNetworkTopology(NetworkTopology):
                 run(['ip', 'netns', 'exec', f"cl{compin.id}-rt", 'ip', 'route', 'change', self.overlay_network, 'via',
                      self._dc_cfg[closest_dc][1]])
                 logging.info(f"Client {compin.id} is now connected to the cloud through {closest_dc}.")
-        # Add node-node distances
-        for node_1 in nodes:
-            for node_2 in nodes:
-                if node_1 is not node_2:
-                    pos_1 = self._datacenters[node_1.data_center]
-                    pos_2 = self._datacenters[node_2.data_center]
-                    distance = pos_1.distance(pos_2)
-                    network_distances.add_distance_between_nodes(node_1.name, node_2.name, distance)
 
         self._last_time = self._current_time
         return network_distances

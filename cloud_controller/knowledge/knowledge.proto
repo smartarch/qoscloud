@@ -153,6 +153,7 @@ service ClientControllerInternal {
 enum ClientEventType {
     CONNECTION = 0;
     DISCONNECTION = 1;
+    LOCATION = 2;
 }
 
 message ClientDescriptor {
@@ -164,6 +165,9 @@ message ClientDescriptor {
     string id = 5;
     string imsi = 6;
     ClientEventType event = 7;
+    float position_x = 8;
+    float position_y = 9;
+    string persistent_id = 10;
 }
 
 enum ArchitectureResponseCode {

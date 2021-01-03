@@ -10,7 +10,7 @@ from cloud_controller.knowledge.model import Component, UnmanagedCompin, check_d
     Datacenter
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer, UserEquipment
 from cloud_controller.knowledge.model import CloudState, Node, Namespace, Application
-from cloud_controller.knowledge.network_topology import NetworkTopology, EuclidNetworkTopology
+from cloud_controller.knowledge.network_topology import NetworkTopology, EuclidNetworkTopology, StaticNetworkTopology
 
 
 class Knowledge:
@@ -146,7 +146,8 @@ class Knowledge:
             del self.applications[name]
         logging.info(f"A request for deletion of application {name} was processed.")
 
-    def add_client(self, app_name: str, component_name: str, id_: str, ip: str) -> None:
+    def add_client(self, app_name: str, component_name: str, id_: str, ip: str, position_x: float, position_y: float
+                   ) -> None:
         """
         Adds an instance of UnmanagedCompin to the Knowledge. Will throw an exception if compin with this ID already
         exists.
@@ -162,11 +163,21 @@ class Knowledge:
         compin = UnmanagedCompin(
             component=self.applications[app_name].components[component_name],
             id_=id_,
-            ue=ue
+            ue=ue,
+            position_x=position_x,
+            position_y=position_y
         )
         self.actual_state.add_instance(compin)
         self._new_clients.append(compin)
         logging.info(f"Client {app_name}-{component_name}-{id_} added successfully")
+
+    def update_client_position(self, app_name: str, component_name: str, id_: str, position_x: float, position_y: float
+                   ) -> None:
+        client = self.actual_state.get_compin(app_name, component_name, id_)
+        assert isinstance(client, UnmanagedCompin)
+        client.position_x = position_x
+        client.position_y = position_y
+        logging.info(f"Client {app_name}-{component_name}-{id_}: location updated successfully")
 
     def remove_client(self, app_name: str, component_name: str, id_: str) -> None:
         """
