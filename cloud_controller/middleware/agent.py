@@ -12,7 +12,7 @@ import time
 from abc import ABC, abstractmethod
 from subprocess import Popen, PIPE
 from threading import RLock
-from typing import Optional, Callable, Dict, Generator, List
+from typing import Optional, Callable, Dict, Generator, List, Tuple, Any
 
 import requests
 from elasticsearch import Elasticsearch
@@ -155,6 +155,7 @@ class Interpreter:
         self._last_run_start_time: float = 0
         self._elasticsearch = Elasticsearch([{'host': es_host, 'port': int(es_port)}])
         self._measurement_iteration_number = 0
+        self._result: Optional[Any] = None
 
     @property
     def current_process(self) -> Optional[str]:
@@ -171,6 +172,18 @@ class Interpreter:
         while self._current_process is not None:
             time.sleep(.01)
         self._measurement_iteration_number += 1
+
+    def run_as_probe(self, probe_name: str, procedure: Callable, args: Tuple = ()) -> Optional[Any]:
+        if self._current_process is not None:
+            self._report_already_running(probe_name)
+            return
+        self._current_process = probe_name
+        self._last_run_start_time = time.perf_counter()
+        assert probe_name in self._config.probes
+        probe = self._config.probes[probe_name]
+        assert isinstance(probe, CallableProbe)
+        self._wait_for_process(probe, procedure, args)
+        return self._result
 
     def run_probe(self, probe_name: str, run_id: str, state: str) -> None:
         if self._current_process is not None:
@@ -234,7 +247,14 @@ class Interpreter:
                 headers=headers, json=payload
             )
 
-    def _wait_for_process(self, probe: ProbeConfig):
+    def _call_procedure(self, procedure: Callable, args: Tuple = ()):
+        try:
+            result = procedure(args)
+            return result
+        except Exception as e:
+            return e
+
+    def _wait_for_process(self, probe: ProbeConfig, procedure: Callable = None, args: Tuple = ()):
         assert self._current_process is not None
         run_status = {
             'config': "",
@@ -245,20 +265,21 @@ class Interpreter:
         if isinstance(probe, RunnableProbe):
             while self._process.poll() is None:
                 time.sleep(0.1)
-
             run_status['output'] = self._process.stdout.read()
             run_status['error'] = self._process.stderr.read()
             run_status['returnCode'] = self._process.returncode
             success = self._process.returncode == 0
         else:
             assert isinstance(probe, CallableProbe)
-            try:
-                probe.procedure()
-                success = True
-            except Exception as e:
-                run_status['error'] = str(e)
-                success = False
-
+            if procedure is not None:
+                self._result = self._call_procedure(procedure, args)
+            else:
+                self._result = self._call_procedure(probe.procedure)
+            success = not isinstance(self._result, Exception)
+            if not success:
+                run_status['error'] = str(self._result)
+            elif self._result is not None:
+                run_status['output'] = str(self._result)
         run_status['endTime'] = time.perf_counter()
         if success:
             logging.info(f"Run completed successfully. STDOUT: {run_status['output']}")
@@ -311,7 +332,7 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         self._update_call = update_call
         self.phase = mw_protocols.Phase.Value('INIT')
         self._mongo_agent: Optional[MongoAgent] = None
-        self._probes = probes
+        self._probes: Dict[str, Callable] = probes
         self._probe_monitor = None
         self._config: Optional[InstanceConfig] = None
         self._interpreter: Optional[Interpreter] = None
@@ -332,6 +353,12 @@ class MiddlewareAgent(MiddlewareAgentServicer):
                 self.phase = mw_protocols.Phase.Value('FINISHED')
             else:
                 self._finished_reported = True
+
+    def run_as_probe(self, probe_name: str, procedure: Callable, args: Tuple = ()) -> Optional[Any]:
+        return self._interpreter.run_as_probe(probe_name, procedure, args)
+
+    def register_probe(self, probe_name: str, procedure: Callable) -> None:
+        self._probes[probe_name] = procedure
 
     def SetDependencyAddress(self, request, context):
         """
@@ -375,16 +402,16 @@ class MiddlewareAgent(MiddlewareAgentServicer):
                 self._interpreter.run_probe(request.probe_id, request.run_id, request.state)
             else:
                 logging.info(f"Cannot run probe: the instance is not in the correct lifecycle phase")
-        return RunAck()
+        return mw_protocols.RunAck()
 
     def InitializeInstance(self, request, context):
         self._config = InstanceConfig.init_from_pb(request, self._probes)
-        self._interpreter = Interpreter(self._config, self)
+        self._interpreter = Interpreter(self._config, self, request.api_endpoint_ip, 9200) # TODO
         if not self._config.production:
             self._probe_monitor = ProbeMonitor(interpreter=self._interpreter)
         self.set_ready()
         logging.info("Instance initialized")
-        return InitAck()
+        return mw_protocols.InitAck()
 
     def Ping(self, request, context):
         """
@@ -399,13 +426,23 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         user's shard key, database and collection to use.
         """
         if self._mongo_agent is None:
-            self._mongo_agent = MongoAgent(request.mongosIp, request.shardKey, request.db, request.collection)
+            self._mongo_agent = MongoAgent(request.mongosIp, request.db, request.collection)
         else:
-            self.mongo_agent._set_mongos_ip(request.mongosIp)
+            self._mongo_agent._set_mongos_ip(request.mongosIp)
+        return mw_protocols.MongoParametersAck()
+
+    def SetStatefulnessKey(self, request, context):
+        """
+        Sets the shard key for MongoAgent.
+        """
+        if self._mongo_agent is not None:
+            self._mongo_agent._set_shard_key(request.shardKey)
         return mw_protocols.MongoParametersAck()
 
     @property
     def mongo_agent(self) -> Optional[MongoAgent]:
+        if self._mongo_agent is None or self._mongo_agent._shard_key == None:
+            return None
         return self._mongo_agent
 
     def _check_measurement_errors(self, probe_name: str):
@@ -521,7 +558,7 @@ class ServerAgent(Agent):
     integrate it properly with the the Avocado framework.
     """
 
-    def __init__(self, probes: Dict[str, Callable[[], None]],
+    def __init__(self, probes: Dict[str, Callable[[], None]] = None,
                  update_call: Callable = None,
                  finalize_call: Callable = None,
                  initialize_call: Callable = None):
@@ -539,6 +576,9 @@ class ServerAgent(Agent):
 
     def _run(self) -> None:
         start_grpc_server(self._mw_agent, add_MiddlewareAgentServicer_to_server, AGENT_HOST, AGENT_PORT, 10, True)
+
+    def run_as_probe(self, probe_name: str, procedure: Callable, args: Tuple = ()) -> Optional[Any]:
+        return self._mw_agent.run_as_probe(probe_name, procedure, args)
 
     def get_mongo_agent(self) -> Optional[MongoAgent]:
         """
@@ -569,6 +609,9 @@ class ServerAgent(Agent):
             self._mw_agent.set_finished()
             self._finished_called = True
             logging.info(f"Phase was switched to FINISHED")
+
+    def register_probe(self, probe_name: str, callable: Callable):
+        self._mw_agent.register_probe(probe_name, callable)
 
     def get_phase(self) -> Phase:
         return Phase(self._mw_agent.phase)
