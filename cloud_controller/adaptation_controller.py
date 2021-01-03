@@ -17,17 +17,21 @@ from cloud_controller.analysis.analyzer import Analyzer
 from cloud_controller.analysis.csp_solver.solver import CSPSolver
 from cloud_controller.analysis.predictor import Predictor, StraightforwardPredictorModel
 from cloud_controller.analysis.predictor_interface.predictor_service import StatisticalPredictor
+from cloud_controller.analyzer.csp_analyzer import CSPAnalyzer
 from cloud_controller.cleanup import ClusterCleaner
 from cloud_controller.execution.executor import Executor
+from cloud_controller.extension_manager import ExtensionManager
 from cloud_controller.ivis.ivis_interface import IvisInterface
 from cloud_controller.ivis.ivis_mock import IVIS_INTERFACE_HOST, IVIS_INTERFACE_PORT
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.ivis.ivis_pb2_grpc import add_IvisInterfaceServicer_to_server
 from cloud_controller.monitoring.monitor import Monitor, TopLevelMonitor, ApplicationMonitor, KubernetesMonitor, \
     UEMonitor, ClientMonitor
+from cloud_controller.planner.top_planner import Planner
 from cloud_controller.planning.execution_planner import ExecutionPlanner
 from cloud_controller.middleware.helpers import setup_logging, start_grpc_server
 from cloud_controller.knowledge import knowledge_pb2 as protocols
+from cloud_controller.task_executor.task_executor import TaskExecutor
 
 
 def log_phase_duration():
@@ -50,16 +54,11 @@ class AdaptationController:
     """
 
     def __init__(self,
-                 kubeconfig_file: str = PRODUCTION_KUBECONFIG,
-                 knowledge: Knowledge = Knowledge(),
-                 monitor=None,
-                 analyzer=None,
-                 planner=None,
-                 executor=None,
-                 solver_class: Type = CSPSolver,
-                 predictor: Predictor = None,
-                 mongos_ip: str = PRODUCTION_MONGOS_SERVER_IP,
-                 thread_count: int = THREAD_COUNT
+                 knowledge: Knowledge,
+                 monitor: Monitor,
+                 analyzer: CSPAnalyzer,
+                 planner: Planner,
+                 executor: TaskExecutor,
                  ):
         """
         :param kubeconfig_file: A path to the kubeconfig file to use.
@@ -73,40 +72,12 @@ class AdaptationController:
         :param mongos_ip:       IP of a Mongos instance for executing any commands on MongoDB.
         :param thread_count:    Number of threads to use for Executor ThreadPool.
         """
-        assert isinstance(knowledge, Knowledge)
-        config.load_kube_config(config_file=kubeconfig_file)
-        self.mongos_ip = mongos_ip
-        self.pool = ThreadPool(processes=thread_count)
         self.knowledge = knowledge
-        if predictor is None:
-            if self.knowledge.client_support:
-                predictor = StatisticalPredictor(self.knowledge)
-            else:
-                predictor = StraightforwardPredictorModel(DEFAULT_PREDICTOR_CONFIG)
         self.monitor = monitor
         self.analyzer = analyzer
         self.planner = planner
         self.executor = executor
-        if monitor is None:
-            self.monitor = TopLevelMonitor(self.knowledge)
-            self.monitor.add_monitor(ApplicationMonitor())
-            self.monitor.add_monitor(ClientMonitor())
-            self.monitor.add_monitor(UEMonitor())
-            self.monitor.add_monitor(KubernetesMonitor())
-        if self.analyzer is None:
-            self.analyzer = Analyzer(self.knowledge, solver_class, predictor, self.pool)
-        if self.planner is None:
-            self.planner = ExecutionPlanner(self.knowledge)
-        if self.executor is None:
-            self.executor = Executor(self.knowledge, self.pool, self.mongos_ip)
         self.desired_state = None
-        self.execution_plans: Iterable[protocols.ExecutionPlan] = []
-
-    def clean_cluster(self) -> None:
-        """
-        Deletes all the namespaces and the database records that were left after the previous run of Avocado.
-        """
-        ClusterCleaner(self.mongos_ip).cleanup()
 
     def monitoring(self):
         """
@@ -128,7 +99,7 @@ class AdaptationController:
         Receives execution plans from Planner based on the desired state
         """
         logging.info("--------------- PLANNING PHASE   ---------------")
-        self.execution_plans = self.planner.plan_changes(self.desired_state)
+        self.planner.plan_tasks(self.desired_state)
 
     def execution(self) -> int:
         """
@@ -136,15 +107,8 @@ class AdaptationController:
         :return: number of executed plans
         """
         logging.info("--------------- EXECUTION PHASE  ---------------")
-        if PARALLEL_EXECUTION:
-            plan_count = self.executor.execute_plans_in_parallel(self.execution_plans)
-        else:
-            plan_count = 0
-            for execution_plan in self.execution_plans:
-                self.executor.execute_plan(execution_plan)
-                plan_count += 1
-        logging.info(f"Executed {plan_count} plans")
-        return plan_count
+        task_count = self.executor.execute_all()
+        return task_count
 
     def run_one_cycle(self) -> None:
         """
@@ -163,7 +127,7 @@ class AdaptationController:
             self.monitoring()
             self.analysis()
             self.planning()
-            plan_count = self.execution()
+            task_count = self.execution()
 
     def run(self) -> None:
         """
@@ -180,8 +144,8 @@ class AdaptationController:
 if __name__ == "__main__":
     # TONOWDO: move ivis interface start elsewhere
     setup_logging()
-    adaptation_ctl = AdaptationController()
-    adaptation_ctl.clean_cluster()
+    ClusterCleaner(PRODUCTION_MONGOS_SERVER_IP).cleanup()
+    adaptation_ctl = ExtensionManager().get_adaptation_ctl()
     ivis_interface = IvisInterface(adaptation_ctl.knowledge)
     ivis_interface_thread = threading.Thread(
         target=start_grpc_server,

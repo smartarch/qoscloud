@@ -31,6 +31,7 @@ class ClusterCleaner:
     def cleanup(self) -> None:
         """
         Performs the cluster and DB cleanup based on the records found in the MongoDB.
+        Deletes all the namespaces and the database records that were left after the previous run of the framework.
         """
         try:
             self._mongo_client.admin.command('ismaster')

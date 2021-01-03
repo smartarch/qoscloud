@@ -8,6 +8,7 @@ import logging
 from typing import Optional
 
 from cloud_controller import ASSESSMENT_KUBECONFIG, ASSESSMENT_MONGOS_SERVER_IP
+from cloud_controller.cleanup import ClusterCleaner
 from cloud_controller.extension_manager import ExtensionManager
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import CloudState
@@ -35,7 +36,7 @@ class MapekWrapper:
         extension_manager.set_kubeconfig(ASSESSMENT_KUBECONFIG)
         extension_manager.set_mongos_ip(ASSESSMENT_MONGOS_SERVER_IP)
         self._adaptation_ctl = extension_manager.get_adaptation_ctl()
-        self._adaptation_ctl.clean_cluster()
+        ClusterCleaner(ASSESSMENT_MONGOS_SERVER_IP).cleanup()
         # Load cloud data
         self._adaptation_ctl.monitoring()
         logger.info("Cloud status updated")

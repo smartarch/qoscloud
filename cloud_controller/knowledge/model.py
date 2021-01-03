@@ -2,6 +2,9 @@
 Contains the classes that are used by the framework to model the state of the cloud and the cluster: representations
 of nodes, datacenters, namespaces, applications, components, compins, etc.
 """
+import itertools
+import random
+
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Dict, Optional, Any, Iterable, Type, TypeVar
@@ -730,7 +733,7 @@ class CloudState:
 
     def __init__(self):
         self._state: Dict[str, Dict[str, Dict[str, Compin]]] = {}
-        self._chains: Dict[str, List[ManagedCompin]] = {}
+        self._chains: Dict[str, Dict[str, ManagedCompin]] = {}
         self._clients: Dict[str, UnmanagedCompin] = {}
 
     def add_application(self, application: Application) -> None:
@@ -758,6 +761,15 @@ class CloudState:
             return []
         return list(self._state[application_name].keys())
 
+    def connect_all_chains(self):
+        for chain_id in self._chains:
+            clients = [self._clients[chain_id]] if chain_id in self._clients else []
+            for instance in itertools.chain(clients, self._chains[chain_id].values()):
+                for dependency in instance.component.dependencies:
+                    provider: ManagedCompin = self._chains[chain_id][dependency.name]
+                    assert provider is not None
+                    instance.set_dependency(provider)
+
     def list_instances(self, application_name: str, component_name: str) -> List[str]:
         """
         :param application_name: Name of application to list compins for
@@ -767,6 +779,13 @@ class CloudState:
         if application_name not in self._state or component_name not in self._state[application_name]:
             return []
         return list(self._state[application_name][component_name].keys())
+
+    def get_instance(self, component: Component, instance_id: str) -> Optional[Compin]:
+        """
+        :return: An instance of a given component with a given ID, if instance compin exists in the cloud
+                    state, None otherwise.
+        """
+        return self.get_compin(component.application.name, component.name, instance_id)
 
     def get_compin(self, application_name: str, component_name: str, instance_id: str) -> Optional[Compin]:
         """
@@ -795,9 +814,9 @@ class CloudState:
         assert not self.compin_exists(compin.component.application.name, compin.component.name, compin.id)
         self._state[compin.component.application.name][compin.component.name][compin.id] = compin
         if compin.chain_id not in self._chains:
-            self._chains[compin.chain_id] = []
+            self._chains[compin.chain_id] = {}
         if isinstance(compin, ManagedCompin):
-            self._chains[compin.chain_id].append(compin)
+            self._chains[compin.chain_id][compin.component.name] = compin
         else:
             assert isinstance(compin, UnmanagedCompin)
             assert compin.id not in self._clients
@@ -815,12 +834,13 @@ class CloudState:
         compin = self._state[application][component][id_]
         if isinstance(compin, ManagedCompin):
             assert compin.chain_id in self._chains
-            self._chains[compin.chain_id].remove(compin)
+            assert compin.component.name in self._chains[compin.chain_id]
+            del self._chains[compin.chain_id][compin.component.name]
         else:
             assert isinstance(compin, UnmanagedCompin)
             assert compin.id in self._chains and compin.id in self._clients
             del self._clients[compin.id]
-            for managed_compin in self._chains[compin.id]:
+            for managed_compin in self._chains[compin.id].values():
                 managed_compin.disconnect()
         if len(self._chains[compin.chain_id]) == 0:
             del self._chains[compin.chain_id]

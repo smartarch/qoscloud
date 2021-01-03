@@ -44,13 +44,29 @@ class Knowledge:
         self.nodes: Dict[str, Node] = {}
         self.namespaces: Dict[str, Namespace] = {}
         self.user_equipment: UserEquipmentContainer = UserEquipmentContainer()
-        self.network_topology: NetworkTopology = EuclidNetworkTopology()
+        self.network_topology: NetworkTopology = StaticNetworkTopology()
         self.datacenters: Dict[str, Datacenter] = {}
         self.secrets: Dict[str, str] = {}
         self._new_clients: List[UnmanagedCompin] = []
         self.client_support = True
         self.unique_components_without_resources: List[str] = []
+        self.clients_without_resources: List[str] = []
         self.api_endpoint_access_token: Optional[str] = None
+        self._application_was_deleted: bool = False
+        self._load_monitoring_on: bool = False
+
+    def load_minitoring_on(self) -> bool:
+        return self._load_monitoring_on
+
+    def monitor_reduced_load(self):
+        self._load_monitoring_on = True
+
+    def reduced_load(self) -> bool:
+        if self._application_was_deleted:
+            self._application_was_deleted = False
+            self._load_monitoring_on = False
+            return True
+        return False
 
     def update_access_token(self, token: str):
         self.api_endpoint_access_token = token
@@ -58,8 +74,12 @@ class Knowledge:
     def no_resources_for_component(self, component_id: str) -> None:
         self.unique_components_without_resources.append(component_id)
 
-    def all_components_scheduled(self) -> None:
+    def no_resources_for_client(self, client_id: str) -> None:
+        self.clients_without_resources.append(client_id)
+
+    def all_instances_scheduled(self) -> None:
         self.unique_components_without_resources.clear()
+        self.clients_without_resources.clear()
 
     def there_are_applications(self) -> bool:
         return len(self.applications) == 0
