@@ -17,4 +17,4 @@ ENV LC_ALL="en_US.utf8"
 ENV LANG="en_US.utf8"
 ENV PYTHONPATH="/usr/local/lib/python3.4/site-packages/:/root/ivisjob"
 
-ENTRYPOINT [ "./cloud_controller/middleware/job_agent.py" ]
+ENTRYPOINT [ "./cloud_controller/middleware/run_middleware_agent.py" ]

@@ -3,9 +3,7 @@ Contains the classes that are used by the framework to model the state of the cl
 of nodes, datacenters, namespaces, applications, components, compins, etc.
 """
 import itertools
-import random
 
-from dataclasses import dataclass
 from enum import Enum
 from typing import List, Dict, Optional, Any, Iterable, Type, TypeVar
 from io import StringIO
@@ -464,35 +462,6 @@ class Application:
 
         application._pb_representation = application_pb
         return application
-
-# TONOWDO: template usage
-JOB_DEPLOYMENT_TEMPLATE = """
-kind: Deployment
-metadata:
-  name: %s
-  labels:
-    app: %s
-spec:
-  selector:
-    matchLabels:
-      app: %s
-  template:
-    metadata:
-      labels:
-        app: %s
-    spec:
-      containers:
-      - name: container
-        image: %s
-        imagePullPolicy: Always
-        args: []
-        env:
-        - name: PYTHONUNBUFFERED
-          value: "0"
-        ports:
-        - containerPort: 8888
-          protocol: UDP
-"""
 
 
 def add_resource_requirements(template: str, min_memory="", max_memory="",

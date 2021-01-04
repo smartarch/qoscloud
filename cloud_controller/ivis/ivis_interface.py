@@ -6,8 +6,8 @@ from cloud_controller.assessment import CTL_HOST, CTL_PORT
 from cloud_controller.assessment.deploy_controller_pb2 import AppName, AppAdmissionStatus
 from cloud_controller.assessment.deploy_controller_pb2_grpc import DeployControllerStub
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import ManagedCompin, CompinPhase, JOB_DEPLOYMENT_TEMPLATE, \
-    add_resource_requirements, Application
+from cloud_controller.knowledge.model import ManagedCompin, CompinPhase, add_resource_requirements, Application
+from cloud_controller.planning.k8s_generators import JOB_DEPLOYMENT_TEMPLATE
 from cloud_controller.middleware import AGENT_PORT
 from cloud_controller.middleware.helpers import connect_to_grpc_server
 from cloud_controller.ivis.ivis_pb2 import SubmissionAck, JobStatus, JobAdmissionStatus, UnscheduleJobAck, \

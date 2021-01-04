@@ -3,7 +3,7 @@ Contains the functions that create Kubernetes YAML descriptors from the provided
 """
 import yaml
 
-from cloud_controller import middleware, HOSTNAME_LABEL, DEFAULT_SECRET_NAME
+from cloud_controller import middleware, HOSTNAME_LABEL, DEFAULT_SECRET_NAME, DEFAULT_DOCKER_IMAGE
 from cloud_controller.knowledge.model import ManagedCompin
 
 SERVICE_TEMPLATE = """
@@ -21,6 +21,56 @@ SERVICE_TEMPLATE = """
 """
 
 
+JOB_DEPLOYMENT_TEMPLATE = """
+kind: Deployment
+metadata:
+  name: %s
+  labels:
+    app: %s
+spec:
+  selector:
+    matchLabels:
+      app: %s
+  template:
+    metadata:
+      labels:
+        app: %s
+    spec:
+      containers:
+      - name: container
+        image: %s
+        imagePullPolicy: Always
+        args: []
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "0"
+"""
+
+DEPLOYMENT_TEMPLATE = f"""
+kind: Deployment
+metadata:
+  name: name
+  labels:
+    deployment: name
+spec:
+  selector:
+    matchLabels:
+      deployment: name
+  template:
+    metadata:
+      labels:
+        deployment: name
+    spec:
+      containers:
+      - name: container
+        image: {DEFAULT_DOCKER_IMAGE}
+        imagePullPolicy: Always
+        args: []
+        env:
+        - name: PYTHONUNBUFFERED
+          value: "0"
+"""
+
 def create_deployment_for_compin(compin: ManagedCompin, assessment: bool = False) -> str:
     """
     Creates a Kubernetes deployment YAML descriptor for a provided compin. The compin's deployment template is enhanced
@@ -34,7 +84,9 @@ def create_deployment_for_compin(compin: ManagedCompin, assessment: bool = False
     :param assessment: Specify if compin will run in assessment cloud
     :return: Kubernetes deployment descriptor converted to string
     """
-    deployment = yaml.load(compin.component.container_spec)
+    deployment = yaml.load(DEPLOYMENT_TEMPLATE)
+    if compin.component.container_spec != "":
+        deployment['spec']['template']['spec']['containers'][0] = yaml.load(compin.component.container_spec)
     deployment['metadata']['name'] = compin.deployment_name()
     deployment['spec']['template']['metadata']['labels']['deployment'] = compin.deployment_name()
     deployment['spec']['selector']['matchLabels']['deployment'] = compin.deployment_name()
