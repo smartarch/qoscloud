@@ -67,6 +67,7 @@ message ProbeConfig {
     ProbeType type = 6;
     string code = 7;
     string config = 8;
+    string args = 9;
 }
 
 message InitAck {}

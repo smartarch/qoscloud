@@ -163,6 +163,7 @@ class InitializeInstanceTask(Task):
                 probe_pb.type = ProbeType.Value('CODE')
                 probe_pb.code = probe.code
                 probe_pb.config = probe.config
+                probe_pb.args = probe.args
             else:
                 probe_pb.type = ProbeType.Value('PROCEDURE')
         stub: MiddlewareAgentStub = context.get_instance_agent(self._app_name, self._component_name, self._instance_id)

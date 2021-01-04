@@ -54,7 +54,7 @@ EMAIL = 'email'
 APP_NAME = 'application'
 COMPLETE = 'complete'
 COMPONENTS = 'components'
-NAME =  'name'
+NAME = 'name'
 CARDINALITY = 'cardinality'
 STATEFULNESS = 'statefulness'
 PROBES = 'probes'
@@ -82,23 +82,26 @@ def yaml_to_grpc_architecture(architecture_yaml) -> Optional[arch_pb.Architectur
     :return: a protobuf representation of the application descriptor.
     """
     architecture_grpc = arch_pb.Architecture()
-    architecture_grpc.is_complete = True
+
+    check_field_present({"document": architecture_yaml}, "document", APP_NAME)
     architecture_grpc.name = architecture_yaml[APP_NAME]
     if DOCKER_SECRET in architecture_yaml:
         check_field_present(architecture_yaml, DOCKER_SECRET, USERNAME)
         check_field_present(architecture_yaml, DOCKER_SECRET, PASSWORD)
         check_field_present(architecture_yaml, DOCKER_SECRET, EMAIL)
         secret_string = f'{{"auths":{{"https://index.docker.io/v1/":{{' \
-            f'"Username":"{architecture_yaml[DOCKER_SECRET][USERNAME]}",' \
-            f'"Password":"{architecture_yaml[DOCKER_SECRET][PASSWORD]}",' \
-            f'"Email":"{architecture_yaml[DOCKER_SECRET][EMAIL]}"}}}}}}'
+                        f'"Username":"{architecture_yaml[DOCKER_SECRET][USERNAME]}",' \
+                        f'"Password":"{architecture_yaml[DOCKER_SECRET][PASSWORD]}",' \
+                        f'"Email":"{architecture_yaml[DOCKER_SECRET][EMAIL]}"}}}}}}'
         encoded_secret = bytes.decode(base64.b64encode(bytes(secret_string, 'utf-8')), 'utf-8')
         architecture_grpc.secret.value = encoded_secret
 
-    check_field_present({"document": architecture_yaml}, "document", COMPONENTS)
     if COMPLETE in architecture_yaml:
         architecture_grpc.is_complete = architecture_yaml[COMPLETE]
+    else:
+        architecture_grpc.is_complete = True
 
+    check_field_present({"document": architecture_yaml}, "document", COMPONENTS)
     for item in architecture_yaml[COMPONENTS]:
         _name = item[NAME]
         check_field_present({COMPONENTS: item}, COMPONENTS, NAME)
@@ -136,7 +139,9 @@ def yaml_to_grpc_architecture(architecture_yaml) -> Optional[arch_pb.Architectur
             if CODEFILE in probe:
                 with open(probe[INPUTFILE], "r") as file:
                     probe_grpc.code = file.read()
-                probe.type = arch_pb.ProbeType.Value("CODE")
+                probe_grpc.type = arch_pb.ProbeType.Value("CODE")
+            if ARGS in probe:
+                probe_grpc.args = probe[ARGS]
         if REQUIREMENTS in item:
             for req in item[REQUIREMENTS]:
                 probe = probes[req[PROBE]]

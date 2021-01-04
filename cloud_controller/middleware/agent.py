@@ -76,12 +76,13 @@ class CallableProbe(ProbeConfig):
 
 class RunnableProbe(ProbeConfig):
 
-    def __init__(self, name: str, signal_set: str, et_signal: str, rc_signal: str, run_count: int, code: str, config: str):
+    def __init__(self, name: str, signal_set: str, et_signal: str, rc_signal: str, run_count: int, code: str, config: str, args: str):
         super(RunnableProbe, self).__init__(name, signal_set, et_signal, rc_signal, run_count)
         self.filename = f"./{self.name}.py"
         with open(self.filename, "w") as code_file:
             code_file.write(code)
         self._config = json.loads(config)
+        self.args = args
         # self._elasticsearch: Optional[Elasticsearch] = None
 
     def config(self) -> str:
@@ -137,7 +138,8 @@ class InstanceConfig:
                     rc_signal=probe_pb.run_count_signal,
                     run_count=probe_pb.run_count,
                     code=probe_pb.code,
-                    config=probe_pb.config
+                    config=probe_pb.config,
+                    args=probe_pb.args
                 )
                 probe.set_es_ip(config_pb.api_endpoint_ip)
             config.probes[probe.name] = probe
@@ -217,7 +219,7 @@ class Interpreter:
 
     def _run_python_interpreter(self, probe: RunnableProbe):
         fdr, fdw = os.pipe()
-        self._process = Popen([PYTHON_EXEC, probe.filename, str(fdw)], universal_newlines=True,
+        self._process = Popen([PYTHON_EXEC, probe.filename, str(fdw), probe.args], universal_newlines=True,
                               stderr=PIPE, stdout=PIPE, stdin=PIPE, pass_fds=(fdw,))
         self._process.stdin.write(f"{probe.config()}\n")
         self._process.stdin.flush()

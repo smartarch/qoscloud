@@ -951,7 +951,8 @@ class Probe:
                  config: str = "",
                  signal_set: str = "",
                  execution_time_signal: str = "",
-                 run_count_signal: str = ""
+                 run_count_signal: str = "",
+                 args: str = ""
     ):
         self.name = name
         self.component = component
@@ -960,6 +961,7 @@ class Probe:
 
         self.code: str = code
         self.config: str = config
+        self.args: str = args
         self.signal_set: str = signal_set
         self.execution_time_signal: str = execution_time_signal
         self.run_count_signal: str = run_count_signal
@@ -1007,7 +1009,8 @@ class Probe:
             config=probe_pb.config,
             signal_set=probe_pb.signal_set,
             execution_time_signal=probe_pb.execution_time_signal,
-            run_count_signal=probe_pb.run_count_signal
+            run_count_signal=probe_pb.run_count_signal,
+            args=probe_pb.args
         )
 
     def pb_representation(self, probe_pb: arch_pb.Probe = None) -> arch_pb.Probe:
@@ -1018,11 +1021,12 @@ class Probe:
         probe_pb.component = self.component.name
         probe_pb.alias = self.alias
         if self.code != "":
-            probe_pb.type = ProbeType.Value('CODE')
+            probe_pb.type = protocols.ProbeType.Value('CODE')
             probe_pb.code = self.code
             probe_pb.config = self.config
+            probe_pb.args = self.args
         else:
-            probe_pb.type = ProbeType.Value('PROCEDURE')
+            probe_pb.type = protocols.ProbeType.Value('PROCEDURE')
         probe_pb.signal_set = self.signal_set
         probe_pb.execution_time_signal = self.execution_time_signal
         probe_pb.run_count_signal = self.run_count_signal

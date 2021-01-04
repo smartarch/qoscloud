@@ -71,6 +71,7 @@ message Probe {
     string alias = 6;
     string code = 7;
     string config = 8;
+    string args = 9;
     string signal_set = 16;
     string execution_time_signal = 17;
     string run_count_signal = 18;
