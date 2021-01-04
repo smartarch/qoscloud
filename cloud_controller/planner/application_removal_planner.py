@@ -7,7 +7,7 @@ from cloud_controller.planner.top_planner import Planner
 from cloud_controller.tasks.client_controller import DeleteApplicationFromCCTask
 from cloud_controller.tasks.kubernetes import DeleteNamespaceTask
 from cloud_controller.task_executor.registry import TaskRegistry
-from cloud_controller.tasks.statefulness import DeleteAppRecord, DropDatabaseTask
+from cloud_controller.tasks.statefulness import DeleteAppRecordTask, DropDatabaseTask
 
 
 class ApplicationRemovalPlanner(Planner):
@@ -35,18 +35,18 @@ class ApplicationRemovalPlanner(Planner):
         the Client Controller, deletion of the Kubernetes namespace and deletion of the corresponding Mongo database.
         """
         app: Application = self.knowledge.applications[app_name]
-        self.task_registry.add_task(DeleteNamespaceTask(app_name))
+        self._create_task(DeleteNamespaceTask(app_name))
 
         if self._cc_operations_required(app):
-            self.task_registry.add_task(DeleteApplicationFromCCTask(app_name))
+            self._create_task(DeleteApplicationFromCCTask(app_name))
             # self._add_dependency(disconnection_task, namespace_task)
-        self.task_registry.add_task(DeleteAppRecord(app_name))
+        self._create_task(DeleteAppRecordTask(app_name))
         mongo_components = []
         for component in app.list_managed_components():
             if component.statefulness == Statefulness.MONGO:
                 mongo_components.append(component.name)
         if len(mongo_components) > 0:
-            self.task_registry.add_task(DropDatabaseTask(app_name, mongo_components))
+            self._create_task(DropDatabaseTask(app_name, mongo_components))
             # self._add_dependency(db_drop_task, database_record_task)
 
         logging.info(f"Created a deletion plan for {app_name} application")

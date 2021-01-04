@@ -11,7 +11,7 @@ from cloud_controller.tasks.preconditions import compin_exists, namespace_exists
 from cloud_controller.tasks.task import Task
 
 
-class CreateCompinTask(Task):
+class CreateInstanceTask(Task):
     """
     Creates a Kubernetes deployment and a Kubernetes service for the compin. Adds the compin to the actual state
     with phase=CREATING.

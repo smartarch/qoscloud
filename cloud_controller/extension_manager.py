@@ -6,19 +6,16 @@ from multiprocessing import Pool
 from typing import Type, Callable, Any
 
 import cloud_controller
-from apps.ivis_job.extmgr_usage import CSPAnalyzer
 from cloud_controller import PRODUCTION_KUBECONFIG, DEFAULT_PREDICTOR_CONFIG, PRODUCTION_MONGOS_SERVER_IP, THREAD_COUNT
 from cloud_controller.adaptation_controller import AdaptationController
-from cloud_controller.analysis.csp_solver.solver import CSPSolver
-from cloud_controller.analysis.predictor import StraightforwardPredictorModel
 from cloud_controller.analysis.predictor_interface.predictor_service import StatisticalPredictor
 from cloud_controller.analyzer.constraint import PredictConstraint, RunningNodeConstraint, InstanceDeploymentConstraint, \
     RedeploymentConstraint, ChainInDatacenterConstraint, NodeSeparationConstraint
+from cloud_controller.analyzer.csp_analyzer import CSPAnalyzer
 from cloud_controller.analyzer.objective_function import DefaultObjectiveFunction
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.network_topology import NetworkTopology
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer, UEManagementPolicy
-from cloud_controller.middleware.ivis_pb2 import DEPLOYED
 from cloud_controller.monitoring.monitor import TopLevelMonitor, ApplicationMonitor, ClientMonitor, UEMonitor, \
     KubernetesMonitor, Monitor
 from cloud_controller.planner.application_creation_planner import ApplicationCreationPlanner
@@ -30,7 +27,11 @@ from cloud_controller.task_executor.execution_context import ExecutionContext, K
     ClientControllerExecutionContext, StatefulnessControllerExecutionContext
 from cloud_controller.task_executor.registry import TaskRegistry
 from cloud_controller.task_executor.task_executor import TaskExecutor
-
+from cloud_controller.tasks.instance_management import *
+from cloud_controller.tasks.client_controller import *
+from cloud_controller.tasks.statefulness import *
+from cloud_controller.tasks.kubernetes import *
+from cloud_controller.tasks.middleware import *
 
 class _Phase(Enum):
     INIT = 1
@@ -46,7 +47,7 @@ class ExtensionManager:
 
     def __init__(self):
         self.knowledge = Knowledge()
-        self.task_registry = TaskRegistry()
+        self.task_registry = TaskRegistry(self.knowledge)
         self._pool = Pool(processes=THREAD_COUNT)
         self._monitor = None
         self._analyzer = None
@@ -63,6 +64,7 @@ class ExtensionManager:
         self._monitor.add_monitor(ClientMonitor(self.knowledge))
         self._monitor.add_monitor(UEMonitor(self.knowledge))
         self._monitor.add_monitor(KubernetesMonitor(self.knowledge))
+        self._monitor.add_monitor(self.task_registry)
         return self._monitor
 
     def get_default_analyzer(self) -> CSPAnalyzer:
@@ -90,7 +92,24 @@ class ExtensionManager:
         self._executor.add_execution_context(KubernetesExecutionContext(self.knowledge, self._kubeconfig_file))
         self._executor.add_execution_context(ClientControllerExecutionContext(self.knowledge))
         self._executor.add_execution_context(StatefulnessControllerExecutionContext(self.knowledge, self._mongos_ip))
-        #     TODO: add task types
+        self._executor.add_task_type(CreateInstanceTask, KubernetesExecutionContext)
+        self._executor.add_task_type(DeleteInstanceTask, KubernetesExecutionContext)
+        self._executor.add_task_type(AddApplicationToCCTask, ClientControllerExecutionContext)
+        self._executor.add_task_type(DeleteApplicationFromCCTask, ClientControllerExecutionContext)
+        self._executor.add_task_type(SetClientDependencyTask, ClientControllerExecutionContext)
+        self._executor.add_task_type(CreateNamespaceTask, KubernetesExecutionContext)
+        self._executor.add_task_type(DeleteNamespaceTask, KubernetesExecutionContext)
+        self._executor.add_task_type(CreateDockersecretTask, KubernetesExecutionContext)
+        self._executor.add_task_type(DeleteDockersecretTask, KubernetesExecutionContext)
+        self._executor.add_task_type(SetMiddlewareAddressTask, ExecutionContext)
+        self._executor.add_task_type(FinalizeInstanceTask, ExecutionContext)
+        self._executor.add_task_type(SetMongoParametersTask, ExecutionContext)
+        self._executor.add_task_type(InitializeInstanceTask, ExecutionContext)
+        self._executor.add_task_type(DropDatabaseTask, StatefulnessControllerExecutionContext)
+        self._executor.add_task_type(AddAppRecordTask, StatefulnessControllerExecutionContext)
+        self._executor.add_task_type(DeleteAppRecordTask, StatefulnessControllerExecutionContext)
+        self._executor.add_task_type(ShardCollectionTask, StatefulnessControllerExecutionContext)
+        self._executor.add_task_type(MoveChunkTask, StatefulnessControllerExecutionContext)
         return self._executor
 
     def get_default_knowledge(self) -> Knowledge:
@@ -135,8 +154,9 @@ class ExtensionManager:
             self._mongos_ip = mongos_ip
         self._check_and_execute(task)
 
-    def set_monitor(self, monitor) -> None:
+    def set_monitor(self, monitor: TopLevelMonitor) -> None:
         def task():
+            monitor.add_monitor(self.task_registry)
             self._monitor = monitor
         self._check_and_execute(task)
 

@@ -35,17 +35,17 @@ class ApplicationCreationPlanner(Planner):
         collections for all the Mongo-stateful components.
         """
         app: Application = self.knowledge.applications[app_name]
-        self.task_registry.add_task(AddAppRecordTask(app_name))
-        self.task_registry.add_task(CreateNamespaceTask(app_name))
+        self._create_task(AddAppRecordTask(app_name))
+        self._create_task(CreateNamespaceTask(app_name))
         # self._add_dependency(database_record_task, namespace_task)
         if self._cc_operations_required(app):
-            self.task_registry.add_task(AddApplicationToCCTask(app))
+            self._create_task(AddApplicationToCCTask(app))
         secret = self.knowledge.remove_secret(app_name)
         if secret is not None:
-            self.task_registry.add_task(CreateDockersecretTask(app_name, secret))
+            self._create_task(CreateDockersecretTask(app_name, secret))
         for component in app.list_managed_components():
             if component.statefulness == Statefulness.MONGO:
-                self.task_registry.add_task(ShardCollectionTask(app_name, app_name, component.name))
+                self._create_task(ShardCollectionTask(app_name, app_name, component.name))
                 # self._add_dependency(database_record_task, sharding_task)
         logging.info(f"Created the tasks for application {app_name} deployment")
 

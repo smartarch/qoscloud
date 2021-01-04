@@ -25,14 +25,15 @@ class TaskExecutor:
 
     def execute_all(self) -> int:
         count = 0
-        task = self._registry.next_task()
-        while task is not None:
-            result = self._pool.apply_async(self.execute, (task,))
-            self._futures.append(result)
-            count += 1
+        for task in self._registry.stream_tasks():
+            if task is not None:
+                result = self._pool.apply_async(self._execute, (task,))
+                self._futures.append(result)
+                count += 1
+        self._print_errors()
         return count
 
-    def print_errors(self):
+    def _print_errors(self):
         for result in self._futures:
             if result.ready():
                 if not result.successful():
@@ -40,11 +41,10 @@ class TaskExecutor:
                 else:
                     self._futures.remove(result)
 
-    def execute(self, task: Task):
-        if not task.check_preconditions(self._knowledge):
-            self._registry.return_task(task)
-            return
-        context = self._contexts_by_task_type[task.__class__]
-        task.execute(context)
-        task.update_model(self._knowledge)
-        self._registry.complete_task(task.task_id)
+    def _execute(self, task: Task):
+        if task.check_preconditions(self._knowledge):
+            context = self._contexts_by_task_type[task.__class__]
+            task.execute(context)
+            self._registry.complete_task(task.task_id)
+        else:
+            self._registry.return_task(task.task_id)

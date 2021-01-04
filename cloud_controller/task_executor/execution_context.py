@@ -23,7 +23,7 @@ PING_TIMEOUT = 2  # Seconds
 class ExecutionContext:
 
     def __init__(self, knowledge: Knowledge):
-        self.knowledge: Knowledge = knowledge
+        self._knowledge: Knowledge = knowledge
 
     @staticmethod
     def ping_instance_ip(ip: str) -> CompinPhase:
@@ -55,11 +55,11 @@ class ExecutionContext:
         instance.phase = ExecutionContext.ping_compin(stub)
 
     def get_instance_agent(self, app_name: str, component_name: str, instance_id: str) -> Optional[MiddlewareAgentStub]:
-        instance = self.knowledge.actual_state.get_compin(app_name, component_name, instance_id)
-        return connect_to_grpc_server(MiddlewareAgentStub, instance.ip, AGENT_PORT)
+        ip = self.get_instance_ip(app_name, component_name, instance_id)
+        return connect_to_grpc_server(MiddlewareAgentStub, ip, AGENT_PORT)
 
     def get_instance_ip(self, app_name: str, component_name: str, instance_id: str) -> Optional[str]:
-        instance = self.knowledge.actual_state.get_compin(app_name, component_name, instance_id)
+        instance = self._knowledge.actual_state.get_compin(app_name, component_name, instance_id)
         return instance.ip
 
 

@@ -5,7 +5,7 @@ from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import CloudState, ManagedCompin, CompinPhase
 from cloud_controller.planner.top_planner import Planner
 from cloud_controller.planning.cloud_state_diff import get_compin_diff
-from cloud_controller.tasks.instance_management import CreateCompinTask, DeleteInstanceTask
+from cloud_controller.tasks.instance_management import CreateInstanceTask, DeleteInstanceTask
 from cloud_controller.tasks.middleware import InitializeInstanceTask, SetMongoParametersTask, FinalizeInstanceTask
 from cloud_controller.task_executor.registry import TaskRegistry
 
@@ -34,7 +34,7 @@ class InstanceDeploymentPlanner(Planner):
         logging.info(f"Created a redeployment plan for {app_name} application")
 
     def _create_instance_init_task(self, compin: ManagedCompin) -> None:
-        self.task_registry.add_task(
+        self._create_task(
             InitializeInstanceTask(
                 component=compin.component,
                 instance_id=compin.id,
@@ -50,7 +50,7 @@ class InstanceDeploymentPlanner(Planner):
         :param compin: A compin to create the task for
         :param parent_task: A task after which the compin creation task will be executed.
         """
-        self.task_registry.add_task(CreateCompinTask(compin.component.name, compin, self.knowledge.client_support))
+        self._create_task(CreateInstanceTask(compin.component.name, compin, self.knowledge.client_support))
         logging.info(f"Created tasks for creation of {compin.component.name} on {compin.node_name}. ")
 
     def _add_mongo_init_task(self, compin: ManagedCompin):
@@ -59,7 +59,7 @@ class InstanceDeploymentPlanner(Planner):
         """
         dc_name = self.knowledge.nodes[compin.node_name].data_center
         datacenter = self.knowledge.datacenters[dc_name]
-        self.task_registry.add_task(SetMongoParametersTask(
+        self._create_task(SetMongoParametersTask(
             component=compin.component,
             instance_id=compin.id,
             key=int(compin.chain_id),
@@ -74,10 +74,10 @@ class InstanceDeploymentPlanner(Planner):
         if compin.is_serving:
             if compin.phase < CompinPhase.FINALIZING:
                 # Create a task for finalizing the instance
-                self.task_registry.add_task(FinalizeInstanceTask(compin.component, compin.id))
+                self._create_task(FinalizeInstanceTask(compin.component, compin.id))
         if compin.get_client() is not None:
             # Even though this compin is marked for deletion, it still serves the client. We need to wait until the
             # client disconnects before we can delete it.
             return
-        self.task_registry.add_task(DeleteInstanceTask(compin.component.application.name, compin))
+        self._create_task(DeleteInstanceTask(compin.component.application.name, compin))
         logging.debug(f"Created tasks for deletion of compin {compin.id}.")

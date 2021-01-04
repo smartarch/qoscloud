@@ -102,14 +102,15 @@ class SetMiddlewareAddressTask(Task):
                                             self._dependent_instance_id, CompinPhase.INIT))
 
     def execute(self, context: ExecutionContext) -> bool:
-        providing_compin = context.knowledge.actual_state.get_instance(
-            self._providing_component,
+        ip = context.get_instance_ip(
+            self._providing_component.application.name,
+            self._providing_component.name,
             self._providing_instance_id
         )
-        address = DependencyAddress(name=self._providing_component.name, ip=providing_compin.ip)
+        address = DependencyAddress(name=self._providing_component.name, ip=ip)
         stub = context.get_instance_agent(self._app_name, self._dependent_component.name, self._dependent_instance_id)
         stub.SetDependencyAddress(address)
-        logging.info(f"Dependency address for instance at {providing_compin.ip} set to {providing_compin.ip}.")
+        logging.info(f"Dependency address for instance at {ip} set to {ip}.")
         return True
 
     def update_model(self, knowledge: Knowledge) -> None:

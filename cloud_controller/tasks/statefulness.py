@@ -112,12 +112,12 @@ class AddAppRecordTask(Task):
         return f"{self.__class__.__name__}_{self._app_name}"
 
 
-class DeleteAppRecord(Task):
+class DeleteAppRecordTask(Task):
     """
     Deletes a record about the application from MongoDB.
     """
     def __init__(self, app_name: str):
-        super(DeleteAppRecord, self).__init__(
+        super(DeleteAppRecordTask, self).__init__(
             task_id=self.generate_id()
         )
         self._app_name = app_name

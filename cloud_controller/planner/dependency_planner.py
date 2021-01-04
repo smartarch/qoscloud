@@ -57,7 +57,7 @@ class DependencyPlanner(Planner):
 
             # Create a task for middleware connection
             if isinstance(dependent_instance, ManagedCompin):
-                self.task_registry.add_task(
+                self._create_task(
                     SetMiddlewareAddressTask(
                         providing_component=providing_instance.component,
                         providing_instance_id=providing_instance.id,
@@ -66,7 +66,7 @@ class DependencyPlanner(Planner):
                     )
                 )
             else:
-                self.task_registry.add_task(
+                self._create_task(
                     SetClientDependencyTask(
                         component=providing_instance.component,
                         instance_id=providing_instance.id,
@@ -90,7 +90,7 @@ class DependencyPlanner(Planner):
                 task.add_precondition(dependency_is_set, (app_name, dependent_instance.component.name,
                                                           dependent_instance.id, providing_instance.component.name,
                                                           providing_instance.id))
-                self.task_registry.add_task(task)
+                self._create_task(task)
 
     def _plan_connection_tasks(self, app_name: str, desired_state: CloudState):
         dependency_diff = get_dependency_diff(app_name, self.knowledge.actual_state, desired_state)

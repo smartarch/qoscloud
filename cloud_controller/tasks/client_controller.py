@@ -78,7 +78,7 @@ class SetClientDependencyTask(Task):
         client = knowledge.actual_state.get_compin(self._app_name, self._client_component.name, self._client_id)
         assert isinstance(client, UnmanagedCompin)
         # If all dependencies are now located in the same DC, we have to report full handover
-        self._check_and_report_handover(client, server)
+        self._check_and_report_handover(knowledge, client, server)
         # Finally, change the record in the actual state model
         client.set_dependency(server)
 

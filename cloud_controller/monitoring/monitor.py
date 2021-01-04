@@ -6,10 +6,11 @@ from abc import abstractmethod
 from typing import List, Dict
 
 import grpc
-from kubernetes import client
+from kubernetes import client, config
 
 from cloud_controller import CLIENT_CONTROLLER_HOST, CLIENT_CONTROLLER_PORT, \
-    DEFAULT_HARDWARE_ID, DATACENTER_LABEL, HOSTNAME_LABEL, DEFAULT_UE_MANAGEMENT_POLICY, HARDWARE_ID_LABEL
+    DEFAULT_HARDWARE_ID, DATACENTER_LABEL, HOSTNAME_LABEL, DEFAULT_UE_MANAGEMENT_POLICY, HARDWARE_ID_LABEL, \
+    PRODUCTION_KUBECONFIG
 from cloud_controller.architecture_pb2 import UEMPolicy
 from cloud_controller.assessment import PUBLISHER_HOST, PUBLISHER_PORT
 from cloud_controller.assessment.deploy_controller_pb2 import Empty
@@ -22,7 +23,7 @@ from cloud_controller.middleware.helpers import connect_to_grpc_server
 
 class Monitor:
 
-    def __init__(self, knowledge: Knowledge = None):
+    def __init__(self, knowledge: Knowledge):
         self._knowledge: Knowledge = knowledge
 
     @abstractmethod
@@ -47,7 +48,7 @@ class TopLevelMonitor(Monitor):
     update_cluster_state method should be called.
     """
 
-    def __init__(self, knowledge: Knowledge = None):
+    def __init__(self, knowledge: Knowledge):
         super().__init__(knowledge)
         self._monitors: List[Monitor] = []
         logging.info("Cloud Monitor created.")
@@ -63,8 +64,9 @@ class TopLevelMonitor(Monitor):
 
 class KubernetesMonitor(Monitor):
 
-    def __init__(self, knowledge: Knowledge = None):
+    def __init__(self, knowledge: Knowledge, kubeconfig = PRODUCTION_KUBECONFIG):
         super().__init__(knowledge)
+        config.load_kube_config(config_file=kubeconfig)
         self.core_api = client.CoreV1Api()
         self.extensions_api = client.AppsV1Api()
 
@@ -111,7 +113,7 @@ class KubernetesMonitor(Monitor):
 
 class UEMonitor(Monitor):
 
-    def __init__(self, knowledge: Knowledge = None):
+    def __init__(self, knowledge: Knowledge):
         super().__init__(knowledge)
         self.client_controller = connect_to_grpc_server(ClientControllerInternalStub,
                                                         CLIENT_CONTROLLER_HOST, CLIENT_CONTROLLER_PORT)
@@ -132,7 +134,7 @@ class UEMonitor(Monitor):
 
 class ClientMonitor(Monitor):
 
-    def __init__(self, knowledge: Knowledge = None):
+    def __init__(self, knowledge: Knowledge):
         super().__init__(knowledge)
         self.client_controller = connect_to_grpc_server(ClientControllerInternalStub,
                                                         CLIENT_CONTROLLER_HOST, CLIENT_CONTROLLER_PORT)
@@ -163,7 +165,7 @@ class ClientMonitor(Monitor):
 
 class ApplicationMonitor(Monitor):
 
-    def __init__(self, knowledge: Knowledge = None):
+    def __init__(self, knowledge: Knowledge):
         super().__init__(knowledge)
         self.publisher = connect_to_grpc_server(DeployPublisherStub, PUBLISHER_HOST, PUBLISHER_PORT)
         self.postponed_apps = []

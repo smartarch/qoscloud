@@ -57,7 +57,7 @@ class Variables:
         elif component.cardinality == ComponentCardinality.SINGLE:
             return var.component_id
 
-    def convert_to_cloud_state(self, collector: SolutionCollector, knowledge: Knowledge) -> model.CloudState:
+    def convert_to_cloud_state(self, collector: SolutionCollector, knowledge: Knowledge) -> CloudState:
         """
         Constructs the cloud state based on the values of variables. Called after a solution have been found in order
         to construct the desired state.
