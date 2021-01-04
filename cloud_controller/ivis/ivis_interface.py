@@ -90,8 +90,12 @@ class IvisInterface(IvisInterfaceServicer):
     def DeployJob(self, request, context):
         job_id = request.name
         contract = self._jobs[job_id].components[job_id].probes[0].requirements.add()
-        contract.time.time = request.time
-        contract.time.percentile = request.percentile
+        if request.type == "TIME":
+            contract.time.time = request.time
+            contract.time.percentile = request.percentile
+        elif request.type == "THROUGHPUT":
+            contract.throughput.requests = request.time
+            contract.throughput.per = request.percentile
         self._deploy_controller.SubmitRequirements(self._jobs[job_id])
         return SubmissionAck(success=True)
 
