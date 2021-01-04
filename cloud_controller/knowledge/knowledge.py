@@ -3,6 +3,7 @@ Contains the Knowledge class: the data structure that manages all the data that 
 process.
 """
 import logging
+from queue import Queue
 from typing import Dict, Set, Optional, Iterable
 from typing import List
 
@@ -52,6 +53,7 @@ class Knowledge:
         self.unique_components_without_resources: List[str] = []
         self.clients_without_resources: List[str] = []
         self.api_endpoint_access_token: Optional[str] = None
+        self.new_apps: Queue = Queue()
         self._application_was_deleted: bool = False
         self._load_monitoring_on: bool = False
 

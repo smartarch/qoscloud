@@ -1,5 +1,5 @@
 import logging
-from typing import Dict
+from typing import Dict, List
 
 from cloud_controller.architecture_pb2 import Architecture, Cardinality, ComponentType
 from cloud_controller.assessment import CTL_HOST, CTL_PORT
@@ -7,7 +7,7 @@ from cloud_controller.assessment.deploy_controller_pb2 import AppName, AppAdmiss
 from cloud_controller.assessment.deploy_controller_pb2_grpc import DeployControllerStub
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import ManagedCompin, CompinPhase, JOB_DEPLOYMENT_TEMPLATE, \
-    add_resource_requirements
+    add_resource_requirements, Application
 from cloud_controller.middleware import AGENT_PORT
 from cloud_controller.middleware.helpers import connect_to_grpc_server
 from cloud_controller.ivis.ivis_pb2 import SubmissionAck, JobStatus, JobAdmissionStatus, UnscheduleJobAck, \
@@ -22,12 +22,11 @@ class IvisInterface(IvisInterfaceServicer):
     def __init__(self, knowledge: Knowledge):
         self._deploy_controller: DeployControllerStub = connect_to_grpc_server(DeployControllerStub, CTL_HOST, CTL_PORT)
         self._knowledge: Knowledge = knowledge
+        self._templates: List[str] = []
         self._jobs: Dict[str, Architecture] = {}
 
-    def SubmitJob(self, request, context):
-        if self._knowledge.api_endpoint_access_token is None:
-            logging.error(f"Cannot deploy a job due to the absence of an access token")
-            return SubmissionAck(success=False)
+    @staticmethod
+    def _compose_application_pb(request):
         job_name = request.job_id
         application_pb = Architecture()
         application_pb.name = job_name
@@ -54,10 +53,38 @@ class IvisInterface(IvisInterfaceServicer):
         probe.signal_set = request.signal_set
         probe.execution_time_signal = request.execution_time_signal
         probe.run_count_signal = request.run_count_signal
+        return application_pb
 
-        self._jobs[application_pb.name] = application_pb
-        self._deploy_controller.SubmitArchitecture(application_pb)
-        logging.info(f"Job {request.job_id} was accepted for measurements")
+    def _create_app_from_template(self, request, old_name: str, new_name: str):
+        app = self._knowledge.applications[old_name]
+        old_application_pb = app.get_pb_representation()
+        application_pb = Architecture(old_application_pb)
+        application_pb.CopyFrom(application_pb)
+        application_pb.name = new_name
+        application_pb.components[old_name].name = new_name
+        application_pb.components[new_name].CopyFrom(application_pb.components[old_name])
+        del application_pb.components[old_name]
+        probe = application_pb.components[new_name].probes[0]
+        probe.name = new_name
+        probe.application = new_name
+        probe.component = new_name
+        probe.signal_set = request.signal_set
+        probe.execution_time_signal = request.execution_time_signal
+        probe.run_count_signal = request.run_count_signal
+        self._knowledge.new_apps.put_nowait(application_pb)
+
+    def SubmitJob(self, request, context):
+        if self._knowledge.api_endpoint_access_token is None:
+            logging.error(f"Cannot deploy a job due to the absence of an access token")
+            return SubmissionAck(success=False)
+        if request.template_job_id != "" and request.template_job_id != None:
+            self._templates.append(request.job_id)
+            self._create_app_from_template(request, request.template_job_id, request.job_id)
+        else:
+            application_pb = self._compose_application_pb(request)
+            self._jobs[application_pb.name] = application_pb
+            self._deploy_controller.SubmitArchitecture(application_pb)
+            logging.info(f"Job {request.job_id} was accepted for measurements")
         return SubmissionAck(success=True)
 
     def DeployJob(self, request, context):
@@ -79,6 +106,8 @@ class IvisInterface(IvisInterfaceServicer):
                 return JobStatus(status=JobAdmissionStatus.Value('DEPLOYED'))
             else:
                 return JobStatus(status=JobAdmissionStatus.Value('ACCEPTED'))
+        elif job_id in self._templates:
+            return JobStatus(status=JobAdmissionStatus.Value('ACCEPTED'))
         else:
             status = self._deploy_controller.GetApplicationStats(AppName(name=job_id))
             if status.status == AppAdmissionStatus.Value('UNKNOWN'):

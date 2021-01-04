@@ -176,6 +176,8 @@ class ApplicationMonitor(Monitor):
             """
             for app_pb in self.postponed_apps:
                 self._knowledge.add_application(app_pb)
+            while not self._knowledge.new_apps.empty():
+                self._knowledge.add_application(self._knowledge.new_apps.get_nowait())
             self.postponed_apps = []
             recently_deleted_apps = []
             try:

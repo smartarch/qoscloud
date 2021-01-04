@@ -37,6 +37,7 @@ message QoSRequirements {
 }
 
 message IvisJobDescription {
+    string template_job_id = 1;
     string job_id = 5;
     string code = 6;
     string config = 8;
