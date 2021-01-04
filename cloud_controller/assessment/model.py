@@ -77,10 +77,13 @@ class AppDatabase:
             # Delete app from db
             del self._apps[name]
 
-    def update_app(self, app: Application):
-        if app.name not in self._apps:
-            raise Exception(f"Attempt to update a non-existing application: there is no application named {app.name}.")
-        self._apps[app.name].application = app
+    def update_qos_requirements(self, app_pb: arch_pb.Architecture):
+        app = self._apps[app_pb.name].application
+        for component_name in  app_pb.components:
+            for probe_pb in app_pb.components[component_name]:
+                for probe in app.components[component_name].probes:
+                    if probe.name == probe_pb.name:
+                        probe.requirements = Probe.construct_requirements(probe_pb)
 
     def get_application(self, app_name: str) -> Application:
         return self._apps[app_name].application

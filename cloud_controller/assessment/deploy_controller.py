@@ -71,10 +71,19 @@ class DeployController(DeployControllerServicer):
         return deploy_pb.DeployReply(rc=deploy_pb.RC_OK)
 
     def SubmitRequirements(self, request, context) -> deploy_pb.DeployReply:
+        # Check if app exists
+        if request.name not in self._app_db:
+            logger.error("Cannot delete app %s" % request.name)
+            return deploy_pb.DeployReply(rc=deploy_pb.RC_NAME_NOT_AVAILABLE)
+
         status = self._app_db.get_app_status(request.name)
-        if status == AppStatus.MEASURED:
-            self._app_db.update_app(Application.init_from_pb(request))
+        if status == AppStatus.MEASURED or status == AppStatus.REJECTED:
+            self._app_db.update_qos_requirements(request)
             self._app_judge.judge_and_rule(request.name)
+        elif status == AppStatus.RECEIVED:
+            self._app_db.update_qos_requirements(request)
+        elif status == AppStatus.PUBLISHED or status == AppStatus.PUBLISHED:
+            return deploy_pb.DeployReply(rc=deploy_pb.RC_APP_ALREADY_ACCEPTED)
         return deploy_pb.DeployReply(rc=deploy_pb.RC_OK)
 
     def RegisterHwConfig(self, hw_config: deploy_pb.HwConfig, context) -> deploy_pb.DeployReply:

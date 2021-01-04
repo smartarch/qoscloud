@@ -975,7 +975,7 @@ class Probe:
         return Probe.init_from_pb_direct(probe_pb, component)
 
     @staticmethod
-    def init_from_pb_direct(probe_pb: arch_pb.Probe, component: Component):
+    def construct_requirements(probe_pb: arch_pb.Probe) -> List[QoSContract]:
         requirements = []
         for requirement_pb in probe_pb.requirements:
             type = requirement_pb.WhichOneof('type')
@@ -986,6 +986,11 @@ class Probe:
                 requirement = ThroughputContract(requirement_pb.throughput.requests, requirement_pb.throughput.per)
             assert requirement is not None
             requirements.append(requirement)
+        return requirements
+
+    @staticmethod
+    def init_from_pb_direct(probe_pb: arch_pb.Probe, component: Component):
+        requirements = Probe.construct_requirements(probe_pb)
         for probe in component.probes:
             if probe.name == probe_pb.name:
                 probe.alias = Probe.generate_alias(probe_pb.name, component)

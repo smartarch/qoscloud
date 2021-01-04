@@ -40,6 +40,7 @@ message HwConfig {
 enum ReplyCode {
     RC_OK = 0;
     RC_NAME_NOT_AVAILABLE = 1;
+    RC_APP_ALREADY_ACCEPTED = 2;
 }
 
 enum AppAdmissionStatus {
