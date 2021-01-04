@@ -31,7 +31,8 @@ message Component {
 
 enum Statefulness {
     NONE = 0;
-    MONGO = 2;
+    CLIENT = 1;
+    COMPONENT = 2;
 }
 
 enum UEMPolicy {

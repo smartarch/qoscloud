@@ -30,7 +30,7 @@ class MongoAgent:
         collection.count_documents()
     """
 
-    def __init__(self, mongos_ip: str, db_name, collection_name):
+    def __init__(self, mongos_ip: str, db_name, collection_name, sharding=True):
         """
 
         :param mongos_ip: The initial IP of mongos instance
@@ -43,6 +43,7 @@ class MongoAgent:
         self._collection_name = collection_name
         self._mongo_client: MongoClient = MongoClient(mongos_ip, MONGOS_PORT)
         self._collection: Collection = self._mongo_client[db_name][collection_name]
+        self._sharding = sharding
         self._lock = threading.RLock()
 
     def _set_mongos_ip(self, mongos_ip):
@@ -67,7 +68,8 @@ class MongoAgent:
         """
         Ensures that the supplied document will belong to the user's chunk.
         """
-        doc[SHARD_KEY] = self._shard_key
+        if self._sharding:
+            doc[SHARD_KEY] = self._shard_key
         return doc
 
     def delete_many(self, filter):

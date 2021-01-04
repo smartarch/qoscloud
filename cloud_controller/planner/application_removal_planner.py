@@ -43,7 +43,7 @@ class ApplicationRemovalPlanner(Planner):
         self._create_task(DeleteAppRecordTask(app_name))
         mongo_components = []
         for component in app.list_managed_components():
-            if component.statefulness == Statefulness.MONGO:
+            if component.statefulness != Statefulness.NONE:
                 mongo_components.append(component.name)
         if len(mongo_components) > 0:
             self._create_task(DropDatabaseTask(app_name, mongo_components))

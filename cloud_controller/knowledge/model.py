@@ -25,7 +25,9 @@ class ComponentType(Enum):
 
 class Statefulness(Enum):
     NONE = 1
-    MONGO = 3
+    CLIENT = 2
+    COMPONENT = 3
+    MONGO = 4
 
 
 class QoSContract:
@@ -182,7 +184,8 @@ class Component:
 
     statefulness_map: Dict = {
         protocols.Statefulness.Value("NONE"): Statefulness.NONE,
-        protocols.Statefulness.Value("MONGO"): Statefulness.MONGO
+        protocols.Statefulness.Value("CLIENT"): Statefulness.CLIENT,
+        protocols.Statefulness.Value("COMPONENT"): Statefulness.COMPONENT
     }
 
     def __init__(self, application: "Application", name: str, id_: str, type_: ComponentType,
@@ -604,7 +607,7 @@ class ManagedCompin(Compin):
         super().__init__(component, id_, chain_id)
         self.node_name: str = node
         self.phase: CompinPhase = CompinPhase.READY
-        if component.statefulness == Statefulness.MONGO:
+        if component.statefulness != Statefulness.NONE:
             self.mongo_init_completed = False
         else:
             self.mongo_init_completed = True

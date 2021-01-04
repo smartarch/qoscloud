@@ -48,7 +48,7 @@ def get_compin_diff(application_name, actual_state: CloudState, desired_state: C
                 delete_instances.append(compin)
         elif not compin.init_completed:
             init_instances.append(compin)
-        elif compin.component.statefulness == Statefulness.MONGO and not compin.mongo_init_completed:
+        elif compin.component.statefulness != Statefulness.NONE and not compin.mongo_init_completed:
             mongo_init_instances.append(compin)
 
     return create_instances, delete_instances, mongo_init_instances, init_instances

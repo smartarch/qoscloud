@@ -2,7 +2,8 @@ import logging
 
 from cloud_controller import DEFAULT_MEASURED_RUNS
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import CloudState, ManagedCompin, CompinPhase
+from cloud_controller.knowledge.model import CloudState, ManagedCompin, CompinPhase, Statefulness
+from cloud_controller.middleware.agent import NO_SHARDING
 from cloud_controller.planner.top_planner import Planner
 from cloud_controller.planning.cloud_state_diff import get_compin_diff
 from cloud_controller.tasks.instance_management import CreateInstanceTask, DeleteInstanceTask
@@ -59,10 +60,14 @@ class InstanceDeploymentPlanner(Planner):
         """
         dc_name = self.knowledge.nodes[compin.node_name].data_center
         datacenter = self.knowledge.datacenters[dc_name]
+        if compin.component.statefulness == Statefulness.CLIENT:
+            shard_key = int(compin.chain_id)
+        else:
+            shard_key = NO_SHARDING
         self._create_task(SetMongoParametersTask(
             component=compin.component,
             instance_id=compin.id,
-            key=int(compin.chain_id),
+            key=shard_key,
             mongos_ip=datacenter.mongos_ip
         ))
 

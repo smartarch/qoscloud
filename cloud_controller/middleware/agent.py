@@ -32,6 +32,8 @@ PYTHON_EXEC = "/bin/python3"
 IVIS_HOST = "0.0.0.0"
 IVIS_PORT = 8082
 
+NO_SHARDING = -1
+
 class Request(Enum):
     SUCCESS = 1
     FAIL = 2
@@ -426,7 +428,7 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         user's shard key, database and collection to use.
         """
         if self._mongo_agent is None:
-            self._mongo_agent = MongoAgent(request.mongosIp, request.db, request.collection)
+            self._mongo_agent = MongoAgent(request.mongosIp, request.db, request.collection, request.shardKey != NO_SHARDING)
         else:
             self._mongo_agent._set_mongos_ip(request.mongosIp)
         return mw_protocols.MongoParametersAck()

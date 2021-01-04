@@ -78,7 +78,7 @@ class DependencyPlanner(Planner):
             logging.info(f"Created a task for connection of {dependent_component} with ID {id_} to "
                          f"{dependency_name} with ID {dependency_id}.")
 
-            if providing_instance.component.statefulness == Statefulness.MONGO:
+            if providing_instance.component.statefulness == Statefulness.CLIENT:
                 dc_name = self.knowledge.nodes[providing_instance.node_name].data_center
                 dc = self.knowledge.datacenters[dc_name]
                 task = MoveChunkTask(
