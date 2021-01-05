@@ -14,6 +14,7 @@ message Architecture {
     map<string, Component> components = 2;
     Secret secret = 3;
     bool is_complete = 4;
+    string access_token = 5;
 }
 
 message Component {

@@ -40,7 +40,7 @@ class InstanceDeploymentPlanner(Planner):
                 component=compin.component,
                 instance_id=compin.id,
                 run_count= DEFAULT_MEASURED_RUNS if self.knowledge.client_support else 0,
-                access_token=self.knowledge.api_endpoint_access_token,
+                access_token=compin.component.application.access_token,
                 production=self.knowledge.client_support
             )
         )

@@ -393,7 +393,7 @@ class Application:
         _pb_representation: Protobuf representation of the application.
     """
 
-    def __init__(self, name, secret: str = None, is_complete: bool = True):
+    def __init__(self, name, secret: str = None, is_complete: bool = True, access_token: str = ""):
         """
         :param name: Application name
         :param secret: Application docker secret (if needed)
@@ -403,6 +403,7 @@ class Application:
         self._secret: Optional[str] = secret
         self._pb_representation: Optional[protocols.Architecture] = None
         self._is_complete: bool = is_complete
+        self._access_token: str = access_token
 
     @property
     def is_complete(self) -> bool:
@@ -415,6 +416,10 @@ class Application:
     @property
     def secret(self) -> Optional[str]:
         return self._secret
+
+    @property
+    def access_token(self) -> Optional[str]:
+        return self._access_token
 
     @property
     def components(self) -> Dict[str, Component]:
@@ -452,7 +457,8 @@ class Application:
         application = Application(
             name=application_pb.name,
             secret=application_pb.secret,
-            is_complete=application_pb.is_complete
+            is_complete=application_pb.is_complete,
+            access_token=application_pb.access_token
         )
         for component_name in application_pb.components:
             application.add_component(Component.init_from_pb(application, application_pb.components[component_name]))

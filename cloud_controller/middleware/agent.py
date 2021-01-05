@@ -31,6 +31,7 @@ PYTHON_EXEC = "/bin/python3"
 
 IVIS_HOST = "0.0.0.0"
 IVIS_PORT = 8082
+ELASTICSEARCH_PORT = 9200
 
 NO_SHARDING = -1
 
@@ -160,6 +161,7 @@ class Interpreter:
         self._elasticsearch = Elasticsearch([{'host': es_host, 'port': int(es_port)}])
         self._measurement_iteration_number = 0
         self._result: Optional[Any] = None
+        self._ivis_server_available: bool = self._config.access_token != ""
 
     @property
     def current_process(self) -> Optional[str]:
@@ -168,7 +170,7 @@ class Interpreter:
     def run_measurement(self, probe_name: str):
         logging.info(f"Running run {self._measurement_iteration_number}")
         probe = self._config.probes[probe_name]
-        if isinstance(probe, RunnableProbe):
+        if isinstance(probe, RunnableProbe) and self._ivis_server_available:
             state = self._send_request(Request.STATE)
         else:
             state = None
@@ -215,7 +217,8 @@ class Interpreter:
             'returnCode': -1,
         }
         logging.info(f"Cannot run the probe. {run_status['error']}")
-        self._send_request(Request.FAIL, run_status)
+        if self._ivis_server_available:
+            self._send_request(Request.FAIL, run_status)
 
     def _run_python_interpreter(self, probe: RunnableProbe):
         fdr, fdw = os.pipe()
@@ -226,9 +229,10 @@ class Interpreter:
 
         self._wait_thread: Thread = Thread(target=self._wait_for_process, args=(probe,), daemon=True)
         self._wait_thread.start()
-        self._requests_thread: Thread = Thread(target=self._process_runtime_requests, args=(fdr, self._process.stdin),
-                                               daemon=True)
-        self._requests_thread.start()
+        if self._ivis_server_available:
+            self._requests_thread: Thread = Thread(target=self._process_runtime_requests, args=(fdr, self._process.stdin),
+                                                   daemon=True)
+            self._requests_thread.start()
 
     def _send_request(self, request: Request, payload=None):
         headers = {
@@ -287,11 +291,14 @@ class Interpreter:
         run_status['endTime'] = time.perf_counter()
         if success:
             logging.info(f"Run completed successfully. STDOUT: {run_status['output']}")
-            self._send_request(Request.SUCCESS, run_status)
+            if self._ivis_server_available:
+                self._send_request(Request.SUCCESS, run_status)
         else:
             logging.info(f"Run failed. STDERR: {run_status['error']}")
-            self._send_request(Request.FAIL, run_status)
-        probe.submit_running_time(run_status['endTime'] - self._last_run_start_time, self._elasticsearch)
+            if self._ivis_server_available:
+                self._send_request(Request.FAIL, run_status)
+        if self._ivis_server_available:
+            probe.submit_running_time(run_status['endTime'] - self._last_run_start_time, self._elasticsearch)
         if self._agent.phase == mw_protocols.Phase.Value('FINALIZING'):
             self._agent.set_finished()
         else:
@@ -410,7 +417,7 @@ class MiddlewareAgent(MiddlewareAgentServicer):
 
     def InitializeInstance(self, request, context):
         self._config = InstanceConfig.init_from_pb(request, self._probes)
-        self._interpreter = Interpreter(self._config, self, request.api_endpoint_ip, 9200) # TODO
+        self._interpreter = Interpreter(self._config, self, request.api_endpoint_ip, ELASTICSEARCH_PORT)
         if not self._config.production:
             self._probe_monitor = ProbeMonitor(interpreter=self._interpreter)
         self.set_ready()

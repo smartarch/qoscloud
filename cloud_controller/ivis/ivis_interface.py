@@ -25,11 +25,11 @@ class IvisInterface(IvisInterfaceServicer):
         self._templates: List[str] = []
         self._jobs: Dict[str, Architecture] = {}
 
-    @staticmethod
-    def _compose_application_pb(request):
+    def _compose_application_pb(self, request):
         job_name = request.job_id
         application_pb = Architecture()
         application_pb.name = job_name
+        application_pb.access_token = self._knowledge.api_endpoint_access_token
         application_pb.is_complete = False
         application_pb.components[job_name].name = job_name
         template = JOB_DEPLOYMENT_TEMPLATE % request.docker_container
