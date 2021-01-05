@@ -8,7 +8,7 @@ from typing import Callable, Any
 import cloud_controller
 from cloud_controller import PRODUCTION_KUBECONFIG, PRODUCTION_MONGOS_SERVER_IP, THREAD_COUNT
 from cloud_controller.adaptation_controller import AdaptationController
-from cloud_controller.aggregator import StatisticalPredictor
+from cloud_controller.analysis.statistical_predictor import StatisticalPredictor
 from cloud_controller.analyzer.constraint import PredictConstraint, RunningNodeConstraint, InstanceDeploymentConstraint, \
     RedeploymentConstraint, ChainInDatacenterConstraint, NodeSeparationConstraint
 from cloud_controller.analyzer.csp_analyzer import CSPAnalyzer
