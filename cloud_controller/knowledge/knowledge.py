@@ -209,12 +209,9 @@ class Knowledge:
         """
         self.secrets[app] = secret
 
-    def remove_secret(self, app: str) -> Optional[str]:
+    def get_secret(self, app: str) -> Optional[str]:
         """
         :param app: Application the secret belongs to.
         :return: The secret for a given application, if exists, None otherwise.
         """
-        if app in self.secrets:
-            return self.secrets.pop(app)
-        else:
-            return None
+        return self.secrets.get(app)

@@ -95,7 +95,7 @@ class ExecutionPlanFactory:
             cc_task = self._add_new_task()
             cc_task.ADD_APPLICATION_TO_CC.CopyFrom(self._application.get_pb_representation())
             self._add_dependency(namespace_task, cc_task)
-        secret = self._knowledge.remove_secret(self._application.name)
+        secret = self._knowledge.get_secret(self._application.name)
         if secret is not None:
             secret_task = self._add_new_task()
             secret_task.CREATE_DOCKER_SECRET = secret

@@ -5,11 +5,11 @@ import logging
 
 import kubernetes
 import pymongo
-from kubernetes import client
+from kubernetes import client, config
 from pymongo import MongoClient
 from pymongo.collection import Collection
 
-from cloud_controller import SYSTEM_DATABASE_NAME, APPS_COLLECTION_NAME
+from cloud_controller import SYSTEM_DATABASE_NAME, APPS_COLLECTION_NAME, PRODUCTION_KUBECONFIG
 from cloud_controller.middleware import MONGOS_PORT
 
 
@@ -20,10 +20,11 @@ class ClusterCleaner:
     previously created by Avocado.
     """
 
-    def __init__(self, mongos_ip: str):
+    def __init__(self, mongos_ip: str, kubeconfig_file=PRODUCTION_KUBECONFIG):
         """
         :param mongos_ip: IP of mongos instance to connect to.
         """
+        config.load_kube_config(config_file=kubeconfig_file)
         self._mongo_client = MongoClient(mongos_ip, MONGOS_PORT, serverSelectionTimeoutMS=15000)
         self._apps_collection: Collection = self._mongo_client[SYSTEM_DATABASE_NAME][APPS_COLLECTION_NAME]
         self._core_api = client.CoreV1Api()

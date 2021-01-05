@@ -5,7 +5,7 @@ from cloud_controller.knowledge.knowledge_pb2 import ClientDependencyDescription
 from cloud_controller.knowledge.model import Component, CompinPhase, ManagedCompin, UnmanagedCompin, Application
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer
 from cloud_controller.task_executor.execution_context import ClientControllerExecutionContext
-from cloud_controller.tasks.preconditions import namespace_exists, check_phase
+from cloud_controller.tasks.preconditions import namespace_active, check_phase
 from cloud_controller.tasks.task import Task
 
 
@@ -36,7 +36,7 @@ class AddApplicationToCCTask(Task):
         super(AddApplicationToCCTask, self).__init__(
             task_id=self.generate_id()
         )
-        self.add_precondition(namespace_exists, (self._app_name,))
+        self.add_precondition(namespace_active, (self._app_name,))
 
     def execute(self, context: ClientControllerExecutionContext) -> bool:
         context.client_controller.AddNewApplication(self._app_pb)

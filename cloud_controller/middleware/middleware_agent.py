@@ -8,7 +8,7 @@ from threading import RLock
 from typing import Optional, Callable, Dict, Generator, List, Tuple, Any
 
 import cloud_controller.middleware.middleware_pb2 as mw_protocols
-from cloud_controller.middleware.instance_config import InstanceConfig
+from cloud_controller.middleware.instance_config import InstanceConfig, ELASTICSEARCH_PORT
 from cloud_controller.middleware.interpreter import Interpreter
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentServicer
 from cloud_controller.middleware.mongo_agent import MongoAgent
@@ -18,12 +18,11 @@ from cloud_controller.middleware.measurement_collectors import DataCollector, IO
 
 IVIS_HOST = "0.0.0.0"
 IVIS_PORT = 8082
-ELASTICSEARCH_PORT = 9200
 
 NO_SHARDING = -1
 
 
-def empty():
+def empty(x=None, y=None):
     pass
 
 

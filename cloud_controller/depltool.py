@@ -108,7 +108,8 @@ def yaml_to_grpc_architecture(architecture_yaml) -> Optional[arch_pb.Architectur
         architecture_grpc.components[_name].type = arch_pb.ComponentType.Value("MANAGED")
         if DEPENDENCIES in item:
             for dependency in item[DEPENDENCIES]:
-                architecture_grpc.components[_name].dependsOn.append(dependency)
+                check_field_present({DEPENDENCIES: dependency}, DEPENDENCIES, NAME)
+                architecture_grpc.components[_name].dependsOn.append(dependency[NAME])
 
         if STATEFULNESS in item:
             statefulness = item[STATEFULNESS].upper()

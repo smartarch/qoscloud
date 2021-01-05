@@ -16,6 +16,10 @@ def compin_exists(knowledge: Knowledge, app: str, component: str, id_: str):
 
 
 def namespace_exists(knowledge: Knowledge, ns: str) -> bool:
+    return ns in knowledge.namespaces
+
+
+def namespace_active(knowledge: Knowledge, ns: str) -> bool:
     if ns in knowledge.namespaces:
         return knowledge.namespaces[ns].phase == NamespacePhase.ACTIVE
     return False

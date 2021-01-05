@@ -51,7 +51,7 @@ class InstanceDeploymentPlanner(Planner):
         :param compin: A compin to create the task for
         :param parent_task: A task after which the compin creation task will be executed.
         """
-        self._create_task(CreateInstanceTask(compin.component.name, compin, self.knowledge.client_support))
+        self._create_task(CreateInstanceTask(compin.component.application.name, compin, self.knowledge.client_support))
         logging.info(f"Created tasks for creation of {compin.component.name} on {compin.node_name}. ")
 
     def _add_mongo_init_task(self, compin: ManagedCompin):

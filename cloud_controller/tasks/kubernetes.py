@@ -6,7 +6,7 @@ from kubernetes import client
 from cloud_controller import DEFAULT_SECRET_NAME
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.task_executor.execution_context import KubernetesExecutionContext
-from cloud_controller.tasks.preconditions import compin_exists, namespace_exists
+from cloud_controller.tasks.preconditions import compin_exists, namespace_active, namespace_exists
 from cloud_controller.tasks.task import Task
 
 
@@ -19,7 +19,7 @@ class CreateDeploymentTask(Task):
         super(CreateDeploymentTask, self).__init__(
             task_id=self.generate_id()
         )
-        self.add_precondition(namespace_exists, (self._namespace,))
+        self.add_precondition(namespace_active, (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
         api_response = context.extensions_api.create_namespaced_deployment(
@@ -41,7 +41,7 @@ class DeleteDeploymentTask(Task):
         super(DeleteDeploymentTask, self).__init__(
             task_id=self.generate_id()
         )
-        self.add_precondition(namespace_exists, (self._namespace,))
+        self.add_precondition(namespace_active, (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
         options = client.V1DeleteOptions()
@@ -69,7 +69,7 @@ class UpdateDeploymentTask(Task):
         super(UpdateDeploymentTask, self).__init__(
             task_id=self.generate_id()
         )
-        self.add_precondition(namespace_exists, (self._namespace,))
+        self.add_precondition(namespace_active, (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
         api_response = context.extensions_api.patch_namespaced_deployment(
@@ -96,7 +96,7 @@ class CreateServiceTask(Task):
         super(CreateServiceTask, self).__init__(
             task_id=self.generate_id()
         )
-        self.add_precondition(namespace_exists, (self._namespace,))
+        self.add_precondition(namespace_active, (self._namespace,))
         self.add_precondition(compin_exists, (app_name, component_name, instance_id))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
@@ -125,7 +125,7 @@ class DeleteServiceTask(Task):
         super(DeleteServiceTask, self).__init__(
             task_id=self.generate_id()
         )
-        self.add_precondition(namespace_exists, (self._namespace,))
+        self.add_precondition(namespace_active, (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
         options = client.V1DeleteOptions()
@@ -179,7 +179,7 @@ class CreateDockersecretTask(Task):
         super(CreateDockersecretTask, self).__init__(
             task_id=self.generate_id()
         )
-        self.add_precondition(namespace_exists, (self._namespace,))
+        self.add_precondition(namespace_active, (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
         secret = client.V1Secret(

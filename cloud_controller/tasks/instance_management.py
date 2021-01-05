@@ -7,7 +7,7 @@ from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import ManagedCompin, Component, CompinPhase
 from cloud_controller.planning.k8s_generators import create_deployment_for_compin, create_service_for_compin
 from cloud_controller.task_executor.execution_context import KubernetesExecutionContext, ExecutionContext
-from cloud_controller.tasks.preconditions import compin_exists, namespace_exists
+from cloud_controller.tasks.preconditions import compin_exists, namespace_active
 from cloud_controller.tasks.task import Task
 
 
@@ -23,14 +23,14 @@ class CreateInstanceTask(Task):
         self._node_name: str = instance.node_name
         self._instance_id: str = instance.id
         self._deployment = yaml.load(create_deployment_for_compin(instance, not production))
-        self._service = yaml.load(create_service_for_compin(self._deployment, instance))
+        self._service = yaml.load(create_service_for_compin(yaml.dump(self._deployment), instance))
         self._chain_id: str = instance.chain_id
         self._force: bool = instance.force_keep
         self._ip: str = ""
         super().__init__(
             task_id=self.generate_id()
         )
-        self.add_precondition(namespace_exists, (self._namespace,))
+        self.add_precondition(namespace_active, (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
         context.extensions_api.create_namespaced_deployment(body=self._deployment, namespace=self._namespace)
@@ -72,7 +72,7 @@ class DeleteInstanceTask(Task):
         super(DeleteInstanceTask, self).__init__(
             task_id=self.generate_id()
         )
-        self.add_precondition(namespace_exists, (self._namespace,))
+        self.add_precondition(namespace_active, (self._namespace,))
         self.add_precondition(compin_exists, (self._instance.id, self._instance.component.name,
                                               self._instance.component.application.name))
         self.add_precondition(DeleteInstanceTask.check_phase_finished, (self._instance,))

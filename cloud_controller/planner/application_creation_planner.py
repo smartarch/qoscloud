@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Dict, Set
 
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import CloudState, Application, Statefulness
@@ -8,12 +8,24 @@ from cloud_controller.tasks.client_controller import AddApplicationToCCTask
 from cloud_controller.tasks.kubernetes import CreateNamespaceTask, CreateDockersecretTask
 from cloud_controller.task_executor.registry import TaskRegistry
 from cloud_controller.tasks.statefulness import AddAppRecordTask, ShardCollectionTask
+from cloud_controller.tasks.task import Task
 
 
 class ApplicationCreationPlanner(Planner):
 
     def __init__(self, knowledge: Knowledge, task_registry: TaskRegistry):
         super(ApplicationCreationPlanner, self).__init__(knowledge, task_registry)
+        self._tasks_by_app: Dict[str, Set[str]] = {}
+
+    def _complete_planning(self):
+        for app in self._tasks_by_app:
+            if app not in self.knowledge.applications:
+                for task_id in self._tasks_by_app[app]:
+                    self.task_registry.cancel_task(task_id)
+
+    def _create_task(self, task: Task, app_name=None):
+        super()._create_task(task)
+        self._tasks_by_app[app_name].add(task.task_id)
 
     def _get_application_diff(self, actual_state: CloudState, desired_state: CloudState) -> List[str]:
         """
@@ -34,18 +46,19 @@ class ApplicationCreationPlanner(Planner):
         secret to that namespace, adding that application to the Client Controller, and creating and sharding the
         collections for all the Mongo-stateful components.
         """
+        self._tasks_by_app[app_name] = set()
         app: Application = self.knowledge.applications[app_name]
-        self._create_task(AddAppRecordTask(app_name))
-        self._create_task(CreateNamespaceTask(app_name))
+        self._create_task(AddAppRecordTask(app_name), app_name)
+        self._create_task(CreateNamespaceTask(app_name), app_name)
         # self._add_dependency(database_record_task, namespace_task)
         if self._cc_operations_required(app):
-            self._create_task(AddApplicationToCCTask(app))
-        secret = self.knowledge.remove_secret(app_name)
+            self._create_task(AddApplicationToCCTask(app), app_name)
+        secret = self.knowledge.get_secret(app_name)
         if secret is not None:
-            self._create_task(CreateDockersecretTask(app_name, secret))
+            self._create_task(CreateDockersecretTask(app_name, secret), app_name)
         for component in app.list_managed_components():
             if component.statefulness == Statefulness.CLIENT:
-                self._create_task(ShardCollectionTask(app_name, app_name, component.name))
+                self._create_task(ShardCollectionTask(app_name, app_name, component.name), app_name)
                 # self._add_dependency(database_record_task, sharding_task)
         logging.info(f"Created the tasks for application {app_name} deployment")
 

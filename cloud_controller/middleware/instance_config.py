@@ -5,6 +5,8 @@ from elasticsearch import Elasticsearch
 
 from cloud_controller.middleware import middleware_pb2 as mw_protocols
 
+ELASTICSEARCH_PORT = 9200
+
 
 class ProbeConfig:
 
@@ -39,7 +41,15 @@ class RunnableProbe(ProbeConfig):
         self.filename = f"./{self.name}.py"
         with open(self.filename, "w") as code_file:
             code_file.write(code)
-        self._config = json.loads(config)
+        if config != "":
+            self._config = json.loads(config)
+        else:
+            self._config = {
+                'es': {
+                    'host': "0.0.0.0",
+                    'port': ELASTICSEARCH_PORT
+                }
+            }
         self.args = args
         # self._elasticsearch: Optional[Elasticsearch] = None
 

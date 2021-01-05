@@ -4,7 +4,7 @@ from typing import List
 from cloud_controller import SYSTEM_DATABASE_NAME, APPS_COLLECTION_NAME
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.task_executor.execution_context import StatefulnessControllerExecutionContext
-from cloud_controller.tasks.preconditions import namespace_exists, application_deployed
+from cloud_controller.tasks.preconditions import namespace_active, application_deployed
 from cloud_controller.tasks.task import Task
 
 
@@ -121,7 +121,7 @@ class DeleteAppRecordTask(Task):
         super(DeleteAppRecordTask, self).__init__(
             task_id=self.generate_id()
         )
-        self.add_precondition(lambda _, x: not namespace_exists(_, x), (self._app_name,))
+        # self.add_precondition(lambda _, x: not namespace_active(_, x), (self._app_name,))
 
     def execute(self, context: StatefulnessControllerExecutionContext) -> bool:
         context.mongo_controller.delete_document(SYSTEM_DATABASE_NAME, APPS_COLLECTION_NAME, {

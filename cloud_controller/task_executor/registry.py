@@ -61,15 +61,15 @@ class TaskRegistry(Monitor):
         Called by Planner.
         :param task_id: task id
         """
-        assert self._task_exists(task_id)
-        state = self._get_state(task_id)
-        with self._lock:
-            if state == TaskState.RUNNING:
-                self._set_state(task_id, TaskState.CANCELED)
-        if state == TaskState.PENDING:
-            self._remove_task(task_id)
-        else:
-            assert state != TaskState.CANCELED
+        if self._task_exists(task_id):
+            state = self._get_state(task_id)
+            with self._lock:
+                if state == TaskState.RUNNING:
+                    self._set_state(task_id, TaskState.CANCELED)
+            if state == TaskState.PENDING:
+                self._remove_task(task_id)
+            else:
+                assert state != TaskState.CANCELED
         logging.info(f"Task {task_id} was canceled")
 
     def stream_tasks(self) -> Iterable[Task]:
@@ -80,13 +80,11 @@ class TaskRegistry(Monitor):
         while True:
             try:
                 task = self._pending_queue.get_nowait()
-                if self._get_state(task.task_id) == TaskState.PENDING:
+                if self._task_exists(task.task_id):
+                    assert self._get_state(task.task_id) == TaskState.PENDING
                     self._set_state(task.task_id, TaskState.RUNNING)
-                else:
-                    assert not self._task_exists(task.task_id)
-                    continue
-                logging.info(f"Task {task.task_id} was submitted for execution")
-                yield task
+                    logging.info(f"Task {task.task_id} was submitted for execution")
+                    yield task
             except Empty:
                 yield
                 return
