@@ -19,7 +19,7 @@ from PIL import Image
 
 import frpyc.rs_pb2 as protocols
 import frpyc.rs_pb2_grpc as servicers
-from cloud_controller.middleware.agent import ServerAgent
+from cloud_controller.middleware.user_agents import ServerAgent
 from cloud_controller.middleware.helpers import setup_logging
 
 from frpyc.detectors import Detectors

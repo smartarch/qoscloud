@@ -20,7 +20,7 @@ from pymongo import ReturnDocument
 
 import frpyc.rs_pb2 as protocols
 import frpyc.rs_pb2_grpc as servicers
-from cloud_controller.middleware.agent import ServerAgent, Phase
+from cloud_controller.middleware.user_agents import Phase, ServerAgent
 from cloud_controller.middleware.helpers import setup_logging
 from cloud_controller.middleware.mongo_agent import MongoAgent
 

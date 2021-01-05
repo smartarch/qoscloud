@@ -12,7 +12,7 @@ import grpc
 import frpyc
 import frpyc.rs_pb2 as protocols
 import frpyc.rs_pb2_grpc as servicers
-from cloud_controller.middleware.agent import ClientAgent
+from cloud_controller.middleware.user_agents import ClientAgent
 from cloud_controller.middleware.helpers import setup_logging
 
 TIMEOUT = 6  # Seconds
