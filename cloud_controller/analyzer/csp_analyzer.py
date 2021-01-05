@@ -4,13 +4,14 @@ Contains Analyzer class responsible for the Analysis phase.
 import logging
 from typing import Optional, List
 
-from multiprocessing.pool import ThreadPool, AsyncResult, Pool
+from multiprocessing import Pool
+
+from multiprocessing.pool import AsyncResult, ThreadPool
 
 from cloud_controller.analyzer.problem import CSPProblem
 from cloud_controller.analyzer.objective_function import ObjectiveFunction
 from cloud_controller.analyzer.constraint import Constraint
 from cloud_controller.analyzer.variables import Variables
-from cloud_controller.analysis.predictor import Predictor
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import CloudState, ManagedCompin
 
@@ -20,7 +21,7 @@ class CSPAnalyzer:
     Determines the desired state of the cloud with the help of the solver and the predictor.
     """
 
-    def __init__(self, knowledge: Knowledge, pool: Pool):
+    def __init__(self, knowledge: Knowledge, pool: ThreadPool):
         """
         :param knowledge: Reference to the Knowledge
         :param solver_class: A class of the solver that has to be used. The solver is instantiated internally.
@@ -29,7 +30,7 @@ class CSPAnalyzer:
         """
         self._knowledge: Knowledge = knowledge
         self._last_desired_state: CloudState = CloudState()
-        self._pool: Pool = pool
+        self._pool: ThreadPool = pool
         self._longterm_result_future: Optional[AsyncResult] = None
         self._constraints: List[Constraint] = []
         self._variables = Variables(self._knowledge)

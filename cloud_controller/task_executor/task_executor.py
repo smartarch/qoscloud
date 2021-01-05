@@ -1,5 +1,8 @@
-from multiprocessing.pool import Pool, ApplyResult
 from typing import List, Dict, Type
+
+from multiprocessing.pool import ApplyResult, ThreadPool
+
+import logging
 
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.task_executor.execution_context import ExecutionContext
@@ -9,10 +12,10 @@ from cloud_controller.task_executor.registry import TaskRegistry
 
 class TaskExecutor:
 
-    def __init__(self, knowledge: Knowledge, registry: TaskRegistry, pool: Pool):
+    def __init__(self, knowledge: Knowledge, registry: TaskRegistry, pool: ThreadPool):
         self._knowledge: Knowledge = knowledge
         self._registry: TaskRegistry = registry
-        self._pool: Pool = pool
+        self._pool: ThreadPool = pool
         self._futures: List[ApplyResult] = []
         self._execution_contexts: Dict[Type, ExecutionContext] = {}
         self._contexts_by_task_type: Dict[Type, ExecutionContext] = {}
@@ -42,6 +45,7 @@ class TaskExecutor:
                     self._futures.remove(result)
 
     def _execute(self, task: Task):
+        logging.basicConfig(level=logging.INFO)
         if task.check_preconditions(self._knowledge):
             context = self._contexts_by_task_type[task.__class__]
             task.execute(context)

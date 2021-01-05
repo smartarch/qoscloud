@@ -2,8 +2,10 @@
 Contains ExtensionManager, a class for creating custom versions of Adaptation Controller.
 """
 from enum import Enum
-from multiprocessing import Pool
+from multiprocessing import Pool, Lock
 from typing import Callable, Any
+
+from multiprocessing.pool import ThreadPool
 
 import cloud_controller
 from cloud_controller import PRODUCTION_KUBECONFIG, PRODUCTION_MONGOS_SERVER_IP, THREAD_COUNT
@@ -30,9 +32,13 @@ from cloud_controller.tasks.statefulness import *
 from cloud_controller.tasks.kubernetes import *
 from cloud_controller.tasks.middleware import *
 
+
+
 class _Phase(Enum):
     INIT = 1
     DONE = 2
+
+
 
 
 class ExtensionManager:
@@ -45,7 +51,7 @@ class ExtensionManager:
     def __init__(self):
         self.knowledge = Knowledge()
         self.task_registry = TaskRegistry(self.knowledge)
-        self._pool = Pool(processes=THREAD_COUNT)
+        self._pool = ThreadPool(processes=THREAD_COUNT)
         self._monitor = None
         self._analyzer = None
         self._planner = None
