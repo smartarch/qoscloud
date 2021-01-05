@@ -17,7 +17,7 @@ from cloud_controller.knowledge.model import Application, ComponentType
 from cloud_controller.knowledge.network_distances import NetworkDistances
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer
 from cloud_controller.middleware import middleware_pb2 as mw_protocols, AGENT_PORT
-from cloud_controller.middleware.agent import MiddlewareAgent
+from cloud_controller.middleware.middleware_agent import MiddlewareAgent
 from cloud_controller.middleware.helpers import connect_to_grpc_server
 from cloud_controller.middleware.middleware_pb2 import MongoParameters
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub

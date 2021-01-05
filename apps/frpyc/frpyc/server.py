@@ -19,7 +19,7 @@ from PIL import Image
 
 import frpyc.rs_pb2 as protocols
 import frpyc.rs_pb2_grpc as servicers
-from cloud_controller.middleware.user_agents import ServerAgent
+from cloud_controller.middleware.user_agents import ComponentAgent
 from cloud_controller.middleware.helpers import setup_logging
 
 from frpyc.detectors import Detectors
@@ -175,7 +175,7 @@ def run():
     recognizer = RecognizerGrpcServer(args.model, detector, img_dir)
 
     # Integrating and starting middleware agent:
-    agent = ServerAgent({}, None, recognizer.finalize, recognizer.initialize)
+    agent = ComponentAgent({}, None, recognizer.finalize, recognizer.initialize)
     agent.start()
     # Start the recognizer:
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

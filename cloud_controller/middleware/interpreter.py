@@ -11,7 +11,7 @@ import requests
 from elasticsearch import Elasticsearch
 
 from cloud_controller.middleware import middleware_pb2 as mw_protocols
-from cloud_controller.middleware.agent import MiddlewareAgent, PYTHON_EXEC
+from cloud_controller.middleware.middleware_agent import MiddlewareAgent, PYTHON_EXEC
 from cloud_controller.middleware.instance_config import InstanceConfig, RunnableProbe, CallableProbe, ProbeConfig
 
 

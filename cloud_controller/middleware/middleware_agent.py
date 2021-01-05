@@ -4,6 +4,7 @@ framework.
 """
 import logging
 import os
+from threading import RLock
 from typing import Optional, Callable, Dict, Generator, List, Tuple, Any
 
 import cloud_controller.middleware.middleware_pb2 as mw_protocols
@@ -24,14 +25,19 @@ ELASTICSEARCH_PORT = 9200
 NO_SHARDING = -1
 
 
+def empty():
+    pass
+
+
 class MiddlewareAgent(MiddlewareAgentServicer):
     """
     Provides the interface through which Avocado framework manages the managed components. Instantiated inside
     ServerAgent
     """
 
-    def __init__(self, dependency_map, lock, update_call, finalize_call, initialize_call,
-                 probes: Dict[str, Callable[[], None]], standalone: bool = False):
+    def __init__(self, dependency_map=None, lock=None, update_call=None,
+                 finalize_call=None, initialize_call=None, probes: Dict[str, Callable[[], None]] = None,
+                 standalone: bool = False):
         """
         :param dependency_map: a map of dependencies that will be updated on each dependency change
         :param lock: a lock to hold while setting a dependency value
@@ -41,6 +47,14 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         :param initialize_call: A callback function which is called when the instance receives its initial state.
         :param probe_monitor: A ProbeMonitor for this instance
         """
+        if standalone:
+            dependency_map = {}
+            lock = RLock()
+            update_call = empty
+            finalize_call = empty
+            initialize_call = empty
+            probes = {}
+
         self._dependency_addresses = dependency_map
         self._dict_lock = lock
         self._finalize_call = finalize_call
@@ -142,7 +156,8 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         user's shard key, database and collection to use.
         """
         if self._mongo_agent is None:
-            self._mongo_agent = MongoAgent(request.mongosIp, request.db, request.collection, request.shardKey != NO_SHARDING)
+            self._mongo_agent = MongoAgent(request.mongosIp, request.db, request.collection,
+                                           request.shardKey != NO_SHARDING)
         else:
             self._mongo_agent._set_mongos_ip(request.mongosIp)
         return mw_protocols.MongoParametersAck()
@@ -185,11 +200,14 @@ class MiddlewareAgent(MiddlewareAgentServicer):
             time = self._probe_monitor.execute_probe(measurement.probe.name, measurement.warmUpCycles,
                                                      measurement.measuredCycles, cpu_events)
 
-            return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.Value("OK"), executionTime=time)
+            return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.Value("OK"),
+                                                executionTime=time)
         except IOEventsNotSupportedException:
-            return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.Value("IO_EVENT_NOT_SUPPORTED"))
+            return mw_protocols.ProbeCallResult(
+                result=mw_protocols.ProbeCallResult.Result.Value("IO_EVENT_NOT_SUPPORTED"))
         except CPUEventsNotSupportedException:
-            return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.Value("CPU_EVENT_NOT_SUPPORTED"))
+            return mw_protocols.ProbeCallResult(
+                result=mw_protocols.ProbeCallResult.Result.Value("CPU_EVENT_NOT_SUPPORTED"))
 
     def SetProbeWorkload(self, workload: mw_protocols.ProbeWorkload, context) -> mw_protocols.ProbeCallResult:
         self._config.reporting_enabled = workload.reporting_enabled
@@ -233,5 +251,3 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         with open(data_file, "r") as data_stream:
             for line in data_stream:
                 yield mw_protocols.ProbeFullResult(row=line[:-1])
-
-

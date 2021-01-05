@@ -3,7 +3,7 @@ import logging
 from cloud_controller import DEFAULT_MEASURED_RUNS
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import CloudState, ManagedCompin, CompinPhase, Statefulness
-from cloud_controller.middleware.agent import NO_SHARDING
+from cloud_controller.middleware.middleware_agent import NO_SHARDING
 from cloud_controller.planner.top_planner import Planner
 from cloud_controller.planning.cloud_state_diff import get_compin_diff
 from cloud_controller.tasks.instance_management import CreateInstanceTask, DeleteInstanceTask

@@ -20,7 +20,7 @@ from pymongo import ReturnDocument
 
 import frpyc.rs_pb2 as protocols
 import frpyc.rs_pb2_grpc as servicers
-from cloud_controller.middleware.user_agents import Phase, ServerAgent
+from cloud_controller.middleware.user_agents import Phase, ComponentAgent
 from cloud_controller.middleware.helpers import setup_logging
 from cloud_controller.middleware.mongo_agent import MongoAgent
 
@@ -66,7 +66,7 @@ class RecognizerGrpcServer(servicers.RecognizerServerServicer):
         if detector != Detectors.non:
             self.trained_recognizer.trainFromDir(str(faces_dir))
         # Prepare data
-        self.agent: ServerAgent = agent
+        self.agent: ComponentAgent = agent
         self.mongo_agent: MongoAgent = agent.get_mongo_agent()
         doc = self.mongo_agent.find_one({'role': 'counter'})
         if doc is None:
@@ -149,7 +149,7 @@ def run():
     # Instantiate the recognizer:
 
     # Integrating and starting middleware agent:
-    agent = ServerAgent({})
+    agent = ComponentAgent({})
     agent.start()
     mongo_agent = None
     while not mongo_agent:

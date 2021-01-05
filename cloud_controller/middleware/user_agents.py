@@ -7,7 +7,7 @@ from typing import Dict, Optional, Callable, Tuple, Any
 
 from cloud_controller.middleware import AGENT_HOST, AGENT_PORT, CLIENT_CONTROLLER_EXTERNAL_HOST, \
     CLIENT_CONTROLLER_EXTERNAL_PORT, middleware_pb2 as mw_protocols
-from cloud_controller.middleware.agent import MiddlewareAgent
+from cloud_controller.middleware.middleware_agent import MiddlewareAgent
 from cloud_controller.middleware.helpers import OrderedEnum, start_grpc_server, connect_to_grpc_server
 from cloud_controller.middleware.middleware_pb2_grpc import add_MiddlewareAgentServicer_to_server, \
     ClientControllerExternalStub
@@ -49,7 +49,7 @@ class Phase(OrderedEnum):
     FINISHED = 4
 
 
-class ServerAgent(Agent):
+class ComponentAgent(Agent):
     """
     This class has to be instantiated and started (via start method) in each MANAGED component instance in order to
     integrate it properly with the the Avocado framework.
