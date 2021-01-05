@@ -472,7 +472,6 @@ class Application:
 
 def add_resource_requirements(template: str, min_memory="", max_memory="",
                               min_cpu="", max_cpu="", k8s_labels="") -> str:
-    # TONOWDO
     return template
 
 
@@ -917,7 +916,7 @@ class CloudState:
 
 
 class Probe:
-    # TONOWDO: add code, config and signal set
+
     def __init__(self,
                  name: str,
                  component: Component,

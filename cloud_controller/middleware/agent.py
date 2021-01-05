@@ -108,6 +108,7 @@ class InstanceConfig:
         self.access_token: str = access_token
         self.production: bool = production
         self.probes: Dict[str, ProbeConfig] = {}
+        self.reporting_enabled: bool = True
 
     @staticmethod
     def init_from_pb(config_pb, procedures: Dict[str, Callable]) -> "InstanceConfig":
@@ -297,7 +298,7 @@ class Interpreter:
             logging.info(f"Run failed. STDERR: {run_status['error']}")
             if self._ivis_server_available:
                 self._send_request(Request.FAIL, run_status)
-        if self._ivis_server_available:
+        if self._ivis_server_available and self._config.reporting_enabled:
             probe.submit_running_time(run_status['endTime'] - self._last_run_start_time, self._elasticsearch)
         if self._agent.phase == mw_protocols.Phase.Value('FINALIZING'):
             self._agent.set_finished()
@@ -467,6 +468,7 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         return None
 
     def MeasureProbe(self, measurement: mw_protocols.ProbeMeasurement, context) -> mw_protocols.ProbeCallResult:
+        self._config.reporting_enabled = measurement.reporting_enabled
         error = self._check_measurement_errors(measurement.probe.name)
         if error:
             return error
@@ -486,6 +488,7 @@ class MiddlewareAgent(MiddlewareAgentServicer):
             return mw_protocols.ProbeCallResult(result=mw_protocols.ProbeCallResult.Result.Value("CPU_EVENT_NOT_SUPPORTED"))
 
     def SetProbeWorkload(self, workload: mw_protocols.ProbeWorkload, context) -> mw_protocols.ProbeCallResult:
+        self._config.reporting_enabled = workload.reporting_enabled
         if workload.WhichOneof("newWorkload") == "probe":
             # Probe name
             error = self._check_measurement_errors(workload.probe.name)

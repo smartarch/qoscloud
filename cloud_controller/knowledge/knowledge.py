@@ -128,7 +128,6 @@ class Knowledge:
         """
         app = Application.init_from_pb(app_pb)
         self.applications[app_pb.name] = app
-        # TONOWDO: DEFAULT_MEASURED_RUNS
         for component in self.applications[app_pb.name].components.values():
             self.components[component.id] = component
         if app_pb.HasField("secret"):

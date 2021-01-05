@@ -130,6 +130,7 @@ message ProbeMeasurement {
     uint32 measuredCycles = 3;
     // Specification of which CPU events should be measured.
     repeated string cpuEvents = 4;
+    bool reporting_enabled = 5;
 }
 
 message ProbeWorkload {
@@ -138,6 +139,7 @@ message ProbeWorkload {
         // Specifying none as a ProbeWorkload causes all the probes currently running as workloads to stop.
         bool none = 2;
     }
+    bool reporting_enabled = 3;
 }
 
 /*

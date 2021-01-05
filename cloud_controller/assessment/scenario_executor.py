@@ -66,11 +66,11 @@ class ScenarioExecutor:
 
     @staticmethod
     def _start_probe(ip: str, probe: Probe, warm_up_cycles: int, measured_cycles: int,
-                     cpu_events: List[str] = None) -> None:
+                     cpu_events: List[str] = None, reporting_enabled: bool = False) -> None:
         # Open connection
         probe_msg = mw_protocols.ProbeDescriptor(name=probe.name)
         measure_msg = mw_protocols.ProbeMeasurement(probe=probe_msg, warmUpCycles=warm_up_cycles,
-                                                    measuredCycles=measured_cycles)
+                                                    measuredCycles=measured_cycles, reportingEnabled=reporting_enabled)
         if cpu_events is not None:
             for cpu_event in cpu_events:
                 measure_msg.cpuEvents.append(cpu_event)
@@ -112,9 +112,9 @@ class ScenarioExecutor:
             raise ProbeExecutionException(f"Received {result_str} from {ip}")
 
     def start_probe(self, compin: Compin, probe: Probe, warm_up_cycles: int, measured_cycles: int,
-                    cpu_events: List[str]) -> None:
+                    cpu_events: List[str], reporting_enabled: bool) -> None:
         self._start_probe(compin.ip, probe, warm_up_cycles=warm_up_cycles, measured_cycles=measured_cycles,
-                          cpu_events=cpu_events)
+                          cpu_events=cpu_events, reporting_enabled=reporting_enabled)
 
     def start_probe_workload(self, compin: Compin, probe: Probe) -> None:
         self._set_probe_workload(compin.ip, probe)
@@ -143,8 +143,10 @@ class ScenarioExecutor:
         logger.info("%s: Starting probe measurement on controlled component", scenario)
         ctl_compin = self._knowledge.actual_state.get_compin(scenario.controlled_probe.component.application.name,
                                                              scenario.controlled_probe.component.name, ctl_compin_id)
+        # We enable reporting only for isolation scenarios:
+        reporting_enabled = len(scenario.background_probes) == 0
         self.start_probe(ctl_compin, scenario.controlled_probe, scenario.warm_up_cycles, scenario.measured_cycles,
-                         scenario.cpu_events)
+                         scenario.cpu_events, reporting_enabled=reporting_enabled)
 
         # Stops rest of compins
         for probe, compin_id, workload in cmd_plans:
