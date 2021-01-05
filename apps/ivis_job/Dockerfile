@@ -8,10 +8,9 @@ RUN pip3.6 install grpcio grpcio-tools typing pymongo Pillow python_papi==5.5.1.
 
 
 COPY ./cloud_controller/middleware /root/ivisjob/cloud_controller/middleware
-COPY ./cloud_controller/architecture.proto /root/ivisjob/cloud_controller/architecture.proto
 WORKDIR /root/ivisjob
 RUN PYTHONPATH=. python3.6 cloud_controller/middleware/generate_grpc.py
-RUN chmod +x cloud_controller/middleware/job_agent.py
+RUN chmod +x cloud_controller/middleware/run_middleware_agent.py
 
 ENV LC_ALL="en_US.utf8"
 ENV LANG="en_US.utf8"

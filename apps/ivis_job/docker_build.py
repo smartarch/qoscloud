@@ -5,7 +5,7 @@ This script builds the docker images of image client and recognizer server and p
 """
 from subprocess import call
 
-print("Building docker image for IVIS jobs")
+print("Building the default docker image")
 call("docker build -t dankhalev/ivis-job -f Dockerfile ../..", shell=True)
 
 print("Pushing images to DockerHub")
