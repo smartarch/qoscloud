@@ -14,15 +14,14 @@ import argparse
 
 import cloud_controller.knowledge.knowledge_pb2_grpc as servicers
 import cloud_controller.middleware.middleware_pb2_grpc as mw_servicers
-from cloud_controller import CLIENT_CONTROLLER_HOST, CLIENT_CONTROLLER_PORT, MAX_CLIENTS
-from cloud_controller.client_controller.client_model import ClientStatus, ClientModel
+from cloud_controller import CLIENT_CONTROLLER_HOST, CLIENT_CONTROLLER_PORT, MAX_CLIENTS, DEFAULT_WAIT_SIGNAL_FREQUENCY
+from cloud_controller.client_controller.client_model import ClientModel
+from cloud_controller.client_controller.client import ClientStatus
 from cloud_controller.client_controller.external import ClientControllerExternal
 from cloud_controller.client_controller.internal import ClientControllerInternal
 
 from cloud_controller.middleware import CLIENT_CONTROLLER_EXTERNAL_HOST, CLIENT_CONTROLLER_EXTERNAL_PORT
 from cloud_controller.middleware.helpers import setup_logging, start_grpc_server
-
-DEFAULT_WAIT_SIGNAL_FREQUENCY = 5  # Seconds
 
 
 def start_client_controller(wait_signal_frequency=DEFAULT_WAIT_SIGNAL_FREQUENCY) -> None:
@@ -65,7 +64,7 @@ def start_client_controller(wait_signal_frequency=DEFAULT_WAIT_SIGNAL_FREQUENCY)
                         clients_to_delete.append((application, id_))
             for app, id_ in clients_to_delete:
                 logging.info("Cancelling the call for client (%s:%s)" % (app, id_))
-                client_model.remove_client(app, id_)
+                client_model.disconnect_client(app, id_)
     except KeyboardInterrupt:
         print("ClientController: ^C received, ending")
         external_server.stop(0)

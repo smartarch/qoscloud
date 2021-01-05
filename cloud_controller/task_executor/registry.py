@@ -77,7 +77,8 @@ class TaskRegistry(Monitor):
         Called by executor (synchronously)
         :return: Stream of pending tasks
         """
-        while True:
+        count = self._pending_queue.qsize()
+        for _ in range(0, count):
             try:
                 task = self._pending_queue.get_nowait()
                 if self._task_exists(task.task_id):

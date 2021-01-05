@@ -41,14 +41,14 @@ class InstancesCountPredictor(Predictor):
     """
     Returns True for all combinations of components of a size less than _options.MAX_COMPINS_ON_NODE.
     """
-    def __init__(self, options: SolverOptions):
-        self._options = options
+    def __init__(self, count):
+        self.max = count
 
     def predict_(self, node_id: str, components_on_node: Dict[str, int]) -> bool:
         total_component_count = 0
         for count in components_on_node.values():
             total_component_count += count
-        if total_component_count > self._options.MAX_COMPINS_ON_NODE:
+        if total_component_count > self.max:
             return False
         else:
             return True

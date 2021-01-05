@@ -1,123 +1,24 @@
 import logging
 import math
-import random
 import time
-from enum import Enum
 from threading import RLock
-from typing import Dict, List, Tuple, Optional
+from typing import Dict, List
 
 import grpc
 
-from cloud_controller import architecture_pb2 as arch_pb, UEManagementPolicy
+from cloud_controller import architecture_pb2 as arch_pb, UEManagementPolicy, DEFAULT_WAIT_SIGNAL_FREQUENCY, \
+    VIRTUAL_COUNT_CONSTANT, VIRTUAL_COUNT_PERCENT
 from cloud_controller.architecture_pb2 import Architecture
-from cloud_controller.client_controller.client_controller import DEFAULT_WAIT_SIGNAL_FREQUENCY
+from cloud_controller.client_controller.client import ClientStatus, Client
 from cloud_controller.client_controller.network_topology import ClientPositionTracker, EuclidClientPositionTracker
 from cloud_controller.knowledge import knowledge_pb2 as protocols
 from cloud_controller.knowledge.model import Application, ComponentType
-from cloud_controller.knowledge.network_distances import NetworkDistances
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer
-from cloud_controller.middleware import middleware_pb2 as mw_protocols, AGENT_PORT
-from cloud_controller.middleware.middleware_agent import MiddlewareAgent
-from cloud_controller.middleware.helpers import connect_to_grpc_server
-from cloud_controller.middleware.middleware_pb2 import MongoParameters
-from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
-
-
-class ClientStatus(Enum):
-    CONNECTED = 1
-    DISCONNECTED = 2
-    VIRTUAL = 3
-
-
-VIRTUAL_COUNT_CONSTANT = 3
-VIRTUAL_COUNT_PERCENT = 0.1
+from cloud_controller.middleware import middleware_pb2 as mw_protocols
 
 
 def threshold(current_number: int) -> int:
     return VIRTUAL_COUNT_CONSTANT + math.ceil((1 + VIRTUAL_COUNT_PERCENT) * current_number)
-
-
-class Client:
-    """
-    Stores the data about a client relevant to the ClientController
-
-    Attributes:
-        descriptor          ClientDescriptor protobuf for this client
-        context             grpc.ServicerContext of this client, can be used to cancel the connection
-        last_call           Timestamp of the last call to the client
-        dependency_updates  Pending dependency updates (ones that were not yet sent to the client)
-        dependencies        Current values of all client's dependencies
-        status              CONNECTED or DISCONNECTED
-    """
-
-    def __init__(self, app_name: str, type: str, id: str):
-        self.application: str = app_name
-        self.type: str = type
-        self.id: str = id
-        self.hasID: bool = False
-        self.persistent_id: Optional[str] = None
-
-        self.ip: Optional[str] = None
-        self.imsi: Optional[str] = None
-        self.position_x: float = random.randint(0, 100)
-        self.position_y: float = random.randint(0, 100)
-
-        self.context: Optional[grpc.ServicerContext] = None
-        self.last_call: float = time.perf_counter()
-
-        self.dependency_updates: Dict[str, str] = {}
-        self.dependencies: Dict[str, str] = {}
-
-        self.status: ClientStatus = ClientStatus.VIRTUAL
-
-    def set_statefulness_key(self, ip):
-        agent: MiddlewareAgentStub = connect_to_grpc_server(MiddlewareAgentStub, ip, AGENT_PORT)
-        agent.SetStatefulnessKey(MongoParameters(shardKey=int(self.persistent_id)))
-
-    def virtualize(self) -> None:
-        self.status = ClientStatus.VIRTUAL
-        self.context = None
-        self.persistent_id = None
-        self.hasID = False
-        self.ip = None
-        self.imsi = None
-
-    @staticmethod
-    def init_from_pb(descriptor: protocols.ClientDescriptor) -> "Client":
-        client = Client(descriptor.application, descriptor.type, descriptor.id)
-        client.ip = descriptor.ip
-        client.hasID = descriptor.hasID
-        client.imsi = descriptor.imsi
-        client.position_x = descriptor.position_x
-        client.position_y = descriptor.position_y
-        client.persistent_id = descriptor.persistent_id
-        return client
-
-    def update_from_pb(self, descriptor: protocols.ClientDescriptor):
-        assert descriptor.type == self.type
-        assert descriptor.application == self.application
-        assert descriptor.id == self.id
-        self.ip = descriptor.ip
-        self.hasID = descriptor.hasID
-        self.imsi = descriptor.imsi
-        # self.position_x = descriptor.position_x
-        # self.position_y = descriptor.position_y
-        self.persistent_id = descriptor.persistent_id
-        for dependency_ip in self.dependencies.values():
-            self.set_statefulness_key(dependency_ip)
-
-    def pb_representation(self) -> protocols.ClientDescriptor:
-        return protocols.ClientDescriptor(
-            application=self.application,
-            type=self.type,
-            ip=self.ip,
-            hasID=self.hasID,
-            id=self.id,
-            imsi=self.imsi,
-            position_x=self.position_x,
-            position_y=self.position_y,
-            persistent_id=self.persistent_id
-        )
 
 
 class ClientModel:
@@ -135,7 +36,7 @@ class ClientModel:
     """
     def __init__(self, wait_signal_frequency=DEFAULT_WAIT_SIGNAL_FREQUENCY):
         self.clients: Dict[str, Dict[str, Client]] = {}
-        self.ids: Dict[str, str] = {}
+        self.ids: Dict[str, str] = {} # Client type by ID
         self.virtual_clients: Dict[str, Dict[str, List[Client]]] = {}
         self.applications: Dict[str, Architecture] = {}
         self._last_id: int = 0
@@ -160,15 +61,14 @@ class ClientModel:
             event.event = protocols.ClientEventType.Value("LOCATION")
 
     def check_threshold(self, app_name: str, type: str):
-        virtual_clients = self.virtual_clients[app_name][type]
         currently_connected = 0
         for client in self.clients[app_name].values():
-            if client.type == type:
+            if client.type == type and client.status == ClientStatus.CONNECTED:
                 currently_connected += 1
         n = threshold(currently_connected)
-        while len(virtual_clients) < n:
+        while len(self.virtual_clients[app_name][type]) < n:
             self.add_virtual_client(app_name, type)
-        while len(virtual_clients) > n:
+        while len(self.virtual_clients[app_name][type]) > n:
             self.remove_client(app_name, type)
 
     def get_virtual_client(self, app_name: str, type: str) -> Client:
@@ -211,6 +111,7 @@ class ClientModel:
             client = self.clients[application][id_]
             client.context.cancel()
             client.virtualize()
+            self.check_threshold(client.application, client.type)
             logging.info(f"Client with ID {id_} disconnected successfully")
 
     def remove_client(self, application, type) -> None:
@@ -277,10 +178,12 @@ class ClientModel:
                 logging.info("Client ID not found")
                 return mw_protocols.ClientResponseCode.Value("ID_NOT_FOUND"), None, None
             client: Client = self.get_virtual_client(client_pb.application, client_pb.type)
+            client_pb.id = client.id
             client.update_from_pb(client_pb)
             client.context = context
             client.last_call = time.perf_counter()
             client.status = ClientStatus.CONNECTED
+            self.check_threshold(client.application, client.type)
             logging.info("New client connected successfully. ID = %s" % client.persistent_id)
             return mw_protocols.ClientResponseCode.Value("OK"), client.persistent_id, client
 
@@ -292,4 +195,5 @@ class ClientModel:
         for component in app.components.values():
             if component.type == ComponentType.UNMANAGED:
                 self.virtual_clients[app_name][component.name] = []
+                self.check_threshold(app_name, component.name)
         self.applications[app_name] = application_pb

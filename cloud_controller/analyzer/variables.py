@@ -176,6 +176,8 @@ class Variables:
         for client in self._clients:
             all_client_dependencies: List[Component] = client.component.get_all_dependencies_flat()
             for dependency in all_client_dependencies:
+                if dependency.cardinality == ComponentCardinality.SINGLE:
+                    continue
                 compin_name = f"{dependency.name}-{client.id}"
                 for node in self._knowledge.nodes.values():
                     if dependency.is_deployable_on_node(node):

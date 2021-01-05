@@ -15,7 +15,7 @@ import yaml
 from typing import Dict, Iterable, FrozenSet, Tuple, List
 
 from cloud_controller import DEFAULT_EUCLID_TOPOLOGY_CONFIG, USE_VIRTUAL_NETWORK_CONTROLLER
-from cloud_controller.client_controller.client_model import Client, ClientStatus
+from cloud_controller.client_controller.client import ClientStatus, Client
 from cloud_controller.knowledge.network_distances import NetworkDistances
 from cloud_controller.knowledge.model import UnmanagedCompin, Node
 
@@ -107,5 +107,5 @@ class EuclidClientPositionTracker(ClientPositionTracker):
                 self._add_client(client.persistent_id)
             self._update_client_position(client.persistent_id, delta)
             _, _, point = self._clients[client.persistent_id]
-            client.position_x = point.x, point.y
+            client.position_x, client.position_y = point.x, point.y
         self._last_time = self._current_time

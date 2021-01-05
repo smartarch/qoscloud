@@ -742,12 +742,19 @@ class CloudState:
 
     def connect_all_chains(self):
         for chain_id in self._chains:
-            clients = [self._clients[chain_id]] if chain_id in self._clients else []
-            for instance in itertools.chain(clients, self._chains[chain_id].values()):
+            client = [self._clients[chain_id]] if chain_id in self._clients else []
+            for instance in itertools.chain(client, self._chains[chain_id].values()):
                 for dependency in instance.component.dependencies:
-                    provider: ManagedCompin = self._chains[chain_id][dependency.name]
-                    assert provider is not None
-                    instance.set_dependency(provider)
+                    if dependency.cardinality == ComponentCardinality.MULTIPLE:
+                        provider = self._chains[chain_id][dependency.name]
+                        assert isinstance(provider, ManagedCompin)
+                        instance.set_dependency(provider)
+                    else:
+                        provider = self._state[dependency.application.name][dependency.name][dependency.name]
+                        assert isinstance(provider, ManagedCompin)
+                        instance.set_dependency(provider)
+
+
 
     def list_instances(self, application_name: str, component_name: str) -> List[str]:
         """
@@ -838,7 +845,9 @@ class CloudState:
         dependent_compin = self.get_compin(application, component, id_)
         assert dependency_provider is not None and dependent_compin is not None
         assert isinstance(dependency_provider, ManagedCompin)
-        assert dependency_provider.chain_id == dependent_compin.chain_id
+        if dependency_provider.component.cardinality == ComponentCardinality.MULTIPLE and \
+            dependent_compin.component.cardinality == ComponentCardinality.MULTIPLE:
+            assert dependency_provider.chain_id == dependent_compin.chain_id
         dependent_compin.set_dependency(dependency_provider)
 
     def compin_exists(self, application: str, component: str, client_id: str) -> bool:
