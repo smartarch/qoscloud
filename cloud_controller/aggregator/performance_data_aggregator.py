@@ -8,15 +8,15 @@ from typing import Dict, List, Tuple, Iterator, Set, Optional
 
 import logging
 
-import cloud_controller.analysis.predictor_interface.predictor_pb2 as predictor_pb
+import cloud_controller.aggregator.predictor_pb2 as predictor_pb
 from cloud_controller import DEFAULT_HARDWARE_ID, PREDICTOR_HOST, PREDICTOR_PORT, THROUGHPUT_ENABLED, \
     THROUGHPUT_PERCENTILES
 from cloud_controller.analysis.predictor import Predictor
-from cloud_controller.analysis.predictor_interface.predictor_pb2_grpc import PredictorServicer, \
+from cloud_controller.aggregator import PredictorServicer, \
     add_PredictorServicer_to_server, PredictorStub
 from cloud_controller.architecture_pb2 import ApplicationTimingRequirements
 from cloud_controller.assessment.model import Scenario
-from cloud_controller.analysis.predictor_interface.measurement_aggregator import MeasurementAggregator
+from cloud_controller.aggregator import MeasurementAggregator
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import Application, Probe, TimeContract, ThroughputContract
 from cloud_controller.middleware.helpers import start_grpc_server, connect_to_grpc_server, setup_logging

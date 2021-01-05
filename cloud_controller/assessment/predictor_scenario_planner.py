@@ -5,8 +5,8 @@ import logging
 import requests
 
 from cloud_controller import API_ENDPOINT_IP, API_ENDPOINT_PORT
-from cloud_controller.analysis.predictor_interface.predictor_pb2 import ScenarioRequest
-from cloud_controller.analysis.predictor_interface.predictor_pb2_grpc import PredictorStub
+from cloud_controller.aggregator import ScenarioRequest
+from cloud_controller.aggregator import PredictorStub
 from cloud_controller.architecture_pb2 import ApplicationTimingRequirements
 from cloud_controller.assessment.deploy_controller_pb2 import HwConfig
 from cloud_controller.assessment.model import Scenario

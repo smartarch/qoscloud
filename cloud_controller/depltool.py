@@ -6,7 +6,6 @@ This module provides command line interface for submission of new applications t
 from Avocado, checking app status, and registering hardware configurations.
 """
 
-import argparse
 import base64
 import logging
 import sys
@@ -19,7 +18,7 @@ import cloud_controller.architecture_pb2 as arch_pb
 import cloud_controller.assessment.deploy_controller_pb2 as deploy_pb
 import cloud_controller.assessment.deploy_controller_pb2_grpc as deploy_grpc
 from cloud_controller import PREDICTOR_HOST, PREDICTOR_PORT
-from cloud_controller.analysis.predictor_interface.predictor_pb2_grpc import PredictorStub
+from cloud_controller.aggregator import PredictorStub
 from cloud_controller.assessment import CTL_HOST, CTL_PORT
 from cloud_controller.assessment.deploy_controller_pb2_grpc import DeployControllerStub
 from cloud_controller.middleware.helpers import setup_logging, connect_to_grpc_server

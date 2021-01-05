@@ -2,34 +2,14 @@
 The module contains Adaptation Controller class that runs all the steps of the adaptation (MAPE-K) loop sequentially,
 in a single process.
 """
-from multiprocessing.pool import ThreadPool
 from time import perf_counter
-from typing import Iterable, Type
 
 import logging
 
-import threading
-from kubernetes import config
-
-from cloud_controller import PRODUCTION_KUBECONFIG, THREAD_COUNT, PRODUCTION_MONGOS_SERVER_IP, DEFAULT_PREDICTOR_CONFIG, \
-    PARALLEL_EXECUTION
-from cloud_controller.analysis.analyzer import Analyzer
-from cloud_controller.analysis.csp_solver.solver import CSPSolver
-from cloud_controller.analysis.predictor import Predictor, StraightforwardPredictorModel
-from cloud_controller.analysis.predictor_interface.performance_data_aggregator import StatisticalPredictor
 from cloud_controller.analyzer.csp_analyzer import CSPAnalyzer
-from cloud_controller.cleanup import ClusterCleaner
-from cloud_controller.execution.executor import Executor
-from cloud_controller.ivis.ivis_interface import IvisInterface
-from cloud_controller.ivis.ivis_mock import IVIS_INTERFACE_HOST, IVIS_INTERFACE_PORT
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.ivis.ivis_pb2_grpc import add_IvisInterfaceServicer_to_server
-from cloud_controller.monitoring.monitor import Monitor, TopLevelMonitor, ApplicationMonitor, KubernetesMonitor, \
-    UEMonitor, ClientMonitor
+from cloud_controller.monitoring.monitor import Monitor
 from cloud_controller.planner.top_planner import Planner
-from cloud_controller.planning.execution_planner import ExecutionPlanner
-from cloud_controller.middleware.helpers import setup_logging, start_grpc_server
-from cloud_controller.knowledge import knowledge_pb2 as protocols
 from cloud_controller.task_executor.task_executor import TaskExecutor
 
 

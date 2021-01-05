@@ -3,19 +3,18 @@ Contains ExtensionManager, a class for creating custom versions of Adaptation Co
 """
 from enum import Enum
 from multiprocessing import Pool
-from typing import Type, Callable, Any
+from typing import Callable, Any
 
 import cloud_controller
-from cloud_controller import PRODUCTION_KUBECONFIG, DEFAULT_PREDICTOR_CONFIG, PRODUCTION_MONGOS_SERVER_IP, THREAD_COUNT
+from cloud_controller import PRODUCTION_KUBECONFIG, PRODUCTION_MONGOS_SERVER_IP, THREAD_COUNT
 from cloud_controller.adaptation_controller import AdaptationController
-from cloud_controller.analysis.predictor_interface.performance_data_aggregator import StatisticalPredictor
+from cloud_controller.aggregator import StatisticalPredictor
 from cloud_controller.analyzer.constraint import PredictConstraint, RunningNodeConstraint, InstanceDeploymentConstraint, \
     RedeploymentConstraint, ChainInDatacenterConstraint, NodeSeparationConstraint
 from cloud_controller.analyzer.csp_analyzer import CSPAnalyzer
 from cloud_controller.analyzer.objective_function import DefaultObjectiveFunction
-from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.network_topology import NetworkTopology
-from cloud_controller.knowledge.user_equipment import UserEquipmentContainer, UEManagementPolicy
+from cloud_controller.knowledge.user_equipment import UEManagementPolicy
 from cloud_controller.monitoring.monitor import TopLevelMonitor, ApplicationMonitor, ClientMonitor, UEMonitor, \
     KubernetesMonitor, Monitor
 from cloud_controller.planner.application_creation_planner import ApplicationCreationPlanner
@@ -23,8 +22,6 @@ from cloud_controller.planner.application_removal_planner import ApplicationRemo
 from cloud_controller.planner.dependency_planner import DependencyPlanner
 from cloud_controller.planner.deployment_planner import InstanceDeploymentPlanner
 from cloud_controller.planner.top_planner import Planner, TopLevelPlanner
-from cloud_controller.task_executor.execution_context import ExecutionContext, KubernetesExecutionContext, \
-    ClientControllerExecutionContext, StatefulnessControllerExecutionContext
 from cloud_controller.task_executor.registry import TaskRegistry
 from cloud_controller.task_executor.task_executor import TaskExecutor
 from cloud_controller.tasks.instance_management import *

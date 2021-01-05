@@ -15,7 +15,7 @@ import cloud_controller.architecture_pb2 as arch_pb
 from cloud_controller import DEFAULT_WARMUP_RUNS, DEFAULT_MEASURED_RUNS
 from cloud_controller.assessment import RESULTS_PATH
 from cloud_controller.knowledge.model import Application, Probe
-from cloud_controller.analysis.predictor_interface import predictor_pb2
+from cloud_controller.aggregator import predictor_pb2
 
 
 class AppStatus(IntEnum):
