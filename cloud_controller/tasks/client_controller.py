@@ -12,10 +12,10 @@ from cloud_controller.tasks.task import Task
 class DeleteApplicationFromCCTask(Task):
 
     def __init__(self, app_name: str):
+        self._app_name = app_name
         super(DeleteApplicationFromCCTask, self).__init__(
             task_id=self.generate_id()
         )
-        self._app_name = app_name
 
     def execute(self, context: ClientControllerExecutionContext) -> bool:
         context.client_controller.CloseApplicationChannels(
@@ -31,11 +31,11 @@ class DeleteApplicationFromCCTask(Task):
 class AddApplicationToCCTask(Task):
 
     def __init__(self, app: Application):
+        self._app_pb = app.get_pb_representation()
+        self._app_name = app.name
         super(AddApplicationToCCTask, self).__init__(
             task_id=self.generate_id()
         )
-        self._app_pb = app.get_pb_representation()
-        self._app_name = app.name
         self.add_precondition(namespace_exists, (self._app_name,))
 
     def execute(self, context: ClientControllerExecutionContext) -> bool:
@@ -50,14 +50,14 @@ class AddApplicationToCCTask(Task):
 class SetClientDependencyTask(Task):
 
     def __init__(self, component: Component, instance_id: str, client_component: Component, client_id: str):
-        super(SetClientDependencyTask, self).__init__(
-            task_id=self.generate_id()
-        )
         self._app_name = component.application.name
         self._component = component
         self._instance_id = instance_id
         self._client_component = client_component
         self._client_id = client_id
+        super(SetClientDependencyTask, self).__init__(
+            task_id=self.generate_id()
+        )
         self.add_precondition(check_phase, (self._app_name, self._component.name, self._instance_id, CompinPhase.READY))
 
     def execute(self, context: ClientControllerExecutionContext) -> bool:
@@ -107,4 +107,4 @@ class SetClientDependencyTask(Task):
 
     def generate_id(self) -> str:
         return f"{self.__class__.__name__}_{self._app_name}_{self._client_component.name}_" \
-               f"{self._client_id}_{self._component.name}"
+               f"{self._client_id}_{self._component.name}_{self._instance_id}"

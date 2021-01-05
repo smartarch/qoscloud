@@ -13,11 +13,11 @@ from cloud_controller.tasks.task import Task
 class FinalizeInstanceTask(Task):
 
     def __init__(self, component: Component, instance_id: str):
+        self._component: Component = component
+        self._instance_id: str = instance_id
         super(FinalizeInstanceTask, self).__init__(
             task_id=self.generate_id()
         )
-        self._component: Component = component
-        self._instance_id: str = instance_id
         self.add_precondition(check_phase, (self._component.application.name, self._component.name, self._instance_id,
                                             CompinPhase.INIT))
 
@@ -48,13 +48,13 @@ class FinalizeInstanceTask(Task):
 class SetMongoParametersTask(Task):
 
     def __init__(self, component: Component, instance_id: str, key: int, mongos_ip: str):
-        super(SetMongoParametersTask, self).__init__(
-            task_id=self.generate_id()
-        )
         self._component: Component = component
         self._instance_id: str = instance_id
         self._key = key
         self._mongos_ip = mongos_ip
+        super(SetMongoParametersTask, self).__init__(
+            task_id=self.generate_id()
+        )
         self.add_precondition(check_phase, (self._component.application.name, self._component.name, self._instance_id,
                                             CompinPhase.INIT))
 
@@ -81,21 +81,21 @@ class SetMongoParametersTask(Task):
 
     def generate_id(self) -> str:
         return f"{self.__class__.__name__}_{self._component.application.name}_{self._component.name}_" \
-               f"{self._instance_id}"
+               f"{self._instance_id}_{self._key}_{self._mongos_ip}"
 
 
 class SetMiddlewareAddressTask(Task):
 
     def __init__(self, providing_component: Component, providing_instance_id: str,
                  dependent_component: Component, dependent_instance_id: str):
-        super(SetMiddlewareAddressTask, self).__init__(
-            task_id=self.generate_id()
-        )
         self._app_name: str = providing_component.application.name
         self._providing_component: Component = providing_component
         self._providing_instance_id: str = providing_instance_id
         self._dependent_component: Component = dependent_component
         self._dependent_instance_id: str = dependent_instance_id
+        super(SetMiddlewareAddressTask, self).__init__(
+            task_id=self.generate_id()
+        )
         self.add_precondition(check_phase, (self._app_name, self._providing_component.name,
                                             self._providing_instance_id, CompinPhase.READY))
         self.add_precondition(check_phase, (self._app_name, self._dependent_component.name,
@@ -125,15 +125,12 @@ class SetMiddlewareAddressTask(Task):
 
     def generate_id(self) -> str:
         return f"{self.__class__.__name__}_{self._app_name}_{self._dependent_component.name}_" \
-               f"{self._dependent_instance_id}_{self._providing_component.name}"
+               f"{self._dependent_instance_id}_{self._providing_component.name}_{self._providing_instance_id}"
 
 
 class InitializeInstanceTask(Task):
 
     def __init__(self, component: Component, instance_id: str, run_count: int, access_token: str, production: bool):
-        super(InitializeInstanceTask, self).__init__(
-            task_id=self.generate_id()
-        )
         self._component: Component = component
         self._app_name: str = self._component.application.name
         self._component_name: str = self._component.name
@@ -141,6 +138,9 @@ class InitializeInstanceTask(Task):
         self._run_count: int = run_count
         self._access_token: str = access_token
         self._production: bool = production
+        super(InitializeInstanceTask, self).__init__(
+            task_id=self.generate_id()
+        )
         self.add_precondition(compin_exists, (self._app_name, self._component_name, self._instance_id))
         self.add_precondition(check_phase, (self._app_name, self._component_name, self._instance_id, CompinPhase.INIT))
 

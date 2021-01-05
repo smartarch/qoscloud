@@ -18,7 +18,7 @@ import cloud_controller.architecture_pb2 as arch_pb
 import cloud_controller.assessment.deploy_controller_pb2 as deploy_pb
 import cloud_controller.assessment.deploy_controller_pb2_grpc as deploy_grpc
 from cloud_controller import PREDICTOR_HOST, PREDICTOR_PORT
-from cloud_controller.aggregator import PredictorStub
+from cloud_controller.aggregator.predictor_pb2_grpc import PredictorStub
 from cloud_controller.assessment import CTL_HOST, CTL_PORT
 from cloud_controller.assessment.deploy_controller_pb2_grpc import DeployControllerStub
 from cloud_controller.middleware.helpers import setup_logging, connect_to_grpc_server
@@ -136,7 +136,7 @@ def yaml_to_grpc_architecture(architecture_yaml) -> Optional[arch_pb.Architectur
                 with open(probe[INPUTFILE], "r") as file:
                     probe_grpc.config = file.read()
             if CODEFILE in probe:
-                with open(probe[INPUTFILE], "r") as file:
+                with open(probe[CODEFILE], "r") as file:
                     probe_grpc.code = file.read()
                 probe_grpc.type = arch_pb.ProbeType.Value("CODE")
             if ARGS in probe:

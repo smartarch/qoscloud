@@ -24,7 +24,7 @@ class Planner:
             if task_id not in self._current_round:
                 self.task_registry.cancel_task(task_id)
         self._last_round = self._current_round
-        self._current_round = {}
+        self._current_round = set()
 
     @abstractmethod
     def plan_tasks(self, desired_state: CloudState):

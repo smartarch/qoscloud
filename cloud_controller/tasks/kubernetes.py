@@ -13,12 +13,12 @@ from cloud_controller.tasks.task import Task
 class CreateDeploymentTask(Task):
 
     def __init__(self, namespace: str, deployment_name: str, deployment: str):
-        super(CreateDeploymentTask, self).__init__(
-            task_id=self.generate_id()
-        )
         self._namespace = namespace
         self._deployment_name = deployment_name
         self._deployment = yaml.load(deployment)
+        super(CreateDeploymentTask, self).__init__(
+            task_id=self.generate_id()
+        )
         self.add_precondition(namespace_exists, (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
@@ -36,11 +36,11 @@ class CreateDeploymentTask(Task):
 class DeleteDeploymentTask(Task):
 
     def __init__(self, namespace: str, deployment_name: str):
+        self._namespace = namespace
+        self._deployment_name = deployment_name
         super(DeleteDeploymentTask, self).__init__(
             task_id=self.generate_id()
         )
-        self._namespace = namespace
-        self._deployment_name = deployment_name
         self.add_precondition(namespace_exists, (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
@@ -63,12 +63,12 @@ class DeleteDeploymentTask(Task):
 class UpdateDeploymentTask(Task):
 
     def __init__(self, namespace: str, deployment_name: str, deployment: str):
-        super(UpdateDeploymentTask, self).__init__(
-            task_id=self.generate_id()
-        )
         self._namespace = namespace
         self._deployment_name = deployment_name
         self._deployment = yaml.load(deployment)
+        super(UpdateDeploymentTask, self).__init__(
+            task_id=self.generate_id()
+        )
         self.add_precondition(namespace_exists, (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
@@ -87,17 +87,17 @@ class UpdateDeploymentTask(Task):
 class CreateServiceTask(Task):
 
     def __init__(self, namespace: str, service: str, app_name: str, component_name: str, instance_id: str):
-        super(CreateServiceTask, self).__init__(
-            task_id=self.generate_id()
-        )
         self._namespace = namespace
         self._app_name = app_name
         self._component_name = component_name
         self._instance_id = instance_id
         self._service = yaml.load(service)
+        self._ip: str = ""
+        super(CreateServiceTask, self).__init__(
+            task_id=self.generate_id()
+        )
         self.add_precondition(namespace_exists, (self._namespace,))
         self.add_precondition(compin_exists, (app_name, component_name, instance_id))
-        self._ip: str = ""
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
         api_response = context.basic_api.create_namespaced_service(namespace=self._namespace, body=self._service)
@@ -120,11 +120,11 @@ class CreateServiceTask(Task):
 class DeleteServiceTask(Task):
 
     def __init__(self, namespace: str, service_name: str):
+        self._namespace: str = namespace
+        self._service_name: str = service_name
         super(DeleteServiceTask, self).__init__(
             task_id=self.generate_id()
         )
-        self._namespace: str = namespace
-        self._service_name: str = service_name
         self.add_precondition(namespace_exists, (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
@@ -150,10 +150,10 @@ class CreateNamespaceTask(Task):
     """
 
     def __init__(self, namespace: str):
+        self._namespace = namespace
         super(CreateNamespaceTask, self).__init__(
             task_id=self.generate_id()
         )
-        self._namespace = namespace
         self.add_precondition(lambda x, y: not namespace_exists(x, y), (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
@@ -174,11 +174,11 @@ class CreateDockersecretTask(Task):
     """
 
     def __init__(self, namespace: str, dockersecret: str):
+        self._namespace = namespace
+        self._dockersecret = dockersecret
         super(CreateDockersecretTask, self).__init__(
             task_id=self.generate_id()
         )
-        self._namespace = namespace
-        self._dockersecret = dockersecret
         self.add_precondition(namespace_exists, (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
@@ -203,10 +203,10 @@ class CreateDockersecretTask(Task):
 class DeleteDockersecretTask(Task):
 
     def __init__(self, namespace: str):
+        self._namespace = namespace
         super(DeleteDockersecretTask, self).__init__(
             task_id=self.generate_id()
         )
-        self._namespace = namespace
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
         context.basic_api.delete_namespaced_secret(
@@ -228,10 +228,10 @@ class DeleteNamespaceTask(Task):
     """
 
     def __init__(self, namespace: str):
+        self._namespace = namespace
         super(DeleteNamespaceTask, self).__init__(
             task_id=self.generate_id()
         )
-        self._namespace = namespace
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
         options = client.V1DeleteOptions()

@@ -13,11 +13,11 @@ class ShardCollectionTask(Task):
     Creates and shards a MongoDB collection.
     """
     def __init__(self, app_name: str, database: str, collection: str):
+        self._database = database
+        self._collection = collection
         super(ShardCollectionTask, self).__init__(
             task_id=self.generate_id()
         )
-        self._database = database
-        self._collection = collection
         self.add_precondition(application_deployed, (app_name,))
 
     def execute(self, context: StatefulnessControllerExecutionContext) -> bool:
@@ -37,13 +37,13 @@ class MoveChunkTask(Task):
     See documentation to MongoController.move_chunk
     """
     def __init__(self, database: str, collection: str, key: int, shard: str):
-        super(MoveChunkTask, self).__init__(
-            task_id=self.generate_id()
-        )
         self._database = database
         self._collection = collection
         self._key = key
         self._shard = shard
+        super(MoveChunkTask, self).__init__(
+            task_id=self.generate_id()
+        )
 
     def execute(self, context: StatefulnessControllerExecutionContext) -> bool:
         context.mongo_controller.move_chunk(
@@ -57,7 +57,7 @@ class MoveChunkTask(Task):
         return True
 
     def generate_id(self) -> str:
-        return f"{self.__class__.__name__}_{self._database}_{self._collection}_{self._key}"
+        return f"{self.__class__.__name__}_{self._database}_{self._collection}_{self._key}_{self._shard}"
 
 
 class DropDatabaseTask(Task):
@@ -68,11 +68,11 @@ class DropDatabaseTask(Task):
         :param database: Database to drop.
         :param collections: Collections that were created in this database.
         """
+        self._database = database
+        self._collections = collections
         super(DropDatabaseTask, self).__init__(
             task_id=self.generate_id()
         )
-        self._database = database
-        self._collections = collections
 
     def execute(self, context: StatefulnessControllerExecutionContext) -> bool:
         context.mongo_controller.drop_database(
@@ -92,10 +92,10 @@ class AddAppRecordTask(Task):
     present in the cloud after a framework restart.
     """
     def __init__(self, app_name: str):
+        self._app_name = app_name
         super(AddAppRecordTask, self).__init__(
             task_id=self.generate_id()
         )
-        self._app_name = app_name
 
     def execute(self, context: StatefulnessControllerExecutionContext) -> bool:
         context.mongo_controller.add_document(SYSTEM_DATABASE_NAME, APPS_COLLECTION_NAME, {
@@ -117,10 +117,10 @@ class DeleteAppRecordTask(Task):
     Deletes a record about the application from MongoDB.
     """
     def __init__(self, app_name: str):
+        self._app_name = app_name
         super(DeleteAppRecordTask, self).__init__(
             task_id=self.generate_id()
         )
-        self._app_name = app_name
         self.add_precondition(lambda _, x: not namespace_exists(_, x), (self._app_name,))
 
     def execute(self, context: StatefulnessControllerExecutionContext) -> bool:

@@ -11,8 +11,9 @@ import requests
 from elasticsearch import Elasticsearch
 
 from cloud_controller.middleware import middleware_pb2 as mw_protocols
-from cloud_controller.middleware.middleware_agent import MiddlewareAgent, PYTHON_EXEC
 from cloud_controller.middleware.instance_config import InstanceConfig, RunnableProbe, CallableProbe, ProbeConfig
+
+PYTHON_EXEC = "/bin/python3"
 
 
 class Request(Enum):
@@ -32,9 +33,9 @@ request_names = {
 
 class Interpreter:
 
-    def __init__(self, config: InstanceConfig, agent: "MiddlewareAgent", es_host, es_port):
+    def __init__(self, config: InstanceConfig, agent, es_host, es_port):
         self._config: InstanceConfig = config
-        self._agent: MiddlewareAgent = agent
+        self._agent = agent
         self._wait_thread: Optional[Thread] = None
         self._requests_thread: Optional[Thread] = None
         self._process: Optional[Popen] = None

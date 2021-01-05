@@ -16,8 +16,6 @@ from cloud_controller.middleware.probe_monitor import ProbeMonitor
 from cloud_controller.middleware.measurement_collectors import DataCollector, IOEventsNotSupportedException, \
     CPUEventsNotSupportedException
 
-PYTHON_EXEC = "/bin/python3"
-
 IVIS_HOST = "0.0.0.0"
 IVIS_PORT = 8082
 ELASTICSEARCH_PORT = 9200

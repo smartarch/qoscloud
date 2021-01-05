@@ -18,9 +18,6 @@ class CreateInstanceTask(Task):
     """
 
     def __init__(self, namespace: str, instance: ManagedCompin, production: bool):
-        super().__init__(
-            task_id=self.generate_id()
-        )
         self._namespace = namespace
         self._component: Component = instance.component
         self._node_name: str = instance.node_name
@@ -30,6 +27,9 @@ class CreateInstanceTask(Task):
         self._chain_id: str = instance.chain_id
         self._force: bool = instance.force_keep
         self._ip: str = ""
+        super().__init__(
+            task_id=self.generate_id()
+        )
         self.add_precondition(namespace_exists, (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
@@ -67,11 +67,11 @@ class DeleteInstanceTask(Task):
     """
 
     def __init__(self, namespace: str, instance: ManagedCompin):
+        self._namespace = namespace
+        self._instance: ManagedCompin = instance
         super(DeleteInstanceTask, self).__init__(
             task_id=self.generate_id()
         )
-        self._namespace = namespace
-        self._instance: ManagedCompin = instance
         self.add_precondition(namespace_exists, (self._namespace,))
         self.add_precondition(compin_exists, (self._instance.id, self._instance.component.name,
                                               self._instance.component.application.name))
