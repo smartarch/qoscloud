@@ -4,7 +4,7 @@ from typing import Dict, List
 import logging
 
 
-class PercentilePredictor:
+class MeasurementAggregator:
 
     def __init__(self):
         self._measurements: Dict[str, List[int]] = {}

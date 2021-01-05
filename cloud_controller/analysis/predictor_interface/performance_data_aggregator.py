@@ -16,7 +16,7 @@ from cloud_controller.analysis.predictor_interface.predictor_pb2_grpc import Pre
     add_PredictorServicer_to_server, PredictorStub
 from cloud_controller.architecture_pb2 import ApplicationTimingRequirements
 from cloud_controller.assessment.model import Scenario
-from cloud_controller.analysis.predictor_interface.statistical_predictor import PercentilePredictor
+from cloud_controller.analysis.predictor_interface.measurement_aggregator import MeasurementAggregator
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import Application, Probe, TimeContract, ThroughputContract
 from cloud_controller.middleware.helpers import start_grpc_server, connect_to_grpc_server, setup_logging
@@ -244,10 +244,10 @@ class ScenarioGenerator:
         return None
 
 
-class PredictorService(PredictorServicer):
+class PerformanceDataAggregator(PredictorServicer):
 
     def __init__(self):
-        self._single_process_predictor = PercentilePredictor()
+        self._single_process_predictor = MeasurementAggregator()
         self._predictor = MultiPredictor()
         self.applications: Dict[str, Application] = {}
         self._probes_by_component: Dict[str, Set[str]] = {}
@@ -419,4 +419,4 @@ class PredictorService(PredictorServicer):
 
 if __name__ == "__main__":
     setup_logging()
-    start_grpc_server(PredictorService(), add_PredictorServicer_to_server, PREDICTOR_HOST, PREDICTOR_PORT, block=True)
+    start_grpc_server(PerformanceDataAggregator(), add_PredictorServicer_to_server, PREDICTOR_HOST, PREDICTOR_PORT, block=True)

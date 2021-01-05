@@ -15,7 +15,7 @@ import grpc
 from cloud_controller import PREDICTOR_HOST, PREDICTOR_PORT
 from cloud_controller.analysis.predictor_interface.predictor_pb2 import ScenarioRequest
 from cloud_controller.analysis.predictor_interface.predictor_pb2_grpc import PredictorStub
-from cloud_controller.analysis.predictor_interface.predictor_scenario_planner import PredictorScenarioPlanner
+from cloud_controller.assessment.predictor_scenario_planner import PredictorScenarioPlanner
 from cloud_controller.assessment import deploy_controller
 from cloud_controller.assessment.depenedency_solver import MasterSlaveSolver
 from cloud_controller.assessment.deploy_controller import AppJudge

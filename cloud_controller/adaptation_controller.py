@@ -16,7 +16,7 @@ from cloud_controller import PRODUCTION_KUBECONFIG, THREAD_COUNT, PRODUCTION_MON
 from cloud_controller.analysis.analyzer import Analyzer
 from cloud_controller.analysis.csp_solver.solver import CSPSolver
 from cloud_controller.analysis.predictor import Predictor, StraightforwardPredictorModel
-from cloud_controller.analysis.predictor_interface.predictor_service import StatisticalPredictor
+from cloud_controller.analysis.predictor_interface.performance_data_aggregator import StatisticalPredictor
 from cloud_controller.analyzer.csp_analyzer import CSPAnalyzer
 from cloud_controller.cleanup import ClusterCleaner
 from cloud_controller.execution.executor import Executor
