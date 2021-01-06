@@ -1,0 +1,35 @@
+application: facerecognition2
+complete: true
+components:
+- name: recognizer              # A cloud-based component:
+  cardinality: multiple
+  statefulness: client # Per-client statefulness
+  probes:              # The probe, its code and std input:
+  - name: recognize
+  QoSrequirements:
+  - type: time         # Max. 100 ms in 99% cases:
+    probe: recognize
+    probability: 0.99
+    time: 100
+  - type: throughput  # Throughput at least 12 executions per hour:
+    probe: recognize
+    requests: 12
+    per: hour         # possible values: second, minute, hour, day
+  # Template for the container specified
+  # in the standard Kubernetes format:
+  template:
+    name: container
+    image: d3srepo/recognizer:latest
+    args: ["-l", "-a"]
+    ports:
+    - containerPort: 8888
+      protocol: UDP
+clients:                       # An external client:
+- name: client
+  latency: true        # The connection is latency-sensitive
+  dependencies:
+  - name: recognizer   # Needs an instance of a recognizer
+dockersecret:
+  username: dockeruser
+  password: XXXXXXXXXXX
+  email: user@example.com

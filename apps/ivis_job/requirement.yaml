@@ -1,0 +1,14 @@
+application: example
+components:
+- name: recognizer
+  QoSrequirements:
+  - type: time        # Response time under 100 ms in 99% cases:
+    probe: recognize
+    probability: 0.99
+    time: 100
+- name: detector
+  QoSrequirements:
+  - type: throughput  # Throughput at least 12 executions per hour:
+    probe: detect
+    requests: 12
+    per: hour         # possible values: second, minute, hour, day

@@ -1,0 +1,33 @@
+application: facerecognition
+complete: false
+components:
+#- name: recognizer              # A cloud-based component:
+#  cardinality: single
+#  statefulness: none # Per-client statefulness
+#  probes:              # The probe, its code and std input:
+#  - name: recognize
+#    codefile: apps/test/hw.py
+#    inputfile: apps/test/input.json
+#  QoSrequirements:
+#  - type: time         # Max. 100 ms in 99% cases:
+#    probe: recognize
+#    probability: 0.99
+#    time: 100
+#  dependencies:
+#  - name: detector
+- name: detector              # A cloud-based component:
+  cardinality: single
+  statefulness: none # Per-client statefulness
+  probes:              # The probe, its code and std input:
+  - name: recognize
+    codefile: apps/test/hw.py
+  QoSrequirements:
+  - type: time         # Max. 100 ms in 99% cases:
+    probe: recognize
+    probability: 0.99
+    time: 500
+#clients:                       # An external client:
+#- name: client
+#  latency: true        # The connection is latency-sensitive
+#  dependencies:
+#  - name: recognizer   # Needs an instance of a recognizer
