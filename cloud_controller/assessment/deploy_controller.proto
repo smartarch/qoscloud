@@ -27,7 +27,9 @@ message AccessToken {
     string token = 1;
 }
 
-message AccessTokenAck {}
+message AccessTokenAck {
+    bool success = 1;
+}
 
 message AppName {
     string name = 1;

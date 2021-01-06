@@ -9,8 +9,8 @@ from cloud_controller.knowledge import knowledge_pb2 as protocols
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import ManagedCompin, CloudState, Compin, \
     Application, Statefulness, CompinPhase
-from cloud_controller.planning.cloud_state_diff import get_compin_diff, get_dependency_diff
-from cloud_controller.planning.k8s_generators import create_deployment_for_compin, create_service_for_compin
+from cloud_controller.planner.cloud_state_diff import get_compin_diff, get_dependency_diff
+from cloud_controller.planner.k8s_generators import create_deployment_for_compin, create_service_for_compin
 
 
 class ExecutionPlanFactory:

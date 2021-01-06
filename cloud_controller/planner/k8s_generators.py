@@ -46,6 +46,11 @@ spec:
           value: "0"
 """
 
+
+def get_job_deployment(job_id, container):
+    return JOB_DEPLOYMENT_TEMPLATE % (job_id, job_id, job_id, job_id, container)
+
+
 DEPLOYMENT_TEMPLATE = f"""
 kind: Deployment
 metadata:

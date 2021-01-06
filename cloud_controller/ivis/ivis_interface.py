@@ -6,8 +6,8 @@ from cloud_controller.assessment import CTL_HOST, CTL_PORT
 from cloud_controller.assessment.deploy_controller_pb2 import AppName, AppAdmissionStatus
 from cloud_controller.assessment.deploy_controller_pb2_grpc import DeployControllerStub
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import ManagedCompin, CompinPhase, add_resource_requirements, Application
-from cloud_controller.planning.k8s_generators import JOB_DEPLOYMENT_TEMPLATE
+from cloud_controller.knowledge.model import ManagedCompin, CompinPhase, add_resource_requirements
+from cloud_controller.planner.k8s_generators import JOB_DEPLOYMENT_TEMPLATE, get_job_deployment
 from cloud_controller.middleware import AGENT_PORT
 from cloud_controller.middleware.helpers import connect_to_grpc_server
 from cloud_controller.ivis.ivis_pb2 import SubmissionAck, JobStatus, JobAdmissionStatus, UnscheduleJobAck, \
@@ -32,7 +32,7 @@ class IvisInterface(IvisInterfaceServicer):
         application_pb.access_token = self._knowledge.api_endpoint_access_token
         application_pb.is_complete = False
         application_pb.components[job_name].name = job_name
-        template = JOB_DEPLOYMENT_TEMPLATE % request.docker_container
+        template = get_job_deployment(request.job_id, request.docker_container)
         template = add_resource_requirements(
             template=template,
             min_memory=request.min_memory,

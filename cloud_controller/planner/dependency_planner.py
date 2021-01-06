@@ -4,7 +4,7 @@ from typing import List, Tuple, Optional
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import CloudState, Compin, ManagedCompin, Statefulness
 from cloud_controller.planner.top_planner import Planner
-from cloud_controller.planning.cloud_state_diff import get_dependency_diff
+from cloud_controller.planner.cloud_state_diff import get_dependency_diff
 from cloud_controller.tasks.client_controller import SetClientDependencyTask
 from cloud_controller.tasks.middleware import SetMiddlewareAddressTask
 from cloud_controller.tasks.preconditions import dependency_is_set

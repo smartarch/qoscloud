@@ -5,9 +5,9 @@ from kubernetes import client
 
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import ManagedCompin, Component, CompinPhase
-from cloud_controller.planning.k8s_generators import create_deployment_for_compin, create_service_for_compin
+from cloud_controller.planner.k8s_generators import create_deployment_for_compin, create_service_for_compin
 from cloud_controller.task_executor.execution_context import KubernetesExecutionContext, ExecutionContext
-from cloud_controller.tasks.preconditions import compin_exists, namespace_active
+from cloud_controller.tasks.preconditions import namespace_active
 from cloud_controller.tasks.task import Task
 
 

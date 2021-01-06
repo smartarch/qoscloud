@@ -84,7 +84,7 @@ class Knowledge:
         self.clients_without_resources.clear()
 
     def there_are_applications(self) -> bool:
-        return len(self.applications) == 0
+        return len(self.applications) != 0
 
     def set_network_topology(self, network_topology: NetworkTopology):
         """
