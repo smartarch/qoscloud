@@ -22,33 +22,18 @@ SERVICE_TEMPLATE = """
 
 
 JOB_DEPLOYMENT_TEMPLATE = """
-kind: Deployment
-metadata:
-  name: %s
-  labels:
-    app: %s
-spec:
-  selector:
-    matchLabels:
-      app: %s
-  template:
-    metadata:
-      labels:
-        app: %s
-    spec:
-      containers:
-      - name: container
-        image: %s
-        imagePullPolicy: Always
-        args: []
-        env:
-        - name: PYTHONUNBUFFERED
-          value: "0"
+name: container
+image: %s
+imagePullPolicy: Always
+args: []
+env:
+- name: PYTHONUNBUFFERED
+  value: "0"
 """
 
 
 def get_job_deployment(job_id, container):
-    return JOB_DEPLOYMENT_TEMPLATE % (job_id, job_id, job_id, job_id, container)
+    return JOB_DEPLOYMENT_TEMPLATE % container
 
 
 DEPLOYMENT_TEMPLATE = f"""

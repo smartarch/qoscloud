@@ -55,7 +55,7 @@ class Interpreter:
         logging.info(f"Running run {self._measurement_iteration_number}")
         probe = self._config.probes[probe_name]
         if isinstance(probe, RunnableProbe) and self._ivis_server_available:
-            state = self._send_request(Request.STATE)
+            state = self._send_request(Request.STATE, probe=probe)
         else:
             state = None
         self.run_probe(probe_name, f"run{self._measurement_iteration_number}", json.dumps(state))
@@ -65,7 +65,7 @@ class Interpreter:
 
     def run_as_probe(self, probe_name: str, procedure: Callable, args: Tuple = ()) -> Optional[Any]:
         if self._current_process is not None:
-            self._report_already_running(probe_name)
+            self._report_already_running(probe_name, probe_name)
             return
         self._current_process = probe_name
         self._last_run_start_time = time.perf_counter()
@@ -77,7 +77,7 @@ class Interpreter:
 
     def run_probe(self, probe_name: str, run_id: str, state: str) -> None:
         if self._current_process is not None:
-            self._report_already_running(run_id)
+            self._report_already_running(probe_name, run_id)
             return
         self._current_process = probe_name
         self._last_run_start_time = time.perf_counter()
@@ -89,10 +89,10 @@ class Interpreter:
             self._wait_thread: Thread = Thread(target=self._wait_for_process, args=(probe,), daemon=True)
             self._wait_thread.start()
 
-    def _report_already_running(self, run_id: str):
+    def _report_already_running(self, probe_name: str, run_id: str):
         run_status = {
             'config': "",
-            'instanceId': self._config.instance_id,
+            'instanceId': probe_name,
             'runId': run_id,
             'startTime': time.perf_counter(),
             'endTime': time.perf_counter(),
@@ -114,18 +114,18 @@ class Interpreter:
         self._wait_thread: Thread = Thread(target=self._wait_for_process, args=(probe,), daemon=True)
         self._wait_thread.start()
         if self._ivis_server_available:
-            self._requests_thread: Thread = Thread(target=self._process_runtime_requests, args=(fdr, self._process.stdin),
+            self._requests_thread: Thread = Thread(target=self._process_runtime_requests, args=(fdr, self._process.stdin, probe.name),
                                                    daemon=True)
             self._requests_thread.start()
 
-    def _send_request(self, request: Request, payload=None):
+    def _send_request(self, request: Request, payload=None, probe=None):
         headers = {
             "Content-Type": "application/json",
             "access-token": self._config.access_token
         }
         if request == Request.STATE:
             return requests.get(
-                f"{self._config.api_endpoint_url}{request_names[request]}{self._config.instance_id}",
+                f"{self._config.api_endpoint_url}{request_names[request]}{probe.name}",
                 headers=headers
             ).json()
         elif request == Request.RUNTIME:
@@ -150,7 +150,7 @@ class Interpreter:
         assert self._current_process is not None
         run_status = {
             'config': "",
-            'instanceId': self._config.instance_id,
+            'instanceId': probe.name,
             'runId': self._current_process,
             'startTime': self._last_run_start_time
         }
@@ -187,14 +187,14 @@ class Interpreter:
         if self._agent.phase == mw_protocols.Phase.Value('FINALIZING'):
             self._agent.set_finished()
 
-    def _process_runtime_requests(self, fdr, stdin):
+    def _process_runtime_requests(self, fdr, stdin, id):
         # TODO: kill the thread at process end
         fr = os.fdopen(fdr)
         while not fr.closed:
             line = fr.readline()
             print(f"Processing a runtime request: {line}")
             response = self._send_request(Request.RUNTIME, {
-                'instanceId': self._config.instance_id,
+                'instanceId': id,
                 'request': line
             })
             print(f"Writing a runtime response: {response['response']}")
