@@ -88,7 +88,7 @@ class IvisInterface(IvisInterfaceServicer):
         return SubmissionAck(success=True)
 
     def DeployJob(self, request, context):
-        job_id = request.name
+        job_id = request.job_id
         contract = self._jobs[job_id].components[job_id].probes[0].requirements.add()
         if request.type == 0:
             contract.time.time = request.time

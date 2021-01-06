@@ -34,14 +34,17 @@ class PredictorScenarioPlanner(ScenarioPlanner):
     def register_hw_config(self, name: str) -> None:
         self._predictor_stub.RegisterHwConfig(HwConfig(name=name))
 
-    def fetch_scenarios(self) -> List[Scenario]:
-        scenarios: List[Scenario] = []
-        for scenario_pb in self._predictor_stub.FetchScenarios(ScenarioRequest()):
-            scenario = Scenario.init_from_pb(scenario_pb, self._knowledge.applications)
-            logging.info(f"Received description for scenario {scenario.id_}")
-            scenarios.append(scenario)
-        print("Fetching successful")
-        return scenarios
+    def fetch_scenario(self) -> Optional[Scenario]:
+        scenario_pb = self._predictor_stub.FetchScenario(ScenarioRequest())
+        if scenario_pb.hw_id == "":
+            logging.info(f"No scenarios were generated.")
+            return None
+        scenario = Scenario.init_from_pb(scenario_pb, self._knowledge.applications)
+        logging.info(f"Received description for scenario {scenario.id_}.\n"
+                     f"Main probe: {scenario.controlled_probe.alias}.\n"
+                     f"Backgroung load: {[p.alias for p in scenario.background_probes]}")
+        logging.info("Scenario fetching successful")
+        return scenario
 
     def judge_app(self, application: Application) -> JudgeResult:
         reply = self._predictor_stub.JudgeApp(application.get_pb_representation())
@@ -75,7 +78,7 @@ class PredictorScenarioPlanner(ScenarioPlanner):
                     }
                     payload = {"instanceId": app_name}
                     for contract in response.contracts:
-                        payload[f"percentile_{contract.percentile}"] = contract.time
+                        payload[f"percentile_{int(contract.percentile)}"] = contract.time
                     payload["mean"] = response.mean
                     requests.post(
                         f"http://{API_ENDPOINT_IP}:{API_ENDPOINT_PORT}/ccapi/instance-stats",
