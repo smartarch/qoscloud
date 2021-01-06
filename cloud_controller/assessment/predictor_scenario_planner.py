@@ -1,12 +1,12 @@
-from typing import List
+from typing import List, Optional
 
 import logging
 
 import requests
 
-from cloud_controller import API_ENDPOINT_IP, API_ENDPOINT_PORT
-from cloud_controller.aggregator import ScenarioRequest
-from cloud_controller.aggregator import PredictorStub
+from cloud_controller import API_ENDPOINT_IP, API_ENDPOINT_PORT, REPORTED_PERCENTILES
+from cloud_controller.aggregator.predictor_pb2 import ScenarioRequest
+from cloud_controller.aggregator.predictor_pb2_grpc import PredictorStub
 from cloud_controller.architecture_pb2 import ApplicationTimingRequirements
 from cloud_controller.assessment.deploy_controller_pb2 import HwConfig
 from cloud_controller.assessment.model import Scenario
@@ -56,19 +56,28 @@ class PredictorScenarioPlanner(ScenarioPlanner):
         logging.error("Scenario %s failed on %s", scenario, reason)
 
     def on_app_evaluated(self, app_name: str):
-        request = ApplicationTimingRequirements(name=app_name)
-        for percentile in [50, 80, 90, 95]:
-            contract = request.contracts.add()
-            contract.percentile = percentile
-        response = self._predictor_stub.ReportPercentiles(request)
-        headers = {
-            "Content-Type": "application/json",
-            "access-token": self._knowledge.api_endpoint_access_token
-        }
-        payload = {"instanceId": app_name}
-        for contract in response.contracts:
-            payload[f"percentile_{contract.percentile}"] = contract.time
-        requests.post(
-            f"http://{API_ENDPOINT_IP}:{API_ENDPOINT_PORT}/ccapi/instance-stats",
-            headers=headers, json=payload
-        )
+        app = self._knowledge.applications[app_name]
+        for component in app.components.values():
+            for probe in component.probes:
+                probe_full_name = probe.alias
+                request = ApplicationTimingRequirements(name=probe_full_name)
+                for percentile in REPORTED_PERCENTILES:
+                    contract = request.contracts.add()
+                    contract.percentile = percentile
+                response = self._predictor_stub.ReportPercentiles(request)
+                for report in response.contracts:
+                    logging.info(f"Running time at {report.percentile} percentile: {report.time}")
+                logging.info(f"Mean running time: {response.mean}")
+                if self._knowledge.api_endpoint_access_token is not None:
+                    headers = {
+                        "Content-Type": "application/json",
+                        "access-token": self._knowledge.api_endpoint_access_token
+                    }
+                    payload = {"instanceId": app_name}
+                    for contract in response.contracts:
+                        payload[f"percentile_{contract.percentile}"] = contract.time
+                    payload["mean"] = response.mean
+                    requests.post(
+                        f"http://{API_ENDPOINT_IP}:{API_ENDPOINT_PORT}/ccapi/instance-stats",
+                        headers=headers, json=payload
+                    )

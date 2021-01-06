@@ -207,6 +207,7 @@ class Variables:
                     self.all_vars.append(var_)
                     self.unique_vars_by_compin[component].append(var_)
                     self.unique_vars_by_node[node_name].append(var_)
+                    self.unique_vars_by_node_and_compin[node_name][component] = var_
                     self.unique_vars.append(var_)
         for node_name in self._knowledge.nodes:
             var_ = NodeRoleVar(solver, node_name)

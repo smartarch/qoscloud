@@ -36,7 +36,7 @@ class MeasurementAggregator:
                 self._measurements[name].insert(i, running_time)
                 break
 
-    def predict_time(self, probe_name: str, time_limit: int, percentile: int) -> bool:
+    def predict_time(self, probe_name: str, time_limit: int, percentile: float) -> bool:
         if self.running_time_at_percentile(probe_name, percentile) < time_limit:
             return True
         return False
@@ -46,7 +46,7 @@ class MeasurementAggregator:
             return True
         return False
 
-    def running_time_at_percentile(self, probe_name: str, percentile: int) -> int:
+    def running_time_at_percentile(self, probe_name: str, percentile: float) -> int:
         time_array = self._measurements[probe_name]
         index = math.ceil(len(time_array) * percentile / 100) - 1
         logging.info(f"Predicted running time of {time_array[index]} for process {probe_name} at {percentile} percentile.")

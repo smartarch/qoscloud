@@ -73,8 +73,8 @@ class DeleteInstanceTask(Task):
             task_id=self.generate_id()
         )
         self.add_precondition(namespace_active, (self._namespace,))
-        self.add_precondition(compin_exists, (self._instance.id, self._instance.component.name,
-                                              self._instance.component.application.name))
+        # self.add_precondition(compin_exists, (self._instance.id, self._instance.component.name,
+        #                                       self._instance.component.application.name))
         self.add_precondition(DeleteInstanceTask.check_phase_finished, (self._instance,))
 
     @staticmethod

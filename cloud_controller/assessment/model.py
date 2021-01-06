@@ -79,8 +79,11 @@ class AppDatabase:
 
     def update_qos_requirements(self, app_pb: arch_pb.Architecture):
         app = self._apps[app_pb.name].application
-        for component_name in  app_pb.components:
-            for probe_pb in app_pb.components[component_name]:
+        for component_name in app_pb.components:
+            for probe_pb in app_pb.components[component_name].probes:
+                for probe in app.get_pb_representation().components[component_name].probes:
+                    if probe.name == probe_pb.name:
+                        probe.CopyFrom(probe_pb)
                 for probe in app.components[component_name].probes:
                     if probe.name == probe_pb.name:
                         probe.requirements = Probe.construct_requirements(probe_pb)
@@ -146,7 +149,7 @@ class Scenario:
 
     @staticmethod
     def get_folder(probe: Probe, hw_config: str) -> str:
-        return RESULTS_PATH + "/" + probe.component.application.name + "/" + hw_config + "/"
+        return RESULTS_PATH + "/" + probe.component.application.name + "/" + hw_config
 
     @staticmethod
     def _get_fs_probe_name(probe: Probe) -> str:

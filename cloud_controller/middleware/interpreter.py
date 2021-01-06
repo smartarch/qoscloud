@@ -183,10 +183,9 @@ class Interpreter:
                 self._send_request(Request.FAIL, run_status)
         if self._ivis_server_available and self._config.reporting_enabled:
             probe.submit_running_time(run_status['endTime'] - self._last_run_start_time, self._elasticsearch)
+        self._current_process = None
         if self._agent.phase == mw_protocols.Phase.Value('FINALIZING'):
             self._agent.set_finished()
-        else:
-            self._current_process = None
 
     def _process_runtime_requests(self, fdr, stdin):
         # TODO: kill the thread at process end

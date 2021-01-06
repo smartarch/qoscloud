@@ -56,7 +56,7 @@ class ExtensionManager:
         self._analyzer = None
         self._planner = None
         self._executor = None
-        self._predictor = StatisticalPredictor(self.knowledge)
+        self._predictor = StatisticalPredictor()
         self._kubeconfig_file = PRODUCTION_KUBECONFIG
         self._mongos_ip: str = PRODUCTION_MONGOS_SERVER_IP
         self._phase = _Phase.INIT

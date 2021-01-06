@@ -8,8 +8,9 @@ import logging
 from abc import ABC, abstractmethod
 from enum import IntEnum
 from threading import Lock
-from typing import List, Set
+from typing import List, Set, Optional
 
+from cloud_controller import DEFAULT_HARDWARE_ID
 from cloud_controller.assessment.model import Scenario
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import Application, Probe
@@ -43,7 +44,7 @@ class ScenarioPlanner(ABC):
         pass
 
     @abstractmethod
-    def fetch_scenarios(self) -> List[Scenario]:
+    def fetch_scenario(self) -> Optional[Scenario]:
         pass
 
     def on_scenario_done(self, scenario: Scenario) -> None:
@@ -66,7 +67,7 @@ class FakeScenarioPlanner(ScenarioPlanner):
     tests only on default hw config, ignores scenario failures
     """
 
-    def __init__(self, default_hw_id: str):
+    def __init__(self, default_hw_id: str = DEFAULT_HARDWARE_ID):
         self._default_hw_id = default_hw_id
         self._plan: List[Scenario] = []
         self._lock = Lock()
@@ -88,13 +89,12 @@ class FakeScenarioPlanner(ScenarioPlanner):
     def register_hw_config(self, name: str) -> None:
         logger.info("HW config %s received, ignoring..." % name)
 
-    def fetch_scenarios(self) -> List[Scenario]:
+    def fetch_scenario(self) -> Scenario:
         with self._lock:
-            return self._plan.copy()
+            return self._plan[0]
 
     def on_scenario_done(self, scenario: Scenario) -> None:
-        with self._lock:
-            self._plan.remove(scenario)
+        pass
 
     def on_scenario_failed(self, scenario: Scenario, reason: FailureReason) -> None:
         logger.error("Scenario %s failed on %s", scenario, reason)
@@ -147,13 +147,13 @@ class SimpleScenarioPlanner(ScenarioPlanner):
         assert len(self._hw_ids) > num_configs
         logger.info("New node hw config registered")
 
-    def fetch_scenarios(self) -> List[Scenario]:
+    def fetch_scenario(self) -> Scenario:
         with self._lock:
-            return self._plan.copy()
+            return self._plan[0]
 
     def on_scenario_done(self, scenario: Scenario) -> None:
         with self._lock:
-            self._plan.remove(scenario)
+            self._plan.pop(0)
 
     def on_scenario_failed(self, scenario: Scenario, reason: FailureReason) -> None:
         logger.error("Scenario %s failed on %s", scenario, reason)

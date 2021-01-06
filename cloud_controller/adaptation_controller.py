@@ -101,12 +101,14 @@ class AdaptationController:
         """
         Runs adaptation loop until the actual state fully matches desired state.
         """
-        plan_count = 1
-        while plan_count != 0:
-            self.monitoring()
-            self.analysis()
-            self.planning()
-            task_count = self.execution()
+        while True:
+            self.run_one_cycle()
+            if self.executor._registry.task_count() == 0:
+                break
+            # self.monitoring()
+            # self.analysis()
+            # self.planning()
+            # self.execution()
 
     def run(self) -> None:
         """

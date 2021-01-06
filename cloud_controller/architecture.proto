@@ -28,6 +28,7 @@ message Component {
     Statefulness statefulness = 10;
     UEMPolicy policy = 11;
     repeated string whitelist = 12;
+    bool latency = 13;
 }
 
 enum Statefulness {

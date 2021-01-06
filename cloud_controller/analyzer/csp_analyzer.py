@@ -60,13 +60,16 @@ class CSPAnalyzer:
                 for dependency in compin.list_dependencies():
                     dependency.set_force_keep()
 
-    def _solve_csp_problem(self, time_limit: int = None) -> CloudState:
+    def _solve_csp_problem(self, time_limit: int = None) -> Optional[CloudState]:
         problem = CSPProblem(self._variables, self._constraints, self._objective_function)
         if time_limit is not None:
             problem.set_time_limit(time_limit)
-        problem.solve()
-        collector = problem.get_solution_collector()
-        return self._variables.convert_to_cloud_state(collector, self._knowledge)
+        success = problem.solve()
+        if success:
+            collector = problem.get_solution_collector()
+            return self._variables.convert_to_cloud_state(collector, self._knowledge)
+        else:
+            return None
 
     def find_new_assignment(self) -> CloudState:
         """
@@ -85,7 +88,10 @@ class CSPAnalyzer:
                 desired_state = self._longterm_result_future.get()
                 self._longterm_result_future = None
                 self._asynch_mode = False
-                self._knowledge.all_instances_scheduled()
+                if desired_state is not None:
+                    self._knowledge.all_instances_scheduled()
+                else:
+                    desired_state = self._last_desired_state
             elif self._knowledge.reduced_load():
                 self._asynch_mode = False
                 return self.find_new_assignment()
@@ -107,6 +113,10 @@ class CSPAnalyzer:
                     unique_compin = self._knowledge.actual_state.get_unique_compin(component)
                     if unique_compin is None:
                         self._knowledge.no_resources_for_component(component.name)
+                # If the result is still None, we just return the last desired state (for now, until the new assignment
+                # is found).
+                logging.info("Using previous desired state.")
+                desired_state = self._last_desired_state
             else:
                 self._longterm_result_future = None
                 self._asynch_mode = False

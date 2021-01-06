@@ -18,7 +18,7 @@ class CSPProblem:
     def __init__(self, variables: Variables, constraints: List["Constraint"], obj_function: "ObjectiveFunction"):
         start_ = time.perf_counter()
         CSPProblem.count += 1
-        self._time_limit_ms: int = DEFAULT_TIME_LIMIT
+        self._time_limit_ms: int = DEFAULT_TIME_LIMIT * 1000
         self._solver: Solver = Solver(f"Solver {CSPProblem.count}")
         self._variables: Variables = variables
         self._objective_function: Optional[ObjectiveFunction] = obj_function
@@ -49,7 +49,7 @@ class CSPProblem:
     def get_solution_collector(self):
         return self._collector
 
-    def solve(self):
+    def solve(self) -> bool:
         start = time.perf_counter()
         success: bool = self._solve(self._collector, self._objective_function.objective)
         logging.info(f"Solution time: {(time.perf_counter() - start):.15f}")
@@ -60,6 +60,7 @@ class CSPProblem:
             logging.info("Solution not found")
         # self._log_variables(collector)
         # self._log_solver_stats()
+        return success
 
     def _create_solution_collector(self) -> SolutionCollector:
         collector: SolutionCollector = self._solver.BestValueSolutionCollector(False)

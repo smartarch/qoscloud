@@ -70,7 +70,7 @@ class ScenarioExecutor:
         # Open connection
         probe_msg = mw_protocols.ProbeDescriptor(name=probe.name)
         measure_msg = mw_protocols.ProbeMeasurement(probe=probe_msg, warmUpCycles=warm_up_cycles,
-                                                    measuredCycles=measured_cycles, reportingEnabled=reporting_enabled)
+                                                    measuredCycles=measured_cycles, reporting_enabled=reporting_enabled)
         if cpu_events is not None:
             for cpu_event in cpu_events:
                 measure_msg.cpuEvents.append(cpu_event)
@@ -177,29 +177,28 @@ class ScenarioExecutor:
             needs_waiting = True
 
             with self._lock:
-                todo = [x for x in self._planner.fetch_scenarios() if x not in self._running]
+                scenario = self._planner.fetch_scenario()
 
             # Has something to do
-            if len(todo) > 0:
-                for scenario in todo:
-                    requirements = self._solver.request(scenario)
-                    if self.are_requirements_available(requirements):
-                        # Deploy scenario
-                        provided, cmd_plans = self.deploy_scenario(scenario, requirements)
+            if scenario is not None:
+                requirements = self._solver.request(scenario)
+                if self.are_requirements_available(requirements):
+                    # Deploy scenario
+                    provided, cmd_plans = self.deploy_scenario(scenario, requirements)
 
-                        # TODO: what's wrong with multi threaded execution?
-                        # Start scenario and than stop it
-                        if self._multi_thread:
-                            thread = threading.Thread(target=self._scenario_worker,
-                                                      args=(scenario, provided, cmd_plans),
-                                                      name=f"SE-scenario: {scenario}")
-                            thread.start()
-                        else:
-                            self._scenario_worker(scenario, provided, cmd_plans)
+                    # TODO: what's wrong with multi threaded execution?
+                    # Start scenario and than stop it
+                    if self._multi_thread:
+                        thread = threading.Thread(target=self._scenario_worker,
+                                                  args=(scenario, provided, cmd_plans),
+                                                  name=f"SE-scenario: {scenario}")
+                        thread.start()
+                    else:
+                        self._scenario_worker(scenario, provided, cmd_plans)
 
-                        # Register for auto cleanup
-                        needs_cleanup = True
-                        needs_waiting = False
+                    # Register for auto cleanup
+                    needs_cleanup = True
+                    needs_waiting = False
 
             # Waits some time until some change arrives
             if needs_waiting:

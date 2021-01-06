@@ -148,7 +148,7 @@ def yaml_to_grpc_architecture(architecture_yaml) -> Optional[arch_pb.Architectur
                 requirement_grpc = probe.requirements.add()
                 if req[TYPE].lower() == "time":
                     requirement_grpc.time.time = req[TIME]
-                    requirement_grpc.time.percentile = req[PROBABILITY]
+                    requirement_grpc.time.percentile = req[PROBABILITY] * 100
                 elif req[TYPE].lower() == "throughput":
                     requirement_grpc.throughput.requests = req[REQUESTS]
                     requirement_grpc.throughput.per = time_periods[req[PER]]
@@ -232,7 +232,7 @@ def register_hw_config(name: str) -> None:
     response = stub.RegisterHwConfig(hw_config)
     # Check results
     if response.rc != deploy_pb.RC_OK:
-        assert False
+        print(f"An unknown error happened at the server.", file=sys.stderr)
     print("HW config %s registered successfully" % name)
 
 
@@ -250,10 +250,10 @@ def delete_app(name: str) -> None:
     # Check results
     if response.rc != deploy_pb.RC_OK:
         if response.rc == deploy_pb.RC_NAME_NOT_AVAILABLE:
-            print("Application %s does not exists" % name,
+            print("Application %s does not exist" % name,
                   file=sys.stderr)
         else:
-            assert False
+            print(f"An unknown error happened at the server.", file=sys.stderr)
         return
     print("Application %s deleted" % name)
 
@@ -272,24 +272,26 @@ def print_app_status(name: str) -> None:
     # Check results
     if response.rc != deploy_pb.RC_OK:
         if response.rc == deploy_pb.RC_NAME_NOT_AVAILABLE:
-            print("Application %s does not exists" % name,
+            print("Application %s does not exist" % name,
                   file=sys.stderr)
         else:
-            assert False
+            print(f"An unknown error happened at the server.", file=sys.stderr)
         return
-    print(response.stats)
+    print(f"Apllication: {name}. Status: {deploy_pb.AppAdmissionStatus.Name(response.status)}")
 
 
 def get_time(application, component, probe, percentile=None):
     requirements = arch_pb.ApplicationTimingRequirements()
-    requirements.name = f"{application}_{component}_{probe}"
+    requirements.name = f"{application}_{component}_{probe}".upper()
     if percentile:
         percentile = int(percentile)
         contract = requirements.contracts.add()
         contract.percentile = percentile
     stub: PredictorStub = connect_to_grpc_server(PredictorStub, PREDICTOR_HOST, PREDICTOR_PORT)
     response = stub.ReportPercentiles(requirements)
-    if percentile:
+    if response.mean < 0:
+        print(f"The specified probe is not registered with the performance data aggregator.")
+    elif percentile:
         print(f"Probe {probe}: response time at {percentile} percentile is {response.contracts[0].time}")
     else:
         print(f"Probe {probe}: mean response time is {response.mean}")
@@ -329,6 +331,6 @@ if __name__ == "__main__":
         architecture_grpc = yaml_to_grpc_architecture(yaml.load(open(sys.argv[2], 'r')))
         if architecture_grpc is None:
             exit(1)
-        submit_app(architecture_grpc)
+        submit_requirements(architecture_grpc)
     else:
         print(f"Unknown command: {command}", file=sys.stderr)

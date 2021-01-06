@@ -34,7 +34,7 @@ class ApplicationRemovalPlanner(Planner):
         Creates the tasks for deleting an application, which includes disconnection of all the clients from
         the Client Controller, deletion of the Kubernetes namespace and deletion of the corresponding Mongo database.
         """
-        app: Application = self.knowledge.applications[app_name]
+        app: Application = self.knowledge.actual_state.applications[app_name]
         self._create_task(DeleteNamespaceTask(app_name))
 
         if self._cc_operations_required(app):

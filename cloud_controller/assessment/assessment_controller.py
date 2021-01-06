@@ -13,14 +13,14 @@ from typing import Optional
 import grpc
 
 from cloud_controller import PREDICTOR_HOST, PREDICTOR_PORT
-from cloud_controller.aggregator import ScenarioRequest
-from cloud_controller.aggregator import PredictorStub
-from cloud_controller.assessment.predictor_scenario_planner import PredictorScenarioPlanner
+from cloud_controller.aggregator.predictor_pb2 import Assignment
+from cloud_controller.aggregator.predictor_pb2_grpc import PredictorStub
 from cloud_controller.assessment import deploy_controller
 from cloud_controller.assessment.depenedency_solver import MasterSlaveSolver
 from cloud_controller.assessment.deploy_controller import AppJudge
 from cloud_controller.assessment.mapek_wrapper import MapekWrapper
 from cloud_controller.assessment.model import AppDatabase
+from cloud_controller.assessment.predictor_scenario_planner import PredictorScenarioPlanner
 from cloud_controller.assessment.scenario_executor import ScenarioExecutor, FakeScenarioExecutor
 from cloud_controller.assessment.scenario_planner import ScenarioPlanner, FakeScenarioPlanner
 from cloud_controller.knowledge.knowledge import Knowledge
@@ -64,8 +64,7 @@ if __name__ == "__main__":
         _predictor_stub: PredictorStub = connect_to_grpc_server(PredictorStub, PREDICTOR_HOST, PREDICTOR_PORT)
         while True:
             try:
-                for scenario in _predictor_stub.FetchScenarios(ScenarioRequest()):
-                    pass
+                _predictor_stub.Predict(Assignment())
                 break
             except grpc.RpcError as e:
                 logging.info(f"Predictor connection unsuccessful")
@@ -73,7 +72,7 @@ if __name__ == "__main__":
         logging.info(f"Successfully connected to predictor at {PREDICTOR_HOST}:{PREDICTOR_PORT}")
         scenario_pln = PredictorScenarioPlanner(knowledge, _predictor_stub)
     else:
-        scenario_pln = FakeScenarioPlanner(knowledge.nodes[0].hardware_id)
+        scenario_pln = FakeScenarioPlanner()
 
     dependency_solver = MasterSlaveSolver()
 

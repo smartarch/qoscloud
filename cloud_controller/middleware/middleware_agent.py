@@ -71,6 +71,7 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         with self._dict_lock:
             if self._ready_reported:
                 self.phase = mw_protocols.Phase.Value('READY')
+                logging.info(f"Phase was switched to READY")
             else:
                 self._ready_reported = True
 
@@ -78,6 +79,7 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         with self._dict_lock:
             if self._finished_reported:
                 self.phase = mw_protocols.Phase.Value('FINISHED')
+                logging.info(f"Phase was switched to FINISHED")
             else:
                 self._finished_reported = True
 
@@ -106,9 +108,7 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         if self.phase < mw_protocols.Phase.Value('FINISHED'):
             self.phase = mw_protocols.Phase.Value('FINALIZING')
             logging.info(f"Phase was switched to FINALIZING")
-            with self._dict_lock:
-                if self._interpreter.current_process is None:
-                    self.set_finished()
+            self.set_finished()
         if self._finalize_call is not None:
             self._finalize_call()
         return mw_protocols.AddressAck()

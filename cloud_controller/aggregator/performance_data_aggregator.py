@@ -34,7 +34,7 @@ class PerformanceDataAggregator(PredictorServicer):
             assignment[component_pb.component_id] = component_pb.count
         return assignment_pb.hw_id, assignment
 
-    def generate_combinations(self, assignment: Dict[str, int]) -> Iterator[List[str]]:
+    def _generate_combinations(self, assignment: Dict[str, int]) -> Iterator[List[str]]:
         def generate_probe_combinations(probes: List[str], size: int, combination: List[str]) -> List[str]:
             if len(combination) == size:
                 yield combination
@@ -62,9 +62,9 @@ class PerformanceDataAggregator(PredictorServicer):
                 for full_combination in generate_component_combinations(components[1:], combination + probe_combination,
                                                                         main_component):
                     yield full_combination
-
+        assignment_tuples = [(component, assignment[component]) for component in assignment]
         for component in assignment:
-            for full_combination in generate_component_combinations(list(assignment.items()), [], component):
+            for full_combination in generate_component_combinations(assignment_tuples, [], component):
                 for probe_id in self._probes_by_component[component]:
                     yield [probe_id] + full_combination
 
@@ -73,7 +73,7 @@ class PerformanceDataAggregator(PredictorServicer):
             assert request.components[0].component_id in self._probes_by_component
             return predictor_pb.Prediction(result=True)
         hw_id, assignment = self.assignment_from_pb(request)
-        for combination in self.generate_combinations(assignment=assignment):
+        for combination in self._generate_combinations(assignment=assignment):
             probe = self._probes_by_id[combination[0]]
             for requirement in probe.requirements:
                 prediction: bool = False
@@ -116,36 +116,40 @@ class PerformanceDataAggregator(PredictorServicer):
         self._predictor.add_hw_id(hw_id)
         return predictor_pb.RegistrationAck()
 
-    def FetchScenarios(self, request, context):
+    def FetchScenario(self, request, context):
         with self._lock:
             scenario = self._scenario_generator.next_scenario()
             if scenario is None:
-                yield
+                return predictor_pb.Scenario()
             logging.info(f"Sending scenario description for scenario {scenario.id_}")
-            yield scenario.pb_representation()
+            return scenario.pb_representation()
 
     def ReportPercentiles(self, request, context):
         response = ApplicationTimingRequirements()
+        if not self._single_process_predictor.has_probe(request.name):
+            response.mean = -1
+            return response
         response.name = request.name
         for percentile in request.contracts:
             time = self._single_process_predictor.running_time_at_percentile(request.name, percentile.percentile)
             contract = response.contracts.add()
             contract.time = time
             contract.percentile = percentile.percentile
-        context.mean = self._single_process_predictor.mean_running_time(request.name)
+        response.mean = self._single_process_predictor.mean_running_time(request.name)
         return response
 
     def JudgeApp(self, request, context):
         app = Application.init_from_pb(request)
         # The application has to be already registered before, otherwise we cannot judge it
-        assert app.name in self.applications
+        if not app.name in self.applications:
+            return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("NEEDS_DATA"))
         with self._lock:
             # All isolation measurements need to be finished before we can judge the app.
             # if self._measuring_phases[app.name] == MeasuringPhase.ISOLATION:
             # Check every QoS requirement one-by-one:
             for component in app.components.values():
                 for probe in component.probes:
-                    if self._single_process_predictor.has_probe(probe.alias):
+                    if not self._single_process_predictor.has_probe(probe.alias):
                         return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("NEEDS_DATA"))
                     for requirement in probe.requirements:
                         prediction = False
@@ -175,7 +179,7 @@ class PerformanceDataAggregator(PredictorServicer):
         return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("ACCEPTED"))
 
     def OnScenarioDone(self, request, context):
-        scenario: Scenario = Scenario.init_from_pb(request.scenario, self.applications)
+        scenario: Scenario = Scenario.init_from_pb(request, self.applications)
         app_name = scenario.controlled_probe.component.application.name
         logging.info(f"Received ScenarioDone notification for scenario {scenario.id_} of app {app_name}")
         with self._lock:

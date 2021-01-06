@@ -714,9 +714,11 @@ class CloudState:
         self._state: Dict[str, Dict[str, Dict[str, Compin]]] = {}
         self._chains: Dict[str, Dict[str, ManagedCompin]] = {}
         self._clients: Dict[str, UnmanagedCompin] = {}
+        self._applications: Dict[str, Application] = {}
 
     def add_application(self, application: Application) -> None:
         self._state[application.name] = {}
+        self._applications[application.name] = application
         for component in application.components:
             self._state[application.name][component] = {}
 
@@ -786,11 +788,11 @@ class CloudState:
     def get_unique_compin(self, component: Component) -> Optional[ManagedCompin]:
         assert component.type == ComponentType.MANAGED
         assert component.cardinality == ComponentCardinality.SINGLE
-        compins = list(self._state[component.application.name][component.name].values())
-        assert len(compins) == 1
-        compin = compins[0]
-        assert isinstance(compin, ManagedCompin)
-        return compin
+        if not self.contains_application(component.application.name):
+            return None
+        if len(self._state[component.application.name][component.name]) == 0:
+            return None
+        return self._state[component.application.name][component.name][component.name]
 
     def add_instance(self, compin: Compin) -> None:
         """

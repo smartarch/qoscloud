@@ -13,7 +13,6 @@ class TaskState(Enum):
     PENDING = 1
     RUNNING = 2
     COMPLETED = 3
-    # FAILED = 4
     CANCELED = 5
 
 
@@ -28,6 +27,9 @@ class TaskRegistry(Monitor):
         self._pending_queue: Queue[Task] = Queue()
         self._completed_queue: Queue[Task] = Queue()
         self._task_states: Dict[str, TaskState] = {}
+
+    def task_count(self) -> int:
+        return len(self._tasks)
 
     def monitor(self) -> None:
         while True:

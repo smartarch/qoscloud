@@ -36,7 +36,7 @@ class MapekWrapper:
         extension_manager.set_monitor(monitor)
         extension_manager.set_mongos_ip(ASSESSMENT_MONGOS_SERVER_IP)
         self._adaptation_ctl = extension_manager.get_adaptation_ctl()
-        ClusterCleaner(ASSESSMENT_MONGOS_SERVER_IP).cleanup()
+        ClusterCleaner(ASSESSMENT_MONGOS_SERVER_IP, ASSESSMENT_KUBECONFIG).cleanup()
         # Load cloud data
         self._adaptation_ctl.monitoring()
         logger.info("Cloud status updated")

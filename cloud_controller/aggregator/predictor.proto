@@ -13,9 +13,9 @@ service Predictor {
     rpc RegisterApp (cloud_controller.Architecture) returns (RegistrationAck);
     rpc UnregisterApp (cloud_controller.Architecture) returns (RegistrationAck);
     rpc RegisterHwConfig (cloud_controller.assessment.HwConfig) returns (RegistrationAck);
-    rpc FetchScenarios (ScenarioRequest) returns (stream Scenario);
+    rpc FetchScenario (ScenarioRequest) returns (Scenario);
     rpc JudgeApp (cloud_controller.Architecture) returns (JudgeReply);
-    rpc OnScenarioDone (ScenarioCompletion) returns (CallbackAck);
+    rpc OnScenarioDone (Scenario) returns (CallbackAck);
     rpc Predict (Assignment) returns (Prediction);
     rpc ReportPercentiles (ApplicationTimingRequirements) returns (ApplicationTimingRequirements);
 }
