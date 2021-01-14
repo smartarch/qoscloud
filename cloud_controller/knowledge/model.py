@@ -785,6 +785,9 @@ class CloudState:
         else:
             return None
 
+    def get_job_compin(self, id: str):
+        return self.get_compin(id, id, id)
+
     def get_unique_compin(self, component: Component) -> Optional[ManagedCompin]:
         assert component.type == ComponentType.MANAGED
         assert component.cardinality == ComponentCardinality.SINGLE

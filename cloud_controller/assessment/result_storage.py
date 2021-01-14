@@ -92,7 +92,7 @@ class ResultStorage:
 
             # Save results to file
             header_lines = 0
-            with open(header_path, "w+") as header_file, open(data_path, "a+") as data_file:
+            with open(header_path, "w+") as header_file, open(data_path, "w+") as data_file:
                 for header_line, data_line in ResultStorage._collect_probe_results(compin.ip,
                                                                                    scenario.controlled_probe):
                     if header_line is not None:

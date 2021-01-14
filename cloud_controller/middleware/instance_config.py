@@ -24,7 +24,7 @@ class ProbeConfig:
             self.execution_time_signal: time,
             self.run_count_signal: self.run_count
         }
-        report_service.index(index=self.run_count, doc_type='_doc', body=doc)
+        report_service.index(index=self.signal_set, doc_type='_doc', body=doc)
 
 
 class CallableProbe(ProbeConfig):

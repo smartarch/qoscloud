@@ -58,11 +58,11 @@ class IvisInterface(IvisInterfaceServicer):
     def _create_app_from_template(self, request, old_name: str, new_name: str):
         app = self._knowledge.applications[old_name]
         old_application_pb = app.get_pb_representation()
-        application_pb = Architecture(old_application_pb)
-        application_pb.CopyFrom(application_pb)
+        application_pb = Architecture()
+        application_pb.CopyFrom(old_application_pb)
         application_pb.name = new_name
-        application_pb.components[old_name].name = new_name
         application_pb.components[new_name].CopyFrom(application_pb.components[old_name])
+        application_pb.components[new_name].name = new_name
         del application_pb.components[old_name]
         probe = application_pb.components[new_name].probes[0]
         probe.name = new_name
@@ -77,7 +77,7 @@ class IvisInterface(IvisInterfaceServicer):
         if self._knowledge.api_endpoint_access_token is None:
             logging.error(f"Cannot deploy a job due to the absence of an access token")
             return SubmissionAck(success=False)
-        if request.template_job_id != "" and request.template_job_id != None:
+        if request.template_job_id is not None and request.template_job_id != "":
             self._templates.append(request.job_id)
             self._create_app_from_template(request, request.template_job_id, request.job_id)
         else:
@@ -104,7 +104,7 @@ class IvisInterface(IvisInterfaceServicer):
         if job_id in self._knowledge.applications:
             if job_id in self._knowledge.unique_components_without_resources:
                 return JobStatus(status=JobAdmissionStatus.Value('NO_RESOURCES'))
-            job_compin = self._knowledge.actual_state.get_unique_compin(job_id)
+            job_compin = self._knowledge.actual_state.get_job_compin(job_id)
             assert job_compin is None or isinstance(job_compin, ManagedCompin)
             if job_compin is not None and job_compin.phase == CompinPhase.READY:
                 return JobStatus(status=JobAdmissionStatus.Value('DEPLOYED'))

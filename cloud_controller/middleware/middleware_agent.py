@@ -216,7 +216,7 @@ class MiddlewareAgent(MiddlewareAgentServicer):
             # Start
             if self._probe_monitor.has_workload:
                 self._probe_monitor.stop_probe_workload()
-            self._probe_monitor.start_probe_workload(workload.probe.name, workload.probe.name)
+            self._probe_monitor.start_probe_workload(workload.probe.name)
         else:
             if self._config.production:
                 logging.error(f"Probe measurement in production is not supported")
