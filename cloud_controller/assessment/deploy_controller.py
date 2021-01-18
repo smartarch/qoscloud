@@ -65,6 +65,7 @@ class DeployController(DeployControllerServicer):
         # Submit app for benchmarks
         app = self._knowledge.applications[architecture.name]
         self._scenario_pln.register_app(app)
+        self._app_judge.judge_and_rule(app.name)
 
         # Sends reply
         logger.info("An app %s was successfully received" % architecture.name)
@@ -77,12 +78,11 @@ class DeployController(DeployControllerServicer):
             return deploy_pb.DeployReply(rc=deploy_pb.RC_NAME_NOT_AVAILABLE)
 
         status = self._app_db.get_app_status(request.name)
-        if status == AppStatus.MEASURED or status == AppStatus.REJECTED:
+        request.is_complete = True
+        if status == AppStatus.MEASURED or status == AppStatus.REJECTED or status == AppStatus.RECEIVED:
             self._app_db.update_qos_requirements(request)
             self._app_judge.judge_and_rule(request.name)
-        elif status == AppStatus.RECEIVED:
-            self._app_db.update_qos_requirements(request)
-        elif status == AppStatus.PUBLISHED or status == AppStatus.PUBLISHED:
+        elif status == AppStatus.ACCEPTED or status == AppStatus.PUBLISHED:
             return deploy_pb.DeployReply(rc=deploy_pb.RC_APP_ALREADY_ACCEPTED)
         return deploy_pb.DeployReply(rc=deploy_pb.RC_OK)
 
@@ -159,6 +159,10 @@ class AppJudge:
         elif judgement == JudgeResult.REJECTED:
             self._app_db.update_app_status(app_name, AppStatus.REJECTED)
             logger.warning(f"App {app_name} rejected")
+        elif judgement == JudgeResult.MEASURED:
+            self._app_db.update_app_status(app_name, AppStatus.MEASURED)
+            self._planner.on_app_evaluated(app_name)
+            logger.warning(f"App {app_name} measurement completed")
         else:
             assert judgement == JudgeResult.NEEDS_DATA
             logger.warning(f"App {app_name} needs more data for judgement")

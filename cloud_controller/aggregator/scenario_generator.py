@@ -27,27 +27,40 @@ class ScenarioGenerator:
         self._isolation_scenarios: List[str] = []
         self._combination_scenarios: List[Tuple[str, List[str]]] = []
         self._predictor_updater = PredictorUpdater(_predictor)
-        self._predictor_updater.start()
+        if _predictor is not None:
+            self._predictor_updater.start()
         self.next_scenario_id = 0
         self._INITIAL_SCENARIOS_COUNT = 4
 
     def register_probe(self, probe: Probe) -> None:
         self._probes[probe.alias] = probe
-        self._measured_combinations[probe.alias] = set()
-        self._isolation_scenarios.append(probe.alias)
+        if probe.alias not in self._measured_combinations:
+            self._measured_combinations[probe.alias] = set()
+        if self._bg_load_id([]) not in self._measured_combinations[probe.alias]:
+            self._isolation_scenarios.append(probe.alias)
         for i in range(1, self._INITIAL_SCENARIOS_COUNT):
-            self._combination_scenarios.append((probe.alias, self.generate_random_load(i)))
+            load = self.generate_random_load(i)
+            if self._bg_load_id(load) not in self._measured_combinations[probe.alias]:
+                self._combination_scenarios.append((probe.alias, load))
 
-    def scenario_completed(self, scenario: Scenario) -> None:
-        probe_id = scenario.controlled_probe.alias
-        bg_probe_ids: List[str] = [probe.alias for probe in scenario.background_probes]
+    def load_datafile(self, hw_id: str, probe_id: str, bg_probe_ids: List[str], filename: str) -> None:
+        if probe_id not in self._measured_combinations:
+            self._measured_combinations[probe_id] = set()
         self._measured_combinations[probe_id].add(self._bg_load_id(bg_probe_ids))
-        self._predictor_updater.provide_file(scenario.hw_id, scenario.filename_data)
+        self._predictor_updater.provide_file(hw_id, filename)
         if len(self._measured_combinations[probe_id]) == self._INITIAL_SCENARIOS_COUNT or \
-            self._predictor_updater.file_count >= 10:
+                self._predictor_updater.file_count >= 10:
             self._predictor_updater.update_predictor()
 
-    def generate_random_load(self, probe_count):
+    def scenario_completed(self, scenario: Scenario) -> None:
+        return self.load_datafile(
+            hw_id=scenario.hw_id,
+            probe_id=scenario.controlled_probe.alias,
+            bg_probe_ids=[probe.alias for probe in scenario.background_probes],
+            filename=scenario.filename_data
+        )
+
+    def generate_random_load(self, probe_count) -> List[str]:
         bg_probes: List[str] = []
         for i in range(probe_count):
             bg_probe_id = random.choice(list(self._probes))
@@ -90,7 +103,7 @@ class ScenarioGenerator:
             del self._combination_counter[(hw_id, probe_id, arity)]
             bg_probes: List[str] = []
             for i in range(arity - 1):
-                bg_probe_id = random.choice(self._probes)
+                bg_probe_id = random.choice(list(self._probes))
                 bg_probes.append(bg_probe_id)
             if self._bg_load_id(bg_probes) in self._measured_combinations[probe_id]:
                 return self.next_scenario()

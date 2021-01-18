@@ -67,6 +67,7 @@ enum JudgeResult {
     ACCEPTED = 1;
     REJECTED = 2;
     NEEDS_DATA = 3;
+    MEASURED = 4;
 }
 
 message JudgeReply {

@@ -26,6 +26,8 @@ class PerformanceDataAggregator(PredictorServicer):
         self._probes_by_id: Dict[str, Probe] = {}
         self._scenario_generator = ScenarioGenerator(self._predictor)
         self._lock = RLock()
+        for hw_id, probe_id, bg_probe_ids, filename in self._single_process_predictor.load_existing_measurements():
+            self._scenario_generator.load_datafile(hw_id, probe_id, bg_probe_ids, filename)
 
     def assignment_from_pb(self, assignment_pb: predictor_pb.Assignment) -> Tuple[str, Dict[str, int]]:
         assignment: Dict[str, int] = {}
@@ -74,22 +76,37 @@ class PerformanceDataAggregator(PredictorServicer):
             return predictor_pb.Prediction(result=True)
         hw_id, assignment = self.assignment_from_pb(request)
         for combination in self._generate_combinations(assignment=assignment):
+            measurement = MeasurementAggregator.compose_measurement_name(hw_id, combination)
+            measured = self._single_process_predictor.has_measurement(measurement)
             probe = self._probes_by_id[combination[0]]
             for requirement in probe.requirements:
                 prediction: bool = False
                 if isinstance(requirement, TimeContract):
-                    prediction = self._predictor.predict_time(
-                        hw_id=hw_id,
-                        combination=combination,
-                        time_limit=requirement.time,
-                        percentile=requirement.percentile
-                    )
+                    if measured:
+                        prediction = self._single_process_predictor.predict_time(
+                            probe_name=measurement,
+                            time_limit=requirement.time,
+                            percentile=requirement.percentile
+                        )
+                    else:
+                        prediction = self._predictor.predict_time(
+                            hw_id=hw_id,
+                            combination=combination,
+                            time_limit=requirement.time,
+                            percentile=requirement.percentile
+                        )
                 elif isinstance(requirement, ThroughputContract):
-                    prediction = self._predictor.predict_throughput(
-                        hw_id=hw_id,
-                        combination=combination,
-                        max_value=requirement.mean_request_time
-                    )
+                    if measured:
+                        prediction = self._single_process_predictor.predict_throughput(
+                            probe_name=measurement,
+                            max_mean_time=requirement.mean_request_time
+                        )
+                    else:
+                        prediction = self._predictor.predict_throughput(
+                            hw_id=hw_id,
+                            combination=combination,
+                            max_value=requirement.mean_request_time
+                        )
                 if not prediction:
                     self._scenario_generator.increase_count(hw_id, combination[0], len(combination))
                     return predictor_pb.Prediction(result=False)
@@ -126,16 +143,17 @@ class PerformanceDataAggregator(PredictorServicer):
 
     def ReportPercentiles(self, request, context):
         response = ApplicationTimingRequirements()
-        if not self._single_process_predictor.has_probe(request.name):
+        measurement_name = MeasurementAggregator.compose_measurement_name(DEFAULT_HARDWARE_ID, [request.name])
+        if not self._single_process_predictor.has_measurement(measurement_name):
             response.mean = -1
             return response
         response.name = request.name
         for percentile in request.contracts:
-            time = self._single_process_predictor.running_time_at_percentile(request.name, percentile.percentile)
+            time = self._single_process_predictor.running_time_at_percentile(measurement_name, percentile.percentile)
             contract = response.contracts.add()
             contract.time = time
             contract.percentile = percentile.percentile
-        response.mean = self._single_process_predictor.mean_running_time(request.name)
+        response.mean = self._single_process_predictor.mean_running_time(measurement_name)
         return response
 
     def JudgeApp(self, request, context):
@@ -149,23 +167,27 @@ class PerformanceDataAggregator(PredictorServicer):
             # Check every QoS requirement one-by-one:
             for component in app.components.values():
                 for probe in component.probes:
-                    if not self._single_process_predictor.has_probe(probe.alias):
+                    measurement_name = \
+                        MeasurementAggregator.compose_measurement_name(DEFAULT_HARDWARE_ID, [probe.alias])
+                    if not self._single_process_predictor.has_measurement(measurement_name):
                         return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("NEEDS_DATA"))
                     for requirement in probe.requirements:
                         prediction = False
                         if isinstance(requirement, TimeContract):
                             prediction = self._single_process_predictor.predict_time(
-                                probe_name=probe.alias,
+                                probe_name=measurement_name,
                                 time_limit=requirement.time,
                                 percentile=requirement.percentile
                             )
                         elif isinstance(requirement, ThroughputContract):
                             prediction = self._single_process_predictor.predict_throughput(
-                                probe_name=probe.alias,
+                                probe_name=measurement_name,
                                 max_mean_time=requirement.mean_request_time
                             )
                         if not prediction:
                             return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("REJECTED"))
+            if not app.is_complete:
+                return predictor_pb.JudgeReply(result=predictor_pb.JudgeResult.Value("MEASURED"))
             # Application is accepted now
             # However, some QoS requirements may have been added between app registration and app evaluation.
             # Thus, we re-register all the probes to include these requirements
@@ -185,8 +207,10 @@ class PerformanceDataAggregator(PredictorServicer):
         with self._lock:
             # Remove scenario from the list of to-be-done scenarios
             self._scenario_generator.scenario_completed(scenario)
-            if len(scenario.background_probes) == 0:
-                self._single_process_predictor.add_probe(scenario.controlled_probe.alias, scenario.filename_data)
+            self._single_process_predictor.process_measurement_file(
+                MeasurementAggregator.compose_measurement_name_from_scenario(scenario),
+                scenario.filename_data
+            )
         return predictor_pb.CallbackAck()
 
     def _register_probe(self, probe: Probe) -> None:

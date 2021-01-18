@@ -91,39 +91,29 @@ class MasterSlaveSolver(DependencySolver):
             cloud_state.add_application(main_component.application)
 
         # Prepare main instance
-        main_instance = ManagedCompin(main_component,
-                                      "main%d" % MasterSlaveSolver.last_compin_id,
-                                      master_node,
-                                      chain_id)
+        main_instance = ManagedCompin(main_component, f"main{MasterSlaveSolver.last_compin_id}", master_node, chain_id)
         MasterSlaveSolver.last_compin_id += 1
         cloud_state.add_instance(main_instance)
 
         # Dependencies
         # Finds all component that are need by main component
-        to_explore: Deque[Component] = deque()
-        to_explore.append(main_component)
-        explored: Set[Component] = set()
-        instances: Dict[Component, Compin] = {main_component: main_instance}
+        to_explore: List[Component] = [main_component]
+        instances: Dict[str, ManagedCompin] = {main_component.name: main_instance}
         while len(to_explore) > 0:
-            actual = to_explore.pop()
-            explored.add(actual)
-
-            for dependency in actual.dependencies:
+            current_component = to_explore.pop(0)
+            for dependency in current_component.dependencies:
                 # Skip explored components
-                if dependency in explored:
-                    # Set dependency to
-                    instances[actual].set_dependency(instances[dependency])
-                    continue
-                # Append component to plan
-                dependency_instance = ManagedCompin(dependency,
-                                                    "dep%d" % MasterSlaveSolver.last_compin_id,
-                                                    slave_node,
-                                                    chain_id)
-                instances[actual].set_dependency(dependency_instance)
-                MasterSlaveSolver.last_compin_id += 1
+                if dependency.name not in instances:
+                    # Append component to plan
+                    dependency_instance = ManagedCompin(dependency, f"dep{MasterSlaveSolver.last_compin_id}",
+                                                        slave_node, chain_id)
+                    cloud_state.add_instance(dependency_instance)
+                    instances[dependency.name] = dependency_instance
+                    MasterSlaveSolver.last_compin_id += 1
+                    # Plan exploration dependency's dependencies
+                    to_explore.append(dependency)
                 # Set dependency
-                cloud_state.add_instance(dependency_instance)
-                # Plan exploration dependency's dependencies
-                to_explore.append(dependency)
+                instances[current_component.name].set_dependency(instances[dependency.name])
+
         assert len(to_explore) == 0
         return main_instance.id

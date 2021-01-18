@@ -27,7 +27,7 @@ class Variables:
         best_solution_index: int = collector.SolutionCount() - 1
         for var in chain(self.comp_node_vars, self.unique_vars):
             if collector.Value(best_solution_index, var.int_var) == 1:
-                component = self._knowledge.components[var.component_id]
+                component = self._knowledge.applications[var.app_name].components[var.component_name]
                 state.add_instance(
                     ManagedCompin(
                         component=component,
@@ -55,7 +55,7 @@ class Variables:
         if component.cardinality == ComponentCardinality.MULTIPLE:
             return f"{component.name}-{var.chain_id}-{var.node}"
         elif component.cardinality == ComponentCardinality.SINGLE:
-            return var.component_id
+            return var.component_name
 
     def convert_to_cloud_state(self, collector: SolutionCollector, knowledge: Knowledge) -> CloudState:
         """
@@ -168,7 +168,8 @@ class Variables:
         for compin in self._knowledge.actual_state.list_all_managed_compins():
             if compin.component.application.name in self._knowledge.applications:
                 var_ = RunningCompNodeVar(solver, component_id=compin.component.id, chain_id=compin.chain_id,
-                                           node=compin.node_name)
+                                          node=compin.node_name, component_name=compin.component.name,
+                                          app_name=compin.component.application.name)
                 self.all_vars.append(var_)
                 compin_name = f"{compin.component.name}-{compin.chain_id}"
                 self.running_vars_by_node_and_compin[compin.node_name][compin_name] = var_
@@ -181,7 +182,8 @@ class Variables:
                 compin_name = f"{dependency.name}-{client.id}"
                 for node in self._knowledge.nodes.values():
                     if dependency.is_deployable_on_node(node):
-                        var_ = CompNodeVar(solver, component_id=dependency.id, chain_id=client.id, node=node.name)
+                        var_ = CompNodeVar(solver, component_id=dependency.id, chain_id=client.id, node=node.name,
+                                           component_name=dependency.name, app_name=dependency.application.name)
                         self.all_vars.append(var_)
                         self.comp_node_vars.append(var_)
                         self.vars_by_node[node.name].append(var_)
@@ -189,25 +191,28 @@ class Variables:
                         self.vars_by_compin[compin_name].append(var_)
                         self.vars_by_node_and_compin[node.name][compin_name] = var_
                 for datacenter in self._knowledge.datacenters:
-                    var_ = CompDCVar(solver, component_id=dependency.id, chain_id=client.id, node=datacenter)
+                    var_ = CompDCVar(solver, component_id=dependency.id, chain_id=client.id, node=datacenter,
+                                     component_name=dependency.name, app_name=dependency.application.name)
                     self.all_vars.append(var_)
                     self.comp_dc_vars[datacenter][compin_name] = var_
                     self.dc_vars_by_chain[datacenter][client.id].append(var_)
             for datacenter in self._knowledge.datacenters:
-                var_ = CompDCVar(solver, component_id="", chain_id=client.id, node=datacenter)
+                var_ = CompDCVar(solver, component_id="", chain_id=client.id, node=datacenter,
+                                 component_name=client.component.name, app_name=client.component.application.name)
                 self.all_vars.append(var_)
                 self.client_dc_vars[datacenter][client.id] = var_
                 self.client_dc_vars_by_tier[self._tiers[client.id][datacenter]].append(var_)
 
-        for component in self._knowledge.components:
-            if self._knowledge.components[component].cardinality == ComponentCardinality.SINGLE:
-                self.unique_vars_by_compin[component] = []
+        for component in self._knowledge.components.values():
+            if component.cardinality == ComponentCardinality.SINGLE:
+                self.unique_vars_by_compin[component.full_name] = []
                 for node_name in self._knowledge.nodes:
-                    var_ = CompNodeVar(solver, component_id=component, chain_id=component, node=node_name)
+                    var_ = CompNodeVar(solver, component_id=component.id, chain_id=component.full_name, node=node_name,
+                                       component_name=component.name, app_name=component.application.name)
                     self.all_vars.append(var_)
-                    self.unique_vars_by_compin[component].append(var_)
+                    self.unique_vars_by_compin[component.full_name].append(var_)
                     self.unique_vars_by_node[node_name].append(var_)
-                    self.unique_vars_by_node_and_compin[node_name][component] = var_
+                    self.unique_vars_by_node_and_compin[node_name][component.full_name] = var_
                     self.unique_vars.append(var_)
         for node_name in self._knowledge.nodes:
             var_ = NodeRoleVar(solver, node_name)

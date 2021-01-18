@@ -9,8 +9,7 @@ from multiprocessing import Lock
 from typing import Tuple, Iterable, Optional, Dict
 
 import cloud_controller.middleware.middleware_pb2 as mw_protocols
-from cloud_controller import middleware
-from cloud_controller.assessment import RESULTS_PATH
+from cloud_controller import middleware, HEADERFILE_EXTENSION, DATAFILE_EXTENSION, RESULTS_PATH
 from cloud_controller.assessment.model import Scenario
 from cloud_controller.knowledge.model import Compin, Probe
 from cloud_controller.middleware.helpers import connect_to_grpc_server_with_channel
@@ -28,26 +27,6 @@ class UnexpectedHeaderException(Exception):
 class ResultStorage:
     _file_locks: Dict[str, Lock] = {}
     _collection_lock = Lock()
-
-    @staticmethod
-    def get_folder(probe: Probe, hw_config: str) -> str:
-        return RESULTS_PATH + "/" + probe.component.application.name + "/" + hw_config + "/"
-
-    @staticmethod
-    def _get_fs_probe_name(probe: Probe) -> str:
-        # TODO
-        return probe.alias # f"{probe.component.name}_{probe.name}"
-
-    @staticmethod
-    def get_results_path(scenario: Scenario) -> Tuple[str, str]:
-        """
-        Returns path to header and data file for selected scenario
-        """
-        folder = ResultStorage.get_folder(scenario.controlled_probe, scenario.hw_id)
-        file = "-".join(ResultStorage._get_fs_probe_name(probe)
-                        for probe in [scenario.controlled_probe] + scenario.background_probes)
-        path = folder + '/' + file
-        return path + ".header", path + ".csv"
 
     @staticmethod
     def _collect_probe_results(ip: str, probe: Probe) -> Iterable[Tuple[Optional[str], Optional[str]]]:
@@ -70,12 +49,12 @@ class ResultStorage:
     @staticmethod
     def collect_scenario(compin: Compin, scenario: Scenario) -> None:
         # Create results folder if needed
-        folder = ResultStorage.get_folder(scenario.controlled_probe, scenario.hw_id)
+        folder = scenario.get_folder()
         if not os.path.exists(folder):
             os.makedirs(folder)
 
         # Collect results to scenario specific folder
-        header_path, data_path = ResultStorage.get_results_path(scenario)
+        header_path, data_path = scenario.get_results_path()
 
         with ResultStorage._collection_lock:
             # Lock files against simultaneous access

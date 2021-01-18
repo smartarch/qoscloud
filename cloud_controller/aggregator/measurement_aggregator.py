@@ -1,7 +1,12 @@
 import math
-from typing import Dict, List
+from typing import Dict, List, Iterable, Tuple
 
 import logging
+
+import os
+
+from cloud_controller import DATAFILE_EXTENSION, DEFAULT_HARDWARE_ID, RESULTS_PATH
+from cloud_controller.assessment.model import Scenario
 
 
 class MeasurementAggregator:
@@ -10,10 +15,40 @@ class MeasurementAggregator:
         self._measurements: Dict[str, List[int]] = {}
         self._mean_running_times: Dict[str, int] = {}
 
-    def has_probe(self, name:str):
+    def load_existing_measurements(self) -> Iterable[Tuple[str, str, List[str], str]]:
+        """
+        Loads the measurements from all the measurement data files stored in the system.
+        :return: generator of hw_id, probe_id, bg_probe_ids, filename
+        """
+        if os.path.exists(RESULTS_PATH):
+            for dirname in os.listdir(RESULTS_PATH):
+                for filename in os.listdir(f"{RESULTS_PATH}/{dirname}"):
+                    if filename.endswith(DATAFILE_EXTENSION):
+                        _name = filename[:(len(filename) - len(DATAFILE_EXTENSION))]
+                        _probes = _name.split("-")
+                        measurement_name = self.compose_measurement_name(dirname, _probes)
+                        full_filename = f"{RESULTS_PATH}/{dirname}/{filename}"
+                        self.process_measurement_file(measurement_name, full_filename)
+                        yield dirname, _probes[0], _probes[1:], full_filename
+
+    @staticmethod
+    def compose_measurement_name_from_scenario(scenario: Scenario):
+        return MeasurementAggregator.compose_measurement_name(
+            scenario.hw_id,
+            [scenario.controlled_probe.alias] + [probe.alias for probe in scenario.background_probes]
+        )
+
+    @staticmethod
+    def compose_measurement_name(hw_id: str, probes: List[str]) -> str:
+        name = f"{hw_id}@"
+        for probe_name in probes:
+            name = f"{name}&{probe_name}"
+        return name
+
+    def has_measurement(self, name: str):
         return name in self._measurements
 
-    def add_probe(self, name: str, filename: str) -> None:
+    def process_measurement_file(self, name: str, filename: str) -> None:
         self._measurements[name] = []
         total_running_time: int = 0
         with open(filename, "r") as file:
@@ -29,6 +64,9 @@ class MeasurementAggregator:
                 total_running_time += running_time
         self._mean_running_times[name] = math.ceil(total_running_time // len(self._measurements[name]))
         self._measurements[name].sort()
+        logging.info(f"Measurement data file {filename} loaded successfully.\n"
+                     f"Records: {len(self._measurements[name])}. Mean: {self._mean_running_times[name]}."
+                     f"Median: {self.running_time_at_percentile(name, 50.0)}")
 
     def add_measurement(self, name: str, running_time: int) -> None:
         for i in range(len(self._measurements[name])):
@@ -42,7 +80,7 @@ class MeasurementAggregator:
         return False
 
     def predict_throughput(self, probe_name: str, max_mean_time: int) -> bool:
-        if self._mean_running_times[probe_name] < max_mean_time:
+        if self.mean_running_time(probe_name) < max_mean_time:
             return True
         return False
 

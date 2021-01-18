@@ -3,11 +3,13 @@ Contains the classes that are used by the framework to model the state of the cl
 of nodes, datacenters, namespaces, applications, components, compins, etc.
 """
 import itertools
+import sys
 
 from enum import Enum
 from typing import List, Dict, Optional, Any, Iterable, Type, TypeVar
 from io import StringIO
 
+import hashlib
 import yaml
 
 import cloud_controller.architecture_pb2 as protocols
@@ -207,7 +209,7 @@ class Component:
         self._application: "Application" = application
         self._name: str = name
         self._container_spec: str = container_spec
-        self._id: str = id_
+        self._id = hashlib.md5(bytes("", 'utf-8'))
         self._type: ComponentType = type_
         self._probes: List[Probe] = probes
         self._statefulness = statefulness
@@ -223,9 +225,6 @@ class Component:
     def __str__(self) -> str:
         return f"Component(id={self.id}, type={self.type}, dependencies=[{[str(dep) for dep in self._dependencies]}])"
 
-    def __hash__(self) -> int:
-        return hash(self._name + self._id)
-
     def __eq__(self, other: object) -> bool:
         if isinstance(other, Component):
             return self.name == other.name and self.id == other.id
@@ -235,6 +234,10 @@ class Component:
     @property
     def cardinality(self) -> ComponentCardinality:
         return self._cardinality
+
+    @property
+    def full_name(self):
+        return f"{self.application.name}_{self.name}"
 
     @property
     def statefulness(self) -> Statefulness:
@@ -258,9 +261,7 @@ class Component:
 
     @property
     def id(self) -> str:
-        # In the future, there may be a need for a separate concept of component ID for usage with Predictor.
-        # Currently, it is the same thing as component name.
-        return _assert_not_none_and_return(self._name)
+        return self._id.hexdigest()
 
     @property
     def type(self) -> ComponentType:
@@ -273,6 +274,10 @@ class Component:
     @property
     def probes(self) -> List["Probe"]:
         return self._probes
+
+    def add_probe(self, probe: "Probe"):
+        self._probes.append(probe)
+        self._id.update(bytes(probe.alias, 'utf-8'))
 
     def _parse_node_selector_labels(self) -> Dict[str, str]:
         if self._container_spec == "" or self._container_spec is None:
@@ -325,7 +330,7 @@ class Component:
             cardinality=ComponentCardinality(component_pb.cardinality + 1)
         )
         for probe in component_pb.probes:
-            component.probes.append(Probe.init_from_pb_direct(probe, component))
+            component.add_probe(Probe.init_from_pb_direct(probe, component))
 
         return component
 
@@ -408,6 +413,10 @@ class Application:
     @property
     def is_complete(self) -> bool:
         return self._is_complete
+
+    @is_complete.setter
+    def is_complete(self, is_complete: bool) -> None:
+        self._is_complete = is_complete
 
     @property
     def name(self) -> str:
@@ -945,19 +954,27 @@ class Probe:
         self.name = name
         self.component = component
         self.requirements = requirements
-        self.alias = self.generate_alias(self.name, self.component)
 
         self.code: str = code
         self.config: str = config
         self.args: str = args
+        self._alias = self.generate_alias(self.name, self.component)
+
         self.signal_set: str = signal_set
         self.execution_time_signal: str = execution_time_signal
         self.run_count_signal: str = run_count_signal
 
+    @property
+    def alias(self) -> str:
+        return self._alias
 
-    @staticmethod
-    def generate_alias(probe_name: str, component: Component) -> str:
-        return f"{component.application.name.upper()}_{component.name.upper()}_{probe_name.upper()}"
+    def generate_alias(self, probe_name: str, component: Component) -> str:
+        if self.code is None:
+            return f"{component.application.name.upper()}_{component.name.upper()}_{probe_name.upper()}"
+        else:
+            probe_spec = f"{self.component.container_spec}&&{self.code}&&{self.config}&&{self.args}"
+            hash_ = hashlib.md5(bytes(probe_spec, 'utf-8'))
+            return f"{hash_.hexdigest()}"
 
     @staticmethod
     def init_from_pb(probe_pb: arch_pb.Probe, applications: Dict[str, Application]) -> "Probe":
@@ -986,7 +1003,7 @@ class Probe:
         requirements = Probe.construct_requirements(probe_pb)
         for probe in component.probes:
             if probe.name == probe_pb.name:
-                probe.alias = Probe.generate_alias(probe_pb.name, component)
+                probe._alias = probe.generate_alias(probe_pb.name, component)
                 probe.requirements = requirements
                 return probe
         return Probe(
@@ -1030,4 +1047,4 @@ class Probe:
         return probe_pb
 
     def __str__(self) -> str:
-        return f"{self.component.name}/{self.name}"
+        return f"{self._alias}"

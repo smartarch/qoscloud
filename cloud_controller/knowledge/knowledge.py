@@ -129,7 +129,7 @@ class Knowledge:
         app = Application.init_from_pb(app_pb)
         self.applications[app_pb.name] = app
         for component in self.applications[app_pb.name].components.values():
-            self.components[component.id] = component
+            self.components[component.full_name] = component
         if app_pb.HasField("secret"):
             self._add_secret(app_pb.name, app_pb.secret.value)
         logging.info("An architecture for the %s application was processed." % app_pb.name)
@@ -143,7 +143,7 @@ class Knowledge:
         """
         if name in self.applications:
             for component in self.applications[name].components.values():
-                del self.components[component.id]
+                del self.components[component.full_name]
             del self.applications[name]
         logging.info(f"A request for deletion of application {name} was processed.")
 

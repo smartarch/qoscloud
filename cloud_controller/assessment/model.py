@@ -12,8 +12,8 @@ from typing import Dict, List, Optional, Tuple
 import random
 
 import cloud_controller.architecture_pb2 as arch_pb
-from cloud_controller import DEFAULT_WARMUP_RUNS, DEFAULT_MEASURED_RUNS
-from cloud_controller.assessment import RESULTS_PATH
+from cloud_controller import DEFAULT_WARMUP_RUNS, DEFAULT_MEASURED_RUNS, RESULTS_PATH, HEADERFILE_EXTENSION, \
+    DATAFILE_EXTENSION
 from cloud_controller.knowledge.model import Application, Probe
 from cloud_controller.aggregator import predictor_pb2
 
@@ -42,7 +42,6 @@ class AppDatabase:
         self._apps: Dict[str, AppEntry] = {}
         self._update_lock = Lock()
         self._app_removal_cache: List[str] = []
-        self.probes_by_alias: Dict[str, Probe] = {}
 
     def __contains__(self, item: object) -> bool:
         return self._apps.__contains__(item)
@@ -50,19 +49,8 @@ class AppDatabase:
     def __getitem__(self, app_name: str) -> AppEntry:
         return self._apps[app_name]
 
-    def _generate_alias(self):
-        id_ = "ASSESSMENT" + ''.join(random.choice(string.ascii_uppercase) for _ in range(4))
-        while id_ in self.probes_by_alias:
-            id_ = ''.join(random.choice(string.ascii_uppercase) for _ in range(4))
-        self.probes_by_alias[id_] = None
-        return id_
-
     def add_app(self, architecture: arch_pb.Architecture) -> None:
         with self._update_lock:
-            for component in architecture.components:
-                for probe in architecture.components[component].probes:
-                    assert probe.alias == ""
-                    probe.alias = self._generate_alias()
             entry = AppEntry(architecture)
             self._apps[architecture.name] = entry
 
@@ -79,6 +67,8 @@ class AppDatabase:
 
     def update_qos_requirements(self, app_pb: arch_pb.Architecture):
         app = self._apps[app_pb.name].application
+        app.is_complete = app_pb.is_complete
+        app.get_pb_representation().is_complete = app_pb.is_complete
         for component_name in app_pb.components:
             for probe_pb in app_pb.components[component_name].probes:
                 for probe in app.get_pb_representation().components[component_name].probes:
@@ -147,25 +137,16 @@ class Scenario:
         else:
             self.application: str = app_name
 
-    @staticmethod
-    def get_folder(probe: Probe, hw_config: str) -> str:
-        return RESULTS_PATH + "/" + probe.component.application.name + "/" + hw_config
+    def get_folder(self) -> str:
+        return f"{RESULTS_PATH}/{self.hw_id}"
 
-    @staticmethod
-    def _get_fs_probe_name(probe: Probe) -> str:
-        # TODO
-        return probe.alias  # f"{probe.component.name}_{probe.name}"
-
-    @staticmethod
-    def get_results_path(scenario: "Scenario") -> Tuple[str, str]:
+    def get_results_path(self) -> Tuple[str, str]:
         """
-        Returns path to header and data file for selected scenario
+        Returns path to header and data file for this scenario
         """
-        folder = Scenario.get_folder(scenario.controlled_probe, scenario.hw_id)
-        file = "-".join(Scenario._get_fs_probe_name(probe)
-                        for probe in [scenario.controlled_probe] + scenario.background_probes)
-        path = folder + '/' + file
-        return path + ".header", path + ".csv"
+        file = "-".join(probe.alias for probe in [self.controlled_probe] + self.background_probes)
+        path = f"{self.get_folder()}/{file}"
+        return path + HEADERFILE_EXTENSION, path + DATAFILE_EXTENSION
 
     @property
     def id_(self) -> str:

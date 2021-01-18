@@ -22,6 +22,7 @@ class JudgeResult(IntEnum):
     ACCEPTED = 1
     REJECTED = 2
     NEEDS_DATA = 3
+    MEASURED = 4
 
 
 class FailureReason(IntEnum):

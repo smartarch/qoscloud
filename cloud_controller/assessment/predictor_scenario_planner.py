@@ -48,7 +48,7 @@ class PredictorScenarioPlanner(ScenarioPlanner):
 
     def judge_app(self, application: Application) -> JudgeResult:
         reply = self._predictor_stub.JudgeApp(application.get_pb_representation())
-        assert 0 < reply.result < 4
+        assert 0 < reply.result < 5
         return JudgeResult(reply.result)
 
     def on_scenario_done(self, scenario: Scenario) -> None:
@@ -62,8 +62,7 @@ class PredictorScenarioPlanner(ScenarioPlanner):
         app = self._knowledge.applications[app_name]
         for component in app.components.values():
             for probe in component.probes:
-                probe_full_name = probe.alias
-                request = ApplicationTimingRequirements(name=probe_full_name)
+                request = ApplicationTimingRequirements(name=probe.alias)
                 for percentile in REPORTED_PERCENTILES:
                     contract = request.contracts.add()
                     contract.percentile = percentile

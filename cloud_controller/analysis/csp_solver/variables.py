@@ -38,11 +38,21 @@ class _CompNodeVar(Var):
     """
     Base class for some of the variable types.
     """
-    def __init__(self, component_id: str, chain_id: str, node: str, var: IntVar):
+    def __init__(self, component_id: str, chain_id: str, node: str, var: IntVar, app_name: str, component_name: str):
         super().__init__(var)
         self._comp_id: str = component_id
         self._chain_id: str = chain_id
         self._node: str = node
+        self._app_name: str = app_name
+        self._component_name: str = component_name
+
+    @property
+    def app_name(self) -> str:
+        return self._app_name
+
+    @property
+    def component_name(self) -> str:
+        return self._component_name
 
     @property
     def node(self) -> str:
@@ -63,9 +73,10 @@ class CompDCVar(_CompNodeVar):
     set to 1, it means that compin with specified component type ID and chain ID is
     supposed to run in a specified data center.
     """
-    def __init__(self, solver: Solver, component_id: str, chain_id: str, node: str):
+    def __init__(self, solver: Solver, component_id: str, chain_id: str, node: str, app_name: str, component_name: str):
         super().__init__(component_id=component_id, chain_id=chain_id, node=node,
-                         var=solver.BoolVar(f"{COMPIN_DC_VAR},{component_id},{chain_id},{node}"))
+                         var=solver.BoolVar(f"{COMPIN_DC_VAR},{component_id},{chain_id},{node}"),
+                         app_name=app_name, component_name=component_name)
 
 
 class CompNodeVar(_CompNodeVar):
@@ -74,9 +85,10 @@ class CompNodeVar(_CompNodeVar):
     set to 1, it means that compin with specified component type ID and chain ID is
     supposed to run on specified node.
     """
-    def __init__(self, solver: Solver, component_id: str, chain_id: str, node: str):
+    def __init__(self, solver: Solver, component_id: str, chain_id: str, node: str, app_name: str, component_name: str):
         super().__init__(component_id=component_id, chain_id=chain_id, node=node,
-                         var=solver.BoolVar(f"{COMPIN_NODE_VAR},{component_id},{chain_id},{node}"))
+                         var=solver.BoolVar(f"{COMPIN_NODE_VAR},{component_id},{chain_id},{node}"),
+                         app_name=app_name, component_name=component_name)
 
 
 class RunningCompNodeVar(_CompNodeVar):
@@ -86,9 +98,10 @@ class RunningCompNodeVar(_CompNodeVar):
     running on specified node even though it is not supposed to (e.g. it is terminating
     or waiting for client to disconnect.
     """
-    def __init__(self, solver: Solver, component_id: str, chain_id: str, node: str):
+    def __init__(self, solver: Solver, component_id: str, chain_id: str, node: str, app_name: str, component_name: str):
         super().__init__(component_id=component_id, chain_id=chain_id, node=node,
-                         var=solver.BoolVar(f"Running{COMPIN_NODE_VAR},{component_id},{chain_id},{node}"))
+                         var=solver.BoolVar(f"Running{COMPIN_NODE_VAR},{component_id},{chain_id},{node}"),
+                         app_name=app_name, component_name=component_name)
 
 
 class RunningNodeVar(Var):
@@ -215,7 +228,7 @@ class Variables:
                                         node=var.node,
                                         chain_id=var.chain_id))
             for var in iterate_set_vars(self.unique_vars):
-                component = knowledge.components[var.component_id]
+                component = knowledge.applications[var.app_name].components[var.component_name]
                 managed_compins.append(model.ManagedCompin(
                     component=component,
                     id_=var.component_id,

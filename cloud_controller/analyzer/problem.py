@@ -79,13 +79,10 @@ class CSPProblem:
         if self._time_limit_ms != CSPProblem.NO_LIMIT:
             tl = self._solver.TimeLimit(self._time_limit_ms)
             self._solver.Solve(decision_builder, [collector, objective_function, tl])
-            if collector.SolutionCount() > 0:
-                return True
-            return False
         else:
             self._solver.NewSearch(decision_builder, [collector, objective_function])
             self._solver.NextSolution()
-            return True
+        return collector.SolutionCount() > 0
 
     def _all_vars(self) -> List[IntVar]:
         return [var.int_var for var in self._variables.all_vars] + [self._objective_function.cost_var]
