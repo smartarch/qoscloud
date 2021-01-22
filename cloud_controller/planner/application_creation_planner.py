@@ -12,6 +12,11 @@ from cloud_controller.tasks.task import Task
 
 
 class ApplicationCreationPlanner(Planner):
+    """
+    Creates an execution plan for new application, which includes creation of namespace, adding the image pull
+    secret to that namespace, adding that application to the Client Controller, and creating and sharding the
+    collections for all the Mongo-stateful components.
+    """
 
     def __init__(self, knowledge: Knowledge, task_registry: TaskRegistry):
         super(ApplicationCreationPlanner, self).__init__(knowledge, task_registry)
@@ -41,11 +46,6 @@ class ApplicationCreationPlanner(Planner):
         return self.knowledge.client_support and len(list(app.list_unmanaged_components())) > 0
 
     def _plan_app_creation(self, app_name: str) -> None:
-        """
-        Creates an execution plan for new application, which includes creation of namespace, adding the image pull
-        secret to that namespace, adding that application to the Client Controller, and creating and sharding the
-        collections for all the Mongo-stateful components.
-        """
         self._tasks_by_app[app_name] = set()
         app: Application = self.knowledge.applications[app_name]
         self._create_task(AddAppRecordTask(app_name), app_name)

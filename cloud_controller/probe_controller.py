@@ -1,3 +1,7 @@
+"""
+The old module responsible for measurement data collection. Currently is not used, was substituted by IVIS.
+May be plugged back in in the future.
+"""
 import time
 from functools import reduce
 from multiprocessing.pool import ThreadPool, ApplyResult

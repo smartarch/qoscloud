@@ -1,5 +1,7 @@
 #!/bin/bash
 
+# Deployment tool usage:
+
 ./depltool.py submit application.yaml
 ./depltool.py status application
 ./depltool.py get-time 99 application component probe

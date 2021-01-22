@@ -1,6 +1,6 @@
 """
-Contains different implementations of NetworkTopology, a class that determines distances between clients, data centers,
-and nodes.
+Contains different implementations of ClientPositionTracker, a class that determines distances between clients
+and data centers
 """
 import math
 import random
@@ -22,7 +22,7 @@ from cloud_controller.knowledge.model import UnmanagedCompin, Node
 
 class ClientPositionTracker(ABC):
     """
-    Base class for all network topology implementations.
+    Base class for all position tracker implementations.
     """
 
     @abstractmethod

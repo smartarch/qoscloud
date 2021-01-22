@@ -12,6 +12,12 @@ from cloud_controller.task_executor.registry import TaskRegistry
 
 
 class InstanceDeploymentPlanner(Planner):
+    """
+    Creates that should bring the actual state of the instance deployment to the desired state. The plan
+    includes tasks for creation and deletion of the compins, as well as for managing the state of the compins.
+    :return: None if there is no difference between actual state and desired state, the constructed execution plan
+                otherwise.
+    """
 
     def __init__(self, knowledge: Knowledge, task_registry: TaskRegistry):
         super(InstanceDeploymentPlanner, self).__init__(knowledge, task_registry)

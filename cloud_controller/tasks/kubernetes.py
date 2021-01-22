@@ -210,6 +210,9 @@ class CreateDockersecretTask(Task):
 
 
 class DeleteDockersecretTask(Task):
+    """
+    Deletes a docker secret from the namespace.
+    """
 
     def __init__(self, namespace: str):
         self._namespace = namespace

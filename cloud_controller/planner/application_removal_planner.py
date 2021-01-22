@@ -11,6 +11,10 @@ from cloud_controller.tasks.statefulness import DeleteAppRecordTask, DropDatabas
 
 
 class ApplicationRemovalPlanner(Planner):
+    """
+    Creates the tasks for deleting an application, which includes disconnection of all the clients from
+    the Client Controller, deletion of the Kubernetes namespace and deletion of the corresponding Mongo database.
+    """
 
     def __init__(self, knowledge: Knowledge, task_registry: TaskRegistry):
         super().__init__(knowledge, task_registry)
@@ -30,10 +34,6 @@ class ApplicationRemovalPlanner(Planner):
         return self.knowledge.client_support and len(list(app.list_unmanaged_components())) > 0
 
     def _plan_app_deletion(self, app_name: str) -> None:
-        """
-        Creates the tasks for deleting an application, which includes disconnection of all the clients from
-        the Client Controller, deletion of the Kubernetes namespace and deletion of the corresponding Mongo database.
-        """
         app: Application = self.knowledge.actual_state.applications[app_name]
         if not app.namespace_deleted:
             self._create_task(DeleteNamespaceTask(app_name))

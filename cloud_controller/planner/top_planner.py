@@ -1,3 +1,7 @@
+"""
+This module contains the Planner interface and the TopLevelPlanner class which is responsible for the _planning_
+phase of the adaptation process.
+"""
 from abc import abstractmethod
 from typing import List, Dict, Set
 
@@ -34,6 +38,15 @@ class Planner:
 class TopLevelPlanner(Planner):
 
     def __init__(self, knowledge: Knowledge, task_registry: TaskRegistry):
+        """
+        This class handles creating the executable tasks based on the differences between the actual and the
+        desired states with its plan_tasks method. The actual state is taken from the Knowledge. For the different types
+        of task that exist refer to the documentation task module.
+
+        Attributes:
+            knowledge:  reference to the Knowledge
+            task_registry: refernce to task registry
+        """
         super().__init__(knowledge, task_registry)
         self._planners: List[Planner] = []
 

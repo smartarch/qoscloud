@@ -15,9 +15,9 @@ from cloud_controller.middleware import MONGOS_PORT
 
 class ClusterCleaner:
     """
-    Can perform Kubernetes cluster and MongoDB cleanup with cleanup method. Uses the records that Avocado puts into the
-    MongoDB to determine which items to remove. Thus, it will not delete any namespaces or databases that were not
-    previously created by Avocado.
+    Can perform Kubernetes cluster and MongoDB cleanup with cleanup method. Uses the records that the framework puts
+    into the MongoDB to determine which items to remove. Thus, it will not delete any namespaces or databases that were
+    not previously created by the framework.
     """
 
     def __init__(self, mongos_ip: str, kubeconfig_file=PRODUCTION_KUBECONFIG):

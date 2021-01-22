@@ -1,5 +1,6 @@
 """
 Contains Analyzer class responsible for the Analysis phase.
+Contains CSPAnalyzer class, an implementation of Analyzer that uses constraint satisfaction problem to find a desired state.
 """
 import logging
 from typing import Optional, List
@@ -7,6 +8,8 @@ from typing import Optional, List
 from multiprocessing import Pool
 
 from multiprocessing.pool import AsyncResult, ThreadPool
+
+from abc import abstractmethod
 
 from cloud_controller.analyzer.problem import CSPProblem
 from cloud_controller.analyzer.objective_function import ObjectiveFunction
@@ -16,7 +19,20 @@ from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import CloudState, ManagedCompin, ComponentCardinality
 
 
-class CSPAnalyzer:
+class Analyzer:
+
+    def __init__(self, knowledge: Knowledge):
+        """
+        :param knowledge: Reference to the Knowledge
+        """
+        self._knowledge: Knowledge = knowledge
+
+    @abstractmethod
+    def find_new_assignment(self) -> CloudState:
+        pass
+
+
+class CSPAnalyzer(Analyzer):
     """
     Determines the desired state of the cloud with the help of the solver and the predictor.
     """
@@ -24,11 +40,9 @@ class CSPAnalyzer:
     def __init__(self, knowledge: Knowledge, pool: ThreadPool):
         """
         :param knowledge: Reference to the Knowledge
-        :param solver_class: A class of the solver that has to be used. The solver is instantiated internally.
-        :param predictor: Reference to the predictor that has to be supplied to the solver.
         :param pool: Thread pool for running long-term searches for the desired state.
         """
-        self._knowledge: Knowledge = knowledge
+        super().__init__(knowledge)
         self._last_desired_state: CloudState = CloudState()
         self._pool: ThreadPool = pool
         self._longterm_result_future: Optional[AsyncResult] = None
@@ -73,8 +87,8 @@ class CSPAnalyzer:
 
     def find_new_assignment(self) -> CloudState:
         """
-        Gets current network distances, instantiates a solver, and runs the search for desired state. If the solver
-        fails to find a desired state, quickly (default 5 seconds), returns the previous desired state, while starting
+        Instantiates a solver, and runs the search for desired state. If the solver
+        fails to find a desired state quickly (default 5 seconds), returns the previous desired state, while starting
         an asynchronous long-term computation of the desired state. The result of that computation will be returned in
         one of the next calls to this method (when the computation is finished).
         :return: The new desired state of the cloud if found, last found desired state otherwise.

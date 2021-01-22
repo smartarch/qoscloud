@@ -1,3 +1,7 @@
+"""
+This module contains a class that creates all the necessary variables for the OR-Tools solver model.
+Together these variables model the possible states of the cloud.
+"""
 import logging
 import time
 from itertools import chain
@@ -14,9 +18,15 @@ from cloud_controller.knowledge.network_distances import NetworkDistances
 
 
 class Variables:
+    """
+    Container for all variables in constraint satisfaction problem.
+    """
 
     def __init__(self, knowledge: Knowledge):
         self._knowledge = knowledge
+
+        # All the variables present in the container. The variables that are stored in several different
+        #         collections at the same time are not repeated.
         self._all_vars: List[Var] = []
 
     @property
@@ -94,6 +104,10 @@ class Variables:
                 tier_ += 1
 
     def clear(self):
+        """
+        Creates all the necessary data structures for the CSP variables.
+        Is called every time a new CSP instance is created
+        """
         self._all_vars: List[Var] = []
         self._distances = self._knowledge.network_topology.get_network_distances(
             self._knowledge.actual_state.list_all_unmanaged_compins(),
@@ -150,19 +164,21 @@ class Variables:
 
     def add(self, solver):
         """
-                Creates variables that represent three different things:
-                    (1) Assignment of a specific compin to a specific node. These variables are in a form "A1N1" where A1 is a
-                        compin and N1 is a node, and when this variable is equal to 1, it means that compin A1 should be running
-                        on node N1 in the desired state.
-                    (2) Assignment of a specific compin to a specific datacenter. The same meaning, but for datacenters
-                    (3) Assignment of a specific _client_ to a specific datacenter. Means that all of its compins are assigned
-                        to the same datacenter
-                    (4) Already existing compin-node assignment. Means that there is already a compin running on that node,
-                        that should not be there in the desired state.
-                All the variables are added to several data structures, each data structure is then used for formulation of
-                different constraints.
-                :return: List of all the variables of type (1). The rest are set into class members.
-                """
+        Creates the variables that should be added to the OR-Tools solver.
+        Creates variables that represent three different things:
+            (1) Assignment of a specific compin to a specific node. These variables are in a form "A1N1" where A1 is a
+                compin and N1 is a node, and when this variable is equal to 1, it means that compin A1 should be running
+                on node N1 in the desired state.
+            (2) Assignment of a specific compin to a specific datacenter. The same meaning, but for datacenters
+            (3) Assignment of a specific _client_ to a specific datacenter. Means that all of its compins are assigned
+                to the same datacenter
+            (4) Already existing compin-node assignment. Means that there is already a compin running on that node,
+                that should not be there in the desired state.
+        All the variables are added to several data structures, each data structure is then used for formulation of
+        different constraints.
+        :param solver: Reference to OR-Tools solver
+        :return: List of all the variables of type (1). The rest are set into class members.
+        """
         start = time.perf_counter()
 
         for compin in self._knowledge.actual_state.list_all_managed_compins():

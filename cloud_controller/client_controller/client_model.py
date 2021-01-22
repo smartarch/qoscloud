@@ -100,8 +100,8 @@ class ClientModel:
 
     def disconnect_client(self, application: str, id_:str) -> None:
         """
-        This method is called when a client liveness check fails. The client is marked as DISCONNECTED, and the
-        corresponding client disconnection event scheduled to be sent to the Adaptation Controller.
+        This method is called when a client liveness check fails. The client is marked as VIRTUAL, and the
+        threshold is checked
         :param application: Application the client belongs to.
         :param id_: Client ID
         """
@@ -118,10 +118,11 @@ class ClientModel:
 
     def remove_client(self, application, type) -> None:
         """
-        This method is called when a client liveness check fails. The client is marked as DISCONNECTED, and the
+        This method is called when the number of virtual clients of a particular type gets above the threshold.
+        The client is deleted the
         corresponding client disconnection event scheduled to be sent to the Adaptation Controller.
         :param application: Application the client belongs to.
-        :param id_: Client ID
+        :param type: Client type
         """
         with self._lock:
             client: Client = self.virtual_clients[application][type].pop(0)
@@ -131,6 +132,9 @@ class ClientModel:
             logging.info(f"Client with ID {client.id} removed successfully")
 
     def add_virtual_client(self, app_name: str, type: str):
+        """
+        Adds a virtual client of a given type
+        """
         with self._lock:
             client: Client = Client(app_name, type, self._generate_client_id())
             self.clients[client.application][client.id] = client

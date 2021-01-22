@@ -1,3 +1,8 @@
+"""
+This module contains the class creating the objective function expression. The objective is represented as an integer
+expression which is supposed to be added to CSP solver.
+The abstract class ObjectiveFunction can be used to implement new objective functions.
+"""
 import time
 from abc import abstractmethod
 from typing import Optional, List

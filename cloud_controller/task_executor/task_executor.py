@@ -1,3 +1,6 @@
+"""
+Contains the TaskExecutor class responsible for the execution phase.
+"""
 from typing import List, Dict, Type
 
 from multiprocessing.pool import ApplyResult, ThreadPool
@@ -11,8 +14,21 @@ from cloud_controller.task_executor.registry import TaskRegistry
 
 
 class TaskExecutor:
+    """
+    Executes the tasks created by Planner. Can execute the tasks sequentially or in parallel (with thread
+    pool, default way). Applies its _execute method for each task.
+
+    Attributes:
+        knowledge           A reference to the Knowledge
+        pool                ThreadPool shared by all PlanExecutor instances
+    """
 
     def __init__(self, knowledge: Knowledge, registry: TaskRegistry, pool: ThreadPool):
+        """
+        :param knowledge: A reference to the Knowledge
+        :param pool: ThreadPool shared with Analyzer instances
+        :param registry: task registry
+        """
         self._knowledge: Knowledge = knowledge
         self._registry: TaskRegistry = registry
         self._pool: ThreadPool = pool
@@ -27,6 +43,11 @@ class TaskExecutor:
         self._contexts_by_task_type[task_type] = self._execution_contexts[context_type]
 
     def execute_all(self) -> int:
+        """
+        Submits all pending tasks for execution.
+        Executes all the tasks in parallel with a thread pool.
+        :return: Number of tasks submitted
+        """
         count = 0
         for task in self._registry.stream_tasks():
             if task is not None:
@@ -37,6 +58,9 @@ class TaskExecutor:
         return count
 
     def _print_errors(self):
+        """
+        Will crash the whole system if a single task fails. (default behavior, needed for debugging purposes)
+        """
         for result in self._futures:
             if result.ready():
                 if not result.successful():
@@ -45,6 +69,9 @@ class TaskExecutor:
                     self._futures.remove(result)
 
     def _execute(self, task: Task):
+        """
+        Handles the process of task execution
+        """
         logging.basicConfig(level=logging.INFO)
         if task.check_preconditions(self._knowledge):
             context = self._contexts_by_task_type[task.__class__]
@@ -52,3 +79,14 @@ class TaskExecutor:
             self._registry.complete_task(task.task_id)
         else:
             self._registry.return_task(task.task_id)
+
+
+class FakeExecutor(TaskExecutor):
+    """
+    A fake Executor for testing. Instead of executing the plans, it just prints them.
+    """
+    def execute_all(self):
+        for task in self._registry.stream_tasks():
+            if task is not None:
+                print(task.task_id)
+        return 0

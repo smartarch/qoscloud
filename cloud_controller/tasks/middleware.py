@@ -11,6 +11,9 @@ from cloud_controller.tasks.task import Task
 
 
 class FinalizeInstanceTask(Task):
+    """
+    Sends a FinalizeExecution command to an instance.
+    """
 
     def __init__(self, component: Component, instance_id: str):
         self._component: Component = component
@@ -22,10 +25,6 @@ class FinalizeInstanceTask(Task):
                                             CompinPhase.INIT))
 
     def execute(self, context: ExecutionContext) -> bool:
-        """
-        Sends a FinalizeExecution command to an instance.
-        :return: True if successful or if the instance had already finished, false if the instance does not respond.
-        """
         stub = context.get_instance_agent(self._component.application.name, self._component.name, self._instance_id)
         stub.FinalizeExecution(DependencyAddress())
         logging.info(f"Finalize call was sent to the instance {self._instance_id} of {self._component.name}")
@@ -46,6 +45,10 @@ class FinalizeInstanceTask(Task):
 
 
 class SetMongoParametersTask(Task):
+    """
+    Tries to set mongo parameters for a Managed compin, if a compin have already started. Mongo parameters include
+    IP address of a mongos instance, database and collection to use, and a personal shard key.
+    """
 
     def __init__(self, component: Component, instance_id: str, key: int, mongos_ip: str):
         self._component: Component = component
@@ -86,6 +89,11 @@ class SetMongoParametersTask(Task):
 
 
 class SetMiddlewareAddressTask(Task):
+    """
+    Sends the IP address of a dependency to the MiddlewareAgent of the compin. The task will be performed only if
+    the dependent compin had already reached the INIT state, and the providing compin had reached READY state.
+    :preconditions return: True if successful, False if one of the compins is not in a required state.
+    """
 
     def __init__(self, providing_component: Component, providing_instance_id: str,
                  dependent_component: Component, dependent_instance_id: str):

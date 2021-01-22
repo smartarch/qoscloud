@@ -1,3 +1,6 @@
+"""
+This module contains classes representing constraints (mostly as boolean expressions) in the solver's CSP.
+"""
 from abc import abstractmethod
 from typing import List
 
@@ -17,10 +20,26 @@ class Constraint:
 
     @abstractmethod
     def add(self, solver: Solver, variables: Variables):
+        """
+        Responsible for adding constraints to the solver.
+
+        The usage of this class is schematically:
+        analyzer = CSPAnalyzer()
+        constraint = Constraint(solver, variables, knowledge, distances, predictor)
+        analyzer.add_constraint(constraint)
+
+        :param solver: Ortools solver instance. The constraints will be added directly to this solver.
+        :param variables: The Variables object, representing all the variables in the CSP. They should be added to
+        the solver before constraints.
+        """
         pass
 
 
 class PredictConstraint(Constraint):
+    """
+    Adds the predictor-calling constraints
+    See docs to NodePredictConstraint
+    """
 
     def __init__(self, knowledge: Knowledge, predictor: Predictor):
         super().__init__()
@@ -42,6 +61,9 @@ class PredictConstraint(Constraint):
 
 
 class NodeSeparationConstraint(Constraint):
+    """
+    This constraints make it so a particular node will be used only for SINGLE or MULTIPLE instances. Is optional.
+    """
 
     def __init__(self, knowledge: Knowledge):
         super().__init__()
@@ -59,16 +81,16 @@ class NodeSeparationConstraint(Constraint):
 
 
 class ChainInDatacenterConstraint(Constraint):
+    """
+    Adds a set of constraints that ensure that the whole chain of a client (i.e. all of its dependencies, including
+    transitive ones) is located in a single datacenter.
+    """
 
     def __init__(self, knowledge: Knowledge):
         super().__init__()
         self._knowledge = knowledge
 
     def add(self, solver: Solver, variables: Variables) -> None:
-        """
-        Adds a set of constraints that ensure that the whole chain of a client (i.e. all of its dependencies, including
-        transitive ones) is located in a single datacenter.
-        """
         for datacenter in self._knowledge.datacenters:
             for compin in variables.comp_dc_vars[datacenter]:
                 vars_ = [var_.int_var for var_ in variables.node_vars_by_dc[datacenter][compin]]
@@ -92,11 +114,11 @@ class ChainInDatacenterConstraint(Constraint):
 
 
 class InstanceDeploymentConstraint(Constraint):
+    """
+    Adds constraints that ensure that each required compin is present only once.
+    """
 
     def add(self, solver: Solver, variables: Variables) -> None:
-        """
-        Adds constraints that ensure that each required compin is present only once.
-        """
         for compin in variables.vars_by_compin.values():
             # "The compin can be deployed only on one node":
             vars = [var_.int_var for var_ in compin]
@@ -110,6 +132,9 @@ class InstanceDeploymentConstraint(Constraint):
 
 
 class RedeploymentConstraint(Constraint):
+    """
+    These constraints set RunningCompNodeVars.
+    """
 
     def add(self, solver: Solver, variables: Variables) -> None:
         """
@@ -133,6 +158,9 @@ class RedeploymentConstraint(Constraint):
 
 
 class RunningNodeConstraint(Constraint):
+    """
+    Adds constraints that set the values of RunningNodeVars.
+    """
 
     def __init__(self, knowledge: Knowledge):
         super().__init__()

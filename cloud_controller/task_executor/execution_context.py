@@ -64,6 +64,10 @@ class ExecutionContext:
 
 
 class KubernetesExecutionContext(ExecutionContext):
+    """
+    basic_api:              K8S core API
+    extensions_api:         K8S Extensions API
+    """
 
     def __init__(self, knowledge: Knowledge, kubeconfig_file: str):
         super().__init__(knowledge)
@@ -73,6 +77,9 @@ class KubernetesExecutionContext(ExecutionContext):
 
 
 class ClientControllerExecutionContext(ExecutionContext):
+    """
+    client_controller   A stub of the client controller that can be used by client-related tasks.
+    """
 
     def __init__(self, knowledge: Knowledge):
         super().__init__(knowledge)
@@ -84,8 +91,14 @@ class ClientControllerExecutionContext(ExecutionContext):
 
 
 class StatefulnessControllerExecutionContext(ExecutionContext):
-
+    """
+    mongo_controller    Mongo controller, responsible for execution of Mongo-related tasks.
+    """
     def __init__(self, knowledge: Knowledge, mongos_ip: str):
+        """
+        :param knowledge: reference to knowledge
+        :param mongos_ip: IP of the mongos instance to connect to
+        """
         super().__init__(knowledge)
         self.mongo_controller = MongoController(mongos_ip)
 

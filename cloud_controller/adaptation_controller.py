@@ -1,5 +1,5 @@
 """
-The module contains Adaptation Controller class that runs all the steps of the adaptation (MAPE-K) loop sequentially,
+The module contains Adaptation Loop class that runs all the steps of the adaptation (MAPE-K) loop sequentially,
 in a single process.
 """
 from time import perf_counter
@@ -27,8 +27,8 @@ log_phase_duration.last_measured_time = perf_counter()
 class AdaptationController:
     """
     Runs all four phases of the adaptation loop sequentially. Uses an instance of a specialized class responsible for
-    each phase (Monitor, Analyzer, ExecutionPlanner, and Executor respectively). As this is the central class for the
-    Avocado framework, it also serves as a main target for customization. This class can be customized with the
+    each phase (Monitor, Analyzer, Planner, and TaskExecutor respectively). As this is the central class for the
+    framework, it also serves as a main target for customization. This class can be customized with the
     ExtensionManager
     """
 
@@ -40,16 +40,11 @@ class AdaptationController:
                  executor: TaskExecutor,
                  ):
         """
-        :param kubeconfig_file: A path to the kubeconfig file to use.
         :param knowledge:       A reference to the Knowledge object to use.
-        :param monitor:         Monitor to use. If None, will create default Monitor.
-        :param analyzer:        Analyzer to use. If None, will create default Analyzer.
-        :param planner:         Planner to use. If None, will create default ExecutionPlanner.
-        :param executor:        Executor to use. If None, will create default Executor.
-        :param solver_class:    A class of the solver to use.
-        :param predictor:       Predictor to use.
-        :param mongos_ip:       IP of a Mongos instance for executing any commands on MongoDB.
-        :param thread_count:    Number of threads to use for Executor ThreadPool.
+        :param monitor:         Monitor to use.
+        :param analyzer:        Analyzer to use.
+        :param planner:         Planner to use.
+        :param executor:        Executor to use.
         """
         self.knowledge = knowledge
         self.monitor = monitor
@@ -83,7 +78,7 @@ class AdaptationController:
     def execution(self) -> int:
         """
         Executes the plans produced by Planner.
-        :return: number of executed plans
+        :return: number of executed tasks
         """
         logging.info("--------------- EXECUTION PHASE  ---------------")
         task_count = self.executor.execute_all()

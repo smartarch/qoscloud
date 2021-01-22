@@ -2,8 +2,8 @@
 # -*- coding: utf-8 -*-
 
 """
-This module provides command line interface for submission of new applications to Avocado, removing the applications
-from Avocado, checking app status, and registering hardware configurations.
+This module provides command line interface for submission of new applications to the framework, removing the applications
+from the framework, checking app status, and registering hardware configurations.
 """
 
 import base64

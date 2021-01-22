@@ -10,6 +10,10 @@ from cloud_controller.tasks.task import Task
 
 
 class DeleteApplicationFromCCTask(Task):
+    """
+    Signals to the client controller that it has to disconnect all the clients in the given application, and delete
+    the application from its database.
+    """
 
     def __init__(self, app_name: str):
         self._app_name = app_name
@@ -33,6 +37,10 @@ class DeleteApplicationFromCCTask(Task):
 
 
 class AddApplicationToCCTask(Task):
+    """
+    Signals to the client controller that it has to add an application to its database and start accepting new
+    clients for that application.
+    """
 
     def __init__(self, app: Application):
         self._app_pb = app.get_pb_representation()
@@ -57,6 +65,12 @@ class AddApplicationToCCTask(Task):
 
 
 class SetClientDependencyTask(Task):
+    """
+    Tries to set an IP address of a dependency for a client via Client Controller. If all of the client's
+    dependencies have already been moved to a new datacenter, reports the full client handover. Will set the
+    dependency only if the compin is ready to accept client connections (i.e. is in READY state)
+    :preconditions return: True if successful, False if compin is not in READY state.
+    """
 
     def __init__(self, component: Component, instance_id: str, client_component: Component, client_id: str):
         self._app_name = component.application.name

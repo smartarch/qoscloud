@@ -11,9 +11,18 @@ from cloud_controller.analyzer.variables import Variables
 
 
 class CSPProblem:
+    """
+    Builds the constraint satisfaction problem, searches for the best solution until the time runs out (defined by
+    time_limit), and returns the best solution found.
+
+    For the description of the constraint model of the problem, refer to the Constraint classes docs.
+
+    For the description of the objective function that determines which solution is the best, refer to the
+    ObjectiveFunction docs.
+    """
 
     count = 0
-    NO_LIMIT = -1
+    NO_LIMIT = -1  # Search for the first solution without any time limits.
 
     def __init__(self, variables: Variables, constraints: List["Constraint"], obj_function: "ObjectiveFunction"):
         start_ = time.perf_counter()
@@ -29,6 +38,7 @@ class CSPProblem:
         logging.debug(f"Variables adding time: {(time.perf_counter() - start):.15f}")
 
         start = time.perf_counter()
+        # Add all the registered constraints. For each type of constraint see the docs to the corresponding class
         for constraint in constraints:
             constraint.add(self._solver, self._variables)
         logging.debug(f"Constraints adding time: {(time.perf_counter() - start):.15f}")
