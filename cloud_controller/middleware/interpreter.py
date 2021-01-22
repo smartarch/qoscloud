@@ -13,7 +13,7 @@ from elasticsearch import Elasticsearch
 from cloud_controller.middleware import middleware_pb2 as mw_protocols
 from cloud_controller.middleware.instance_config import InstanceConfig, RunnableProbe, CallableProbe, ProbeConfig
 
-PYTHON_EXEC = "/bin/python3"
+PYTHON_EXEC = "/usr/bin/python3"
 
 
 class Request(Enum):
@@ -170,7 +170,7 @@ class Interpreter:
             success = not isinstance(self._result, Exception)
             if not success:
                 run_status['error'] = str(self._result)
-            elif self._result is not None:
+            else:
                 run_status['output'] = str(self._result)
         run_status['endTime'] = time.perf_counter()
         if success:

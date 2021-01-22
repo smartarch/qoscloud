@@ -129,7 +129,7 @@ class IvisInterface(IvisInterfaceServicer):
                 raise RuntimeError(f"App admission status {status.status} is not supported.")
 
     def RunJob(self, request, context):
-        job_compin = self._knowledge.actual_state.get_unique_compin(request.job_id)
+        job_compin = self._knowledge.actual_state.get_job_compin(request.job_id)
         if job_compin is None or job_compin.phase != CompinPhase.READY:
             return RunJobAck()
         logging.info(f"Running job {job_compin.id}")
