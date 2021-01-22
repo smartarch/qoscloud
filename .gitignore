@@ -14,8 +14,6 @@ delete_frpyc_ns.sh
 
 probes/
 
-images/
+examples/frpyc/images/
 
-apps/frpyc_slup/model_images/
-
-slup_run_client.sh
+examples/featuredetection/datasets/Mission/images/

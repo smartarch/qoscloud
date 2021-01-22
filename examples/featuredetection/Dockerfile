@@ -15,7 +15,7 @@ ENV LC_ALL="en_US.utf8"
 ENV LANG="en_US.utf8"
 ENV PYTHONPATH="/usr/local/lib/python3.4/site-packages/:/root"
 
-#COPY ./apps/featuredetection/datasets /datasets
+#COPY ./examples/featuredetection/datasets /datasets
 
 #RUN pip3 install
 

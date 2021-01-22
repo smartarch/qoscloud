@@ -11,7 +11,7 @@ ENV PYTHONPATH="/usr/local/lib/python3.4/site-packages/:/root:/root/frpyc"
 
 RUN ln -s /usr/bin/python3 /bin/python3
 
-COPY ./apps/frpyc /root/frpyc
+COPY ./examples/frpyc /root/frpyc
 COPY ./cloud_controller/middleware /root/frpyc/cloud_controller/middleware
 WORKDIR /root/frpyc
 RUN PYTHONPATH=. python3 generate_grpc.py

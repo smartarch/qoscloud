@@ -1,6 +1,6 @@
 RS_PORT = 6666
 RS_HOST = "0.0.0.0"
-IMAGES_PATH = "apps/frpyc/images"
+IMAGES_PATH = "examples/frpyc/images"
 CLIENT_PERIOD = 1000
 CC_HOST = "0.0.0.0"
 CC_PORT = 4444

@@ -6,8 +6,8 @@ components:
 #  statefulness: none # Per-client statefulness
 #  probes:              # The probe, its code and std input:
 #  - name: recognize
-#    codefile: apps/test/hw.py
-#    inputfile: apps/test/input.json
+#    codefile: examples/test/hw.py
+#    inputfile: examples/test/input.json
 #  QoSrequirements:
 #  - type: time         # Max. 100 ms in 99% cases:
 #    probe: recognize
@@ -20,7 +20,7 @@ components:
   statefulness: none # Per-client statefulness
   probes:              # The probe, its code and std input:
   - name: recognize
-    codefile: apps/test/hw.py
+    codefile: examples/test/hw.py
   QoSrequirements:
   - type: time         # Max. 100 ms in 99% cases:
     probe: recognize

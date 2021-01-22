@@ -12,7 +12,7 @@ components:
       value: "0"
   probes:
   - name: detect
-    codefile: apps/featuredetection/probe.py
+    codefile: examples/featuredetection/probe.py
   QoSrequirements:
   - type: throughput
     probe: detect

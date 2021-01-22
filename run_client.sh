@@ -2,4 +2,4 @@
 
 ns="cl${1}-rt"
 
-PYTHONPATH=apps/frpyc:. ip netns exec $ns python3 apps/frpyc/frpyc/client.py -i $1 -f
+PYTHONPATH=examples/frpyc:. ip netns exec $ns python3 examples/frpyc/frpyc/client.py -i $1 -f

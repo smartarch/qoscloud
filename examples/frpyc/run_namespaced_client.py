@@ -15,5 +15,5 @@ call("python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. frpyc/
 
 print("Running a frpyc client in a dedicated network namespace")
 
-call(f"PYTHONPATH=apps/frpyc:. ip netns exec cl{args.id}-rt python3 apps/frpyc/frpyc/client.py -i {args.id} -f", shell=True)
-f"PYTHONPATH=apps/frpyc:. ip netns exec cl2-rt python3 apps/frpyc/frpyc/client.py -i 2 -f"
+call(f"PYTHONPATH=examples/frpyc:. ip netns exec cl{args.id}-rt python3 examples/frpyc/frpyc/client.py -i {args.id} -f", shell=True)
+f"PYTHONPATH=examples/frpyc:. ip netns exec cl2-rt python3 examples/frpyc/frpyc/client.py -i 2 -f"
