@@ -13,7 +13,7 @@ from cloud_controller.analyzer.objective_function import ObjectiveFunction
 from cloud_controller.analyzer.constraint import Constraint
 from cloud_controller.analyzer.variables import Variables
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import CloudState, ManagedCompin
+from cloud_controller.knowledge.model import CloudState, ManagedCompin, ComponentCardinality
 
 
 class CSPAnalyzer:
@@ -110,9 +110,10 @@ class CSPAnalyzer:
                 self._knowledge.monitor_reduced_load()
                 logging.info("Deployment plan was not found. Some workloads cannot be deployed due to the lack of resources.")
                 for component in self._knowledge.components.values():
-                    unique_compin = self._knowledge.actual_state.get_unique_compin(component)
-                    if unique_compin is None:
-                        self._knowledge.no_resources_for_component(component.name)
+                    if component.cardinality == ComponentCardinality.SINGLE:
+                        unique_compin = self._knowledge.actual_state.get_unique_compin(component)
+                        if unique_compin is None:
+                            self._knowledge.no_resources_for_component(component.name)
                 # If the result is still None, we just return the last desired state (for now, until the new assignment
                 # is found).
                 logging.info("Using previous desired state.")

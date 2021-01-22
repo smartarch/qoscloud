@@ -3,12 +3,10 @@ from collections import Counter
 from enum import Enum
 from typing import Tuple, Dict, Set, List, Optional
 
-from cloud_controller import DEFAULT_HARDWARE_ID
+from cloud_controller import DEFAULT_HARDWARE_ID, MAX_ARITY
 from cloud_controller.aggregator.multipredictor import MultiPredictor, PredictorUpdater
 from cloud_controller.assessment.model import Scenario
 from cloud_controller.knowledge.model import Probe
-
-MAX_ARITY = 5
 
 
 class MeasuringPhase(Enum):
