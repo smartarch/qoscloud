@@ -3,18 +3,23 @@
 """
 This script builds the docker images of image client and recognizer server and pushes them to dockerhub.
 """
+import sys
 from subprocess import call
 
-call("python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. frpyc/rs.proto", shell=True)
 
-print("Build docker images for frpyc")
+if len(sys.argv) < 1:
+    print(f"You need to provide a name for the container")
+    exit(1)
+
+call("python3 -m grpc_tools.protoc -I. --python_out=. --grpc_python_out=. frpyc/rs.proto", shell=True)
+call("bash run /code/run.sh", shell=True)
+
+print("Build docker images for facerecognition")
 # Note: grpc stubs are generated inside docker's build process
-call("docker build -t edgeclouduser/frpyc-rs -f dockerfiles/frpyc-rs ../..", shell=True)
-# call("docker build -t d3srepo/frpyc-ic -f dockerfiles/frpyc-ic ../..", shell=True)
+call(f"docker build -t {sys.argv[0]} -f dockerfiles/frpyc-rs ../..", shell=True)
 
 print("Pushing images to DockerHub")
 
 print("Note: `docker login` have to be called before first push")
 
-call("docker push edgeclouduser/frpyc-rs", shell=True)
-# call("docker push d3srepo/frpyc-ic", shell=True)
+call(f"docker push {sys.argv[0]}", shell=True)

@@ -21,6 +21,7 @@ import frpyc.rs_pb2 as protocols
 import frpyc.rs_pb2_grpc as servicers
 from cloud_controller.middleware.user_agents import ComponentAgent
 from cloud_controller.middleware.helpers import setup_logging
+from frpyc.client import list_images
 
 from frpyc.detectors import Detectors
 from frpyc.facerecognition import FaceRecognizer
@@ -82,6 +83,8 @@ class RecognizerGrpcServer(servicers.RecognizerServerServicer):
         """
         Initializes the server.
         """
+        self.current_image = 0
+        self.agent = None
         self.model = model
         self.detector = detector
         self.lock = RLock()
@@ -91,6 +94,9 @@ class RecognizerGrpcServer(servicers.RecognizerServerServicer):
         if detector != Detectors.non:
             self.trained_recognizer.trainFromDir(str(faces_dir))
 
+    def set_agent(self, agent: ComponentAgent):
+        self.agent = agent
+
     @staticmethod
     def hash_image(image) -> int:
         return int(hashlib.md5(image).hexdigest(), 16)
@@ -98,6 +104,7 @@ class RecognizerGrpcServer(servicers.RecognizerServerServicer):
     def finalize(self):
         with self.lock:
             self.phase = RecognizerPhase.FINISHED
+        self.agent.set_finished()
         return self.data.serialize()
 
     def initialize(self, data):
@@ -106,7 +113,18 @@ class RecognizerGrpcServer(servicers.RecognizerServerServicer):
                 self.data.deserialize(data)
                 self.phase = RecognizerPhase.WORKING
 
-    def Recognize(self, request: protocols.RecognitionData, context):
+    def probe_image_recognition(self, *args):
+        images = list_images()
+        self.current_image += 1
+        self.current_image %= len(images)
+        image_pb = protocols.RecognitionData(clientId="self", imageId=0)
+        image = images[self.current_image]
+        with image.open(mode='rb') as f:
+            content = f.read()
+            image_pb.bytes = content
+        self.Recognize(image_pb)
+
+    def Recognize(self, request: protocols.RecognitionData, context=None):
         """
         Processes a single image from the client. Uses a locally trained recognizer.
         :param request: RecognitionData, a protobuf containing an image sent from client
@@ -146,10 +164,10 @@ def run():
     setup_logging()
     # Parse arguments:
     parser = argparse.ArgumentParser(description='A face recognizer server')
-    parser.add_argument('-m', '--model', default='lbpcascade_frontalface.xml', help='path to the face detector model (default lbpcascade_frontalface.xml')
+    parser.add_argument('-m', '--model', default='/root/frpyc/lbpcascade_frontalface.xml', help='path to the face detector model (default lbpcascade_frontalface.xml')
     parser.add_argument('-c', '--usecpu', action='store_true', help='use cpu (gpu is default)')
     parser.add_argument('-s', '--skip', action='store_true', help='immediately return zero detected faces')
-    parser.add_argument('-f', '--faces', type=str, default=None, help='directory with faces to be learnt and recognized')
+    parser.add_argument('-f', '--faces', type=str, default='/root/frpyc/images', help='directory with faces to be learnt and recognized')
 
     args = parser.parse_args()
     # decide whether to use DB or not
@@ -175,7 +193,9 @@ def run():
     recognizer = RecognizerGrpcServer(args.model, detector, img_dir)
 
     # Integrating and starting middleware agent:
-    agent = ComponentAgent({}, None, recognizer.finalize, recognizer.initialize)
+    agent = ComponentAgent({"recognize": recognizer.probe_image_recognition}, None, recognizer.finalize, recognizer.initialize)
+    agent.set_ready()
+    recognizer.set_agent(agent)
     agent.start()
     # Start the recognizer:
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))

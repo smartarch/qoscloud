@@ -1,48 +1,27 @@
-name: frpyc
+application: facerecognition
+complete: false
 components:
+- name: recognizer-server
+  statefulness: none
+  template:
+    name: rs
+    image: dankhalev/facerecognizer-n:latest
+    imagePullPolicy: Always
+    args: ["-c"]
+    env:
+    - name: PYTHONUNBUFFERED
+      value: "0"
+    ports:
+    - containerPort: 6666
+  probes: # probes
+  - name: recognize
+  QoSrequirements: # QoS requirements
+  - type: time
+    probe: recognize
+    probability: 0.90
+    time: 200 # Max. 200ms in 90% cases
+clients:
+- name: image-client
+  latency: true
+  dependencies: # This component has a dependency on the recognizer-server:
   - name: recognizer-server
-    type: managed
-    statefulness: mongo
-    template:
-      kind: Deployment
-      metadata:
-        name: recognizer-server
-        labels:
-          app: recognizer
-      spec:   # micoservices specification
-        selector:
-          matchLabels:
-            app: recognizer
-        template:
-          metadata:
-            labels:
-              app: recognizer
-          spec:
-            containers:
-            - name: rs
-              image: edgeclouduser/frpyc-rs:latest
-              args: ["-c", "-s", "-f", "/root/frpyc/images"]
-              env:
-              - name: PYTHONUNBUFFERED
-                value: "0"
-              ports:
-              - containerPort: 6666
-    probes: # probes
-    - name: recognize
-    QoSrequirements: # QoS requirements
-    - type: time
-      probe: recognize
-      probability: 0.99
-      time: 100 # Max. 100ms in 99% cases
-    - type: time
-      probe: recognize
-      probability: 0.90
-      time: 200 # Max. 200ms in 99% cases
-  - name: image-client
-    type: unmanaged
-    dependsOn: # This component has a dependency on the recognizer-server:
-    - recognizer-server
-dockersecret: # Fill the following fields with the username/password/email of your Docker account (access to d3srepo required)
-  username: edgeclouduser
-  password: X1v3f@orU#8yXwF9W9SD
-  email: khalyeyev@gmail.com

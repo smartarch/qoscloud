@@ -1,0 +1,10 @@
+FROM dankhalev/odm-7
+
+
+# RUN cp /root/cloud-controller/experiments/ansible/templates/local.conf /etc/ld.so.conf.d/ && ldconfig
+
+RUN cd /root && git clone https://github.com/opencv/opencv.git && cd opencv && git checkout 3.2.0 && \
+    cd /root && git clone https://github.com/opencv/opencv_contrib.git && cd opencv_contrib && git checkout 3.2.0
+RUN mkdir -p /root/opencv/build && cd /root/opencv/build && \
+    cmake -DCMAKE_BUILD_TYPE=RELEASE -DENABLE_FAST_MATH=1 -DINSTALL_PYTHON_EXAMPLES=OFF -DBUILD_EXAMPLES=OFF -DENABLE_PRECOMPILED_HEADERS=OFF -DBUILD_TESTS=OFF -D_GLIBCXX_USE_CXX11_ABI=0 -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules -DBUILD_opencv_python3=ON .. && \
+    make -j 4 install
