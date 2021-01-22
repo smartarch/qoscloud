@@ -59,6 +59,8 @@ class ClientModel:
         for client in self.iterate_clients():
             event = client.pb_representation()
             event.event = protocols.ClientEventType.Value("LOCATION")
+            self.new_events.append(event)
+            logging.info(f"Current location of client {event.id} is ({event.position_x}, {event.position_y})")
 
     def check_threshold(self, app_name: str, type: str):
         currently_connected = 0
