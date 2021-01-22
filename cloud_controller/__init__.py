@@ -26,8 +26,6 @@ DEBUG = True
 THREAD_COUNT = 32
 DEFAULT_EUCLID_TOPOLOGY_CONFIG = "config/topology-config.yaml"
 DEFAULT_PREDICTOR_CONFIG = "./config/predictor-config.yaml"
-PARALLEL_EXECUTION = False  # Whether the execution of execution plans for different applications will happen in
-                            # parallel or sequentially
 USE_VIRTUAL_NETWORK_CONTROLLER = False
 DEFAULT_DOCKER_IMAGE = "dankhalev/ivis-job"
 
