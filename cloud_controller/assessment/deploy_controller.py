@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This module provides backend for avocadoctl and end-point for MAPE-K monitor phase
+This module provides backend for depltool and end-point for MAPE-K monitor phase
 """
 
 import logging

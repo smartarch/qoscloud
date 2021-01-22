@@ -1,58 +1,51 @@
-# Avocado framework
-
-A proof-of-concept edge cloud system, which makes it possible to minimize and statistically guarantee the latency of a cloud application.
+# A QoS-aware cloud deployment framework
 
 ## How to initialize the framework
 
-The following section describes the very first steps that must be followed to run the framework. This has to be done only once in normal cases.
+The following section describes the very first steps that must be followed to run the framework. 
+This has to be done before the first run.
 
-1. Make sure two Kubernetes clusters (production and assessment) are set up and running. An easy way how to do this  is to follow [Kubernetes-Vagrant setup](https://gitlab.d3s.mff.cuni.cz/edge-cloud/vagrant-setup).
-   1. The framework expects to find the *kubeconfig* file of the production cluster in the directory `/root/.kube/config`, and *kubeconfig* of the assessment cluster in the directory `/root/.kube/config-assessment`.
+1. Make sure two Kubernetes clusters (production and assessment) are set up and running.
 2. Run `pip3 install -r requirements.txt` to install the required libraries.
-3. Run `python3 ./generate_grpc.py` to generate _GRPC stubs_  and _ProtoBufs_.
+3. Run `python3 ./generate_grpc.py` to generate protocol buffers and gRPC stubs.
 
 ## How to use the framework
 
-These lines describe how to use the framework in day to day basis. The framework should be already initialized to work properly. All the following commands have to be executed from the root folder of the project.
+The controller consists of several processes. 
+They can be started in the following way (the commands assume that you are in the root folder):
 
-The controller consists of several processes which must be run in separate terminals.
+1. Start the assessment controller process:  `./run_assessment.sh`.
+2. Start the cloud controller process:  `./run_production.sh`.
+3. Start the performance data aggregator process:  `./run_aggregator.sh`.
+4. Start the client controller process: `./run_cc.sh`. 
+   This is only necessary if you want to submit applications containing external clients.
 
-1. Start the Client Controller process: `PYTHONPATH=. python3 cloud_controller/client_controller.py`
-2. Start the Assessment component process:  `PYTHONPATH=. python3 cloud_controller/assessment/main.py`
-3. Start the Adaptation Controller process:  `PYTHONPATH=. python3 cloud_controller/adaptation_controller.py`
+In order to deploy an application to the framework, deployment tool has to be used.  
+The `depltool.sh` is a command-line tool for communicating with the framework.  
 
-In order to deploy an application to the framework, `avocadoctl` has to be used.  The `avocadoctl` is a command-line framework management tool.  A list of possible commands supported by `avocadoctl` follows:
+A list of supported commands:
 
-- `avocadoctl -a -f <path to ASD>` Adds a new application, specified by an ASD. If the ASD is  parsed successfully, the command immediately returns; further deployment and probes testing occur in the background and the progress must be checked through the framework logging. If there is a problem with the ASD, the error is announced to the user. 
-- `avocadoctl -a -c <hardware configuration name>` Register a new hardware configuration and start the pre-assessment process of that hardware configuration. These results are used in Predictor.
-- `avocadoctl -d -n <application name, as it was specified in ASD>` Stops an application that was previously deployed to the framework. The command returns immediately; in a few minutes, all components of an application are killed.
-- `avocadoctl -s -n <application name, as it was specified in ASD>` Shows application status in the pre-assessment.
+```
+
+./depltool.sh submit application.yaml
+./depltool.sh status application
+./depltool.sh get-time 99 application component probe
+./depltool.sh get-throughput application component probe
+./depltool.sh submit-requirements requirements.yaml
+./depltool.sh delete application
+```
 
 ### How to deploy an application
 
-These lines show how to deploy an application to the _Avocado framework_. The application has to consist of at least one _Docker_ images on a server-side and a variable number of clients. Every application component has to implement the _Avocado API_. The API description is in the documentation.
+1. Each application is specified with an application descriptor (a YAML file that describes the application). 
+   Examples can be found in the demonstrators located in the `examples` folder
+2. The framework fetches Docker images from  Docker Hub (or from a different Docker repository. 
+   The image may be either public or private. 
+   When the image is private, a valid Docker account has to provided (meaning the `username`, `password` and `email` fields have to be filled in the descriptor).
+3. The application can be submitted by using the deployment tool.
 
-1. Each application is specified with an ASD. The ASD is a YAML file that describes the application. The concrete specification is available in the project documentation.
-2. The framework fetches _Docker_ images from  _Docker Hub_. The image may be both public or private. When the image is private, a valid _Docker account_ has to provided (meaning the `username`, `password` and `email` fields have to be filled in ASD).
-3. The application could be submitted by using  the `avocadoctl` tool. Let's assume the ASD file is in `apps/frpyc_slup/spec.yaml`.  The  `python3 ./cloud_controller/avocadoctl.py -a -f apps/frpyc_slup/spec.yaml` submits the application.
-
-To delete the application from the cloud you can run `python3 ./cloud_controller/avocadoctl.py -d -f apps/frpyc_slup/spec.yaml`.
-
-## How the framework works on an example
-
-One of the framework-ready applications is located in the `apps/frpyc_slup` directory.
-It consists of two components: an unmanaged client and a managed recognizer server.
+An example application is located in the `examples/frpyc` directory.
+It consists of two components: a client and a recognizer server.
 The client sends images to the recognizer, in response it receives the faces recognized in the image.
-The basic idea behind the application is illustrated in Figure 1:
 
-![Figure 1](images/running-example-figure.png)
-
-The role of the Avocado framework (in the scope of this application) is to:
-* determine to which node the client has minimum latency
-* instantiate recognizers on those nodes that have clients nearby
-* connect the clients to the instantiated recognizers.
-
-For the client, this whole process looks  as simple as:
-1. Connect to the cloud.
-2. Wait for the first address of the recognizer.
-3. Communicate with the recognizer.
+It can be submitted to the framework with `./depltool.sh submit examples/frpyc/spec.yaml`

@@ -1,5 +1,5 @@
 // Contains the protocol buffer messages and services that are used for:
-//  (1) Requests coming from avocadoctl
+//  (1) Requests coming from depltool
 //  (2) Communication between Adaptation Controller and Assessment
 
 syntax = "proto3";

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-This classes store apps architecture for assessment and avocadoctl
+This classes store apps architecture for assessment and depltool
 """
 import string
 from enum import IntEnum

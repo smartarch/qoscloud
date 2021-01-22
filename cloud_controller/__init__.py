@@ -1,7 +1,7 @@
 from cloud_controller.middleware.helpers import load_config_from_file
 from cloud_controller.knowledge.user_equipment import UEManagementPolicy
 
-CONFIG_FILE_LOCATION = "config/avocado-config.yaml"  # This parameter is not configurable externally
+CONFIG_FILE_LOCATION = "config/main-config.yaml"  # This parameter is not configurable externally
 
 CLIENT_CONTROLLER_HOST = "0.0.0.0"
 CLIENT_CONTROLLER_PORT = 4217
