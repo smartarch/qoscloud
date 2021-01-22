@@ -1,10 +1,10 @@
 from time import perf_counter
-from typing import Optional
+from typing import Optional, Callable
 
 import grpc
 import logging
 
-from kubernetes import config
+from kubernetes import config, client
 from kubernetes.client import CoreV1Api, AppsV1Api
 
 from cloud_controller import CLIENT_CONTROLLER_HOST, CLIENT_CONTROLLER_PORT
@@ -88,3 +88,12 @@ class StatefulnessControllerExecutionContext(ExecutionContext):
     def __init__(self, knowledge: Knowledge, mongos_ip: str):
         super().__init__(knowledge)
         self.mongo_controller = MongoController(mongos_ip)
+
+
+def call_k8s_api(function: Callable, **kwargs):
+    while True:
+        try:
+            response = function(**kwargs)
+            return response
+        except client.rest.ApiException:
+            logging.info(f"Got K8S API exception. Retrying.")

@@ -5,7 +5,7 @@ from cloud_controller.knowledge.knowledge_pb2 import ClientDependencyDescription
 from cloud_controller.knowledge.model import Component, CompinPhase, ManagedCompin, UnmanagedCompin, Application
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer
 from cloud_controller.task_executor.execution_context import ClientControllerExecutionContext
-from cloud_controller.tasks.preconditions import namespace_active, check_phase
+from cloud_controller.tasks.preconditions import namespace_active, check_phase, application_deployed
 from cloud_controller.tasks.task import Task
 
 
@@ -27,6 +27,10 @@ class DeleteApplicationFromCCTask(Task):
     def generate_id(self) -> str:
         return f"{self.__class__.__name__}_{self._app_name}"
 
+    def update_model(self, knowledge: Knowledge) -> None:
+        if self._app_name in knowledge.applications:
+            knowledge.applications[self._app_name].cc_remove_completed = True
+
 
 class AddApplicationToCCTask(Task):
 
@@ -37,6 +41,7 @@ class AddApplicationToCCTask(Task):
             task_id=self.generate_id()
         )
         self.add_precondition(namespace_active, (self._app_name,))
+        self.add_precondition(application_deployed, (self._app_name,))
 
     def execute(self, context: ClientControllerExecutionContext) -> bool:
         context.client_controller.AddNewApplication(self._app_pb)
@@ -45,6 +50,10 @@ class AddApplicationToCCTask(Task):
 
     def generate_id(self) -> str:
         return f"{self.__class__.__name__}_{self._app_name}"
+
+    def update_model(self, knowledge: Knowledge) -> None:
+        if self._app_name in knowledge.applications:
+            knowledge.applications[self._app_name].cc_add_completed = True
 
 
 class SetClientDependencyTask(Task):

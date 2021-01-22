@@ -6,7 +6,7 @@ from kubernetes import client
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import ManagedCompin, Component, CompinPhase
 from cloud_controller.planner.k8s_generators import create_deployment_for_compin, create_service_for_compin
-from cloud_controller.task_executor.execution_context import KubernetesExecutionContext, ExecutionContext
+from cloud_controller.task_executor.execution_context import KubernetesExecutionContext, ExecutionContext, call_k8s_api
 from cloud_controller.tasks.preconditions import namespace_active
 from cloud_controller.tasks.task import Task
 
@@ -33,10 +33,10 @@ class CreateInstanceTask(Task):
         self.add_precondition(namespace_active, (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
-        context.extensions_api.create_namespaced_deployment(body=self._deployment, namespace=self._namespace)
+        call_k8s_api(context.extensions_api.create_namespaced_deployment, body=self._deployment, namespace=self._namespace)
         logging.info(f"Deployment {self._deployment['metadata']['name']} created")
 
-        api_response = context.basic_api.create_namespaced_service(namespace=self._namespace, body=self._service)
+        api_response = call_k8s_api(context.basic_api.create_namespaced_service, namespace=self._namespace, body=self._service)
         self._ip = api_response.spec.cluster_ip
         logging.info(f"Service {self._service['metadata']['name']} created")
         return True
@@ -88,7 +88,7 @@ class DeleteInstanceTask(Task):
         # Delete the corresponding deployment:
         options = client.V1DeleteOptions()
         options.propagation_policy = 'Background'
-        api_response = context.extensions_api.delete_namespaced_deployment(
+        api_response = call_k8s_api(context.extensions_api.delete_namespaced_deployment,
             name=self._instance.deployment_name(),
             namespace=self._namespace,
             body=options,
@@ -97,7 +97,7 @@ class DeleteInstanceTask(Task):
         )
         logging.info(f"Deployment {self._instance.deployment_name()} deleted")
         # Delete the corresponding service:
-        api_response = context.basic_api.delete_namespaced_service(
+        api_response = call_k8s_api(context.basic_api.delete_namespaced_service,
             name=self._instance.service_name(),
             namespace=self._namespace,
             body=options,

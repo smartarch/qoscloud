@@ -213,6 +213,7 @@ class Component:
         self._type: ComponentType = type_
         self._probes: List[Probe] = probes
         self._statefulness = statefulness
+        self.collection_sharded: bool = False
         self._cardinality = cardinality
         self._dependencies: Dict[str, Component] = {}
         # The following attributes contains all the labels that were found in the Component's deployment descriptor
@@ -409,6 +410,12 @@ class Application:
         self._pb_representation: Optional[protocols.Architecture] = None
         self._is_complete: bool = is_complete
         self._access_token: str = access_token
+        self.namespace_created: bool = False
+        self.namespace_deleted: bool = False
+        self.cc_add_completed: bool = False
+        self.cc_remove_completed: bool = False
+        self.secret_added: bool = False
+        self.db_dropped: bool = False
 
     @property
     def is_complete(self) -> bool:
@@ -857,12 +864,12 @@ class CloudState:
         """
         dependency_provider = self.get_compin(application, dependency, dependency_id)
         dependent_compin = self.get_compin(application, component, id_)
-        assert dependency_provider is not None and dependent_compin is not None
-        assert isinstance(dependency_provider, ManagedCompin)
-        if dependency_provider.component.cardinality == ComponentCardinality.MULTIPLE and \
-            dependent_compin.component.cardinality == ComponentCardinality.MULTIPLE:
-            assert dependency_provider.chain_id == dependent_compin.chain_id
-        dependent_compin.set_dependency(dependency_provider)
+        if dependency_provider is not None and dependent_compin is not None:
+            assert isinstance(dependency_provider, ManagedCompin)
+            if dependency_provider.component.cardinality == ComponentCardinality.MULTIPLE and \
+                dependent_compin.component.cardinality == ComponentCardinality.MULTIPLE:
+                assert dependency_provider.chain_id == dependent_compin.chain_id
+            dependent_compin.set_dependency(dependency_provider)
 
     def compin_exists(self, application: str, component: str, client_id: str) -> bool:
         """

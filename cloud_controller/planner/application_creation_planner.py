@@ -49,15 +49,16 @@ class ApplicationCreationPlanner(Planner):
         self._tasks_by_app[app_name] = set()
         app: Application = self.knowledge.applications[app_name]
         self._create_task(AddAppRecordTask(app_name), app_name)
-        self._create_task(CreateNamespaceTask(app_name), app_name)
+        if not app.namespace_created:
+            self._create_task(CreateNamespaceTask(app_name), app_name)
         # self._add_dependency(database_record_task, namespace_task)
-        if self._cc_operations_required(app):
+        if self._cc_operations_required(app) and not app.cc_add_completed:
             self._create_task(AddApplicationToCCTask(app), app_name)
         secret = self.knowledge.get_secret(app_name)
-        if secret is not None:
+        if secret is not None and not app.secret_added:
             self._create_task(CreateDockersecretTask(app_name, secret), app_name)
         for component in app.list_managed_components():
-            if component.statefulness == Statefulness.CLIENT:
+            if component.statefulness == Statefulness.CLIENT and not component.collection_sharded:
                 self._create_task(ShardCollectionTask(app_name, app_name, component.name), app_name)
                 # self._add_dependency(database_record_task, sharding_task)
         logging.info(f"Created the tasks for application {app_name} deployment")

@@ -5,8 +5,8 @@ from kubernetes import client
 
 from cloud_controller import DEFAULT_SECRET_NAME
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.task_executor.execution_context import KubernetesExecutionContext
-from cloud_controller.tasks.preconditions import compin_exists, namespace_active, namespace_exists
+from cloud_controller.task_executor.execution_context import KubernetesExecutionContext, call_k8s_api
+from cloud_controller.tasks.preconditions import compin_exists, namespace_active, namespace_exists, application_deployed
 from cloud_controller.tasks.task import Task
 
 
@@ -22,7 +22,7 @@ class CreateDeploymentTask(Task):
         self.add_precondition(namespace_active, (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
-        api_response = context.extensions_api.create_namespaced_deployment(
+        api_response = call_k8s_api(context.extensions_api.create_namespaced_deployment,
             body=self._deployment,
             namespace=self._namespace
         )
@@ -46,7 +46,7 @@ class DeleteDeploymentTask(Task):
     def execute(self, context: KubernetesExecutionContext) -> bool:
         options = client.V1DeleteOptions()
         options.propagation_policy = 'Background'
-        api_response = context.extensions_api.delete_namespaced_deployment(
+        api_response = call_k8s_api(context.extensions_api.delete_namespaced_deployment,
             name=self._deployment_name,
             namespace=self._namespace,
             body=options,
@@ -72,7 +72,7 @@ class UpdateDeploymentTask(Task):
         self.add_precondition(namespace_active, (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
-        api_response = context.extensions_api.patch_namespaced_deployment(
+        api_response = call_k8s_api(context.extensions_api.patch_namespaced_deployment,
             name=self._deployment_name,
             namespace=self._namespace,
             body=self._deployment
@@ -100,7 +100,7 @@ class CreateServiceTask(Task):
         self.add_precondition(compin_exists, (app_name, component_name, instance_id))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
-        api_response = context.basic_api.create_namespaced_service(namespace=self._namespace, body=self._service)
+        api_response = call_k8s_api(context.basic_api.create_namespaced_service, namespace=self._namespace, body=self._service)
         self._ip = api_response.spec.cluster_ip
         logging.info(f"Service created. Status={api_response.status}")
         return True
@@ -130,7 +130,7 @@ class DeleteServiceTask(Task):
     def execute(self, context: KubernetesExecutionContext) -> bool:
         options = client.V1DeleteOptions()
         options.propagation_policy = 'Background'
-        api_response = context.basic_api.delete_namespaced_service(
+        api_response = call_k8s_api(context.basic_api.delete_namespaced_service,
             name=self._service_name,
             namespace=self._namespace,
             body=options,
@@ -155,17 +155,22 @@ class CreateNamespaceTask(Task):
             task_id=self.generate_id()
         )
         self.add_precondition(lambda x, y: not namespace_exists(x, y), (self._namespace,))
+        self.add_precondition(application_deployed, (self._namespace,))
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
         namespace = client.V1Namespace()
         namespace.metadata = client.V1ObjectMeta()
         namespace.metadata.name = self._namespace
-        api_response = context.basic_api.create_namespace(namespace)
+        api_response = call_k8s_api(context.basic_api.create_namespace, body=namespace)
         logging.info(f'Namespace {self._namespace} created.  Status={api_response.status}')
         return True
 
     def generate_id(self) -> str:
         return f"{self.__class__.__name__}_{self._namespace}"
+
+    def update_model(self, knowledge: Knowledge) -> None:
+        if self._namespace in knowledge.applications:
+            knowledge.applications[self._namespace].namespace_created = True
 
 
 class CreateDockersecretTask(Task):
@@ -189,7 +194,7 @@ class CreateDockersecretTask(Task):
             metadata=client.V1ObjectMeta(name=DEFAULT_SECRET_NAME),
             type="kubernetes.io/dockerconfigjson"
         )
-        context.basic_api.create_namespaced_secret(
+        call_k8s_api(context.basic_api.create_namespaced_secret,
             namespace=self._namespace,
             body=secret
         )
@@ -198,6 +203,10 @@ class CreateDockersecretTask(Task):
 
     def generate_id(self) -> str:
         return f"{self.__class__.__name__}_{self._namespace}"
+
+    def update_model(self, knowledge: Knowledge) -> None:
+        if self._namespace in knowledge.applications:
+            knowledge.applications[self._namespace].secret_added = True
 
 
 class DeleteDockersecretTask(Task):
@@ -209,7 +218,7 @@ class DeleteDockersecretTask(Task):
         )
 
     def execute(self, context: KubernetesExecutionContext) -> bool:
-        context.basic_api.delete_namespaced_secret(
+        call_k8s_api(context.basic_api.delete_namespaced_secret,
             namespace=self._namespace,
             name=DEFAULT_SECRET_NAME
         )
@@ -236,7 +245,7 @@ class DeleteNamespaceTask(Task):
     def execute(self, context: KubernetesExecutionContext) -> bool:
         options = client.V1DeleteOptions()
         options.propagation_policy = 'Background'
-        api_response = context.basic_api.delete_namespace(
+        api_response = call_k8s_api(context.basic_api.delete_namespace,
             name=self._namespace,
             body=options,
             propagation_policy='Background',
@@ -247,3 +256,7 @@ class DeleteNamespaceTask(Task):
 
     def generate_id(self) -> str:
         return f"{self.__class__.__name__}_{self._namespace}"
+
+    def update_model(self, knowledge: Knowledge) -> None:
+        if self._namespace in knowledge.applications:
+            knowledge.applications[self._namespace].namespace_deleted = True

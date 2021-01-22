@@ -31,6 +31,12 @@ class ShardCollectionTask(Task):
     def generate_id(self) -> str:
         return f"{self.__class__.__name__}_{self._database}_{self._collection}"
 
+    def update_model(self, knowledge: Knowledge) -> None:
+        if self._database in knowledge.applications:
+            app = knowledge.applications[self._database]
+            if self._collection in app.components:
+                app.components[self._collection].collection_sharded = True
+
 
 class MoveChunkTask(Task):
     """
@@ -84,6 +90,10 @@ class DropDatabaseTask(Task):
 
     def generate_id(self) -> str:
         return f"{self.__class__.__name__}_{self._database}"
+
+    def update_model(self, knowledge: Knowledge) -> None:
+        if self._database in knowledge.applications:
+            knowledge.applications[self._database].db_dropped = True
 
 
 class AddAppRecordTask(Task):

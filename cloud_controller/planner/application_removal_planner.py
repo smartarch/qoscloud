@@ -35,9 +35,10 @@ class ApplicationRemovalPlanner(Planner):
         the Client Controller, deletion of the Kubernetes namespace and deletion of the corresponding Mongo database.
         """
         app: Application = self.knowledge.actual_state.applications[app_name]
-        self._create_task(DeleteNamespaceTask(app_name))
+        if not app.namespace_deleted:
+            self._create_task(DeleteNamespaceTask(app_name))
 
-        if self._cc_operations_required(app):
+        if self._cc_operations_required(app) and not app.cc_remove_completed:
             self._create_task(DeleteApplicationFromCCTask(app_name))
             # self._add_dependency(disconnection_task, namespace_task)
         self._create_task(DeleteAppRecordTask(app_name))
@@ -45,7 +46,7 @@ class ApplicationRemovalPlanner(Planner):
         for component in app.list_managed_components():
             if component.statefulness != Statefulness.NONE:
                 mongo_components.append(component.name)
-        if len(mongo_components) > 0:
+        if len(mongo_components) > 0 and not app.db_dropped:
             self._create_task(DropDatabaseTask(app_name, mongo_components))
             # self._add_dependency(db_drop_task, database_record_task)
 

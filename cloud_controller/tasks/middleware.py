@@ -37,7 +37,7 @@ class FinalizeInstanceTask(Task):
             self._component.name,
             self._component.id
         )
-        if compin.phase < CompinPhase.FINALIZING:
+        if compin is not None and compin.phase < CompinPhase.FINALIZING:
             compin.phase = CompinPhase.FINALIZING
 
     def generate_id(self) -> str:
@@ -77,7 +77,8 @@ class SetMongoParametersTask(Task):
             self._component.name,
             self._component.id
         )
-        compin.mongo_init_completed = True
+        if compin is not None:
+            compin.mongo_init_completed = True
 
     def generate_id(self) -> str:
         return f"{self.__class__.__name__}_{self._component.application.name}_{self._component.name}_" \
@@ -173,9 +174,10 @@ class InitializeInstanceTask(Task):
 
     def update_model(self, knowledge: Knowledge) -> None:
         instance = knowledge.actual_state.get_compin(self._app_name, self._component_name, self._instance_id)
-        assert instance is not None and isinstance(instance, ManagedCompin)
-        instance.init_completed = True
-        KubernetesExecutionContext.update_instance_phase(instance)
+        if instance is not None:
+            assert isinstance(instance, ManagedCompin)
+            instance.init_completed = True
+            KubernetesExecutionContext.update_instance_phase(instance)
 
     def generate_id(self) -> str:
         return f"{self.__class__.__name__}_{self._app_name}_{self._component.name}_{self._instance_id}"

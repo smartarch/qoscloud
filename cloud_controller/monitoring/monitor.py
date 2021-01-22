@@ -20,6 +20,8 @@ from cloud_controller.knowledge.knowledge import Knowledge
 import cloud_controller.knowledge.knowledge_pb2 as protocols
 from cloud_controller.assessment.deploy_controller_pb2_grpc import DeployPublisherStub
 from cloud_controller.middleware.helpers import connect_to_grpc_server
+from cloud_controller.task_executor.execution_context import call_k8s_api
+
 
 class Monitor:
 
@@ -75,11 +77,12 @@ class KubernetesMonitor(Monitor):
         Fetches information about the current state of the Kubernetes cluster and updates the corresponding data
         structures in the Knowledge.
         """
-        api_nodes_response = self.core_api.list_node(watch=False)
+        api_nodes_response = call_k8s_api(self.core_api.list_node, watch=False)
+        # api_nodes_response = self.core_api.list_node(watch=False)
         # Filter out names of untainted nodes:
         node_names = [item for item in api_nodes_response.items
                       if not item.spec.unschedulable and (not item.spec.taints or len(item.spec.taints) == 0)]
-        api_pods_response = self.core_api.list_pod_for_all_namespaces()
+        api_pods_response = call_k8s_api(self.core_api.list_pod_for_all_namespaces)
         nodes: Dict[str, Node] = {}
         for item in node_names:
             node_name = item.metadata.labels.pop(HOSTNAME_LABEL)
@@ -99,10 +102,10 @@ class KubernetesMonitor(Monitor):
             nodes[node_name] = node
 
         namespaces: Dict[str, Namespace] = {}
-        api_ns_response = self.core_api.list_namespace()
+        api_ns_response = call_k8s_api(self.core_api.list_namespace)
         for item in api_ns_response.items:
             namespace_name = item.metadata.name
-            api_deployments_response = self.extensions_api.list_namespaced_deployment(namespace=namespace_name)
+            api_deployments_response = call_k8s_api(self.extensions_api.list_namespaced_deployment, namespace=namespace_name)
             deployments: List[str] = []
             for deployment in api_deployments_response.items:
                 deployments.append(deployment.metadata.name)
