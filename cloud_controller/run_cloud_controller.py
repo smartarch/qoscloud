@@ -21,6 +21,6 @@ def start_ivis(knowledge: Knowledge):
 if __name__ == "__main__":
     setup_logging()
     ClusterCleaner(PRODUCTION_MONGOS_SERVER_IP).cleanup()
-    adaptation_ctl = ExtensionManager().get_adaptation_ctl()
+    adaptation_ctl = ExtensionManager().get_adaptation_loop()
     start_ivis(adaptation_ctl.knowledge)
     adaptation_ctl.run()

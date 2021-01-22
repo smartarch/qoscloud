@@ -24,7 +24,7 @@ def log_phase_duration():
 log_phase_duration.last_measured_time = perf_counter()
 
 
-class AdaptationController:
+class AdaptationLoop:
     """
     Runs all four phases of the adaptation loop sequentially. Uses an instance of a specialized class responsible for
     each phase (Monitor, Analyzer, Planner, and TaskExecutor respectively). As this is the central class for the

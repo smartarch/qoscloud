@@ -18,7 +18,7 @@ from cloud_controller.aggregator.predictor_pb2_grpc import PredictorStub
 from cloud_controller.assessment import deploy_controller
 from cloud_controller.assessment.depenedency_solver import MasterSlaveSolver
 from cloud_controller.assessment.deploy_controller import AppJudge
-from cloud_controller.assessment.mapek_wrapper import MapekWrapper
+from cloud_controller.assessment.al_wrapper import AdaptationLoopWrapper
 from cloud_controller.assessment.model import AppDatabase
 from cloud_controller.assessment.predictor_scenario_planner import PredictorScenarioPlanner
 from cloud_controller.assessment.scenario_executor import ScenarioExecutor, FakeScenarioExecutor
@@ -47,9 +47,9 @@ if __name__ == "__main__":
     deploy_controller.start_publisher_server(app_db)
 
     # MAPE-K wrapper
-    mapek_wrapper: Optional[MapekWrapper] = None
+    mapek_wrapper: Optional[AdaptationLoopWrapper] = None
     if not args.fake_mapek:
-        mapek_wrapper = MapekWrapper()
+        mapek_wrapper = AdaptationLoopWrapper()
         knowledge = mapek_wrapper.get_knowledge()
     else:
         # Adds some static nodes

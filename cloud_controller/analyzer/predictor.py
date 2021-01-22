@@ -8,12 +8,10 @@ import logging
 from abc import ABC, abstractmethod
 from time import perf_counter
 from typing import Dict, Iterable
-import random
 
 import yaml
 
 import cloud_controller.knowledge.model as model
-from cloud_controller.analysis.solver_options import SolverOptions
 
 
 class Predictor(ABC):

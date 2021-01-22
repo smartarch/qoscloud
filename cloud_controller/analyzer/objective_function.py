@@ -10,13 +10,9 @@ from typing import Optional, List
 import logging
 from ortools.constraint_solver.pywrapcp import IntVar, OptimizeVar, Solver, IntExpr
 
+from cloud_controller import CSP_RUNNING_NODE_COST, CSP_LATENCY_COST, CSP_REDEPLOYMENT_COST
 from cloud_controller.analyzer.constraint import Constraint
 from cloud_controller.analyzer.variables import Variables
-
-# TODO: extract to the top level
-RUNNING_NODE_COST = 1
-LATENCY_COST = 10
-REDEPLOYMENT_COST = 2
 
 
 class ObjectiveFunction(Constraint):
@@ -68,7 +64,7 @@ class DefaultObjectiveFunction(ObjectiveFunction):
         latency_expressions: List[IntExpr] = []
         for tier in variables.client_dc_vars_by_tier:
             latency_expressions.append(tier * (sum([var.int_var for var in variables.client_dc_vars_by_tier[tier]])))
-        expr = LATENCY_COST * (sum(latency_expressions))
+        expr = CSP_LATENCY_COST * (sum(latency_expressions))
         logging.debug(f"Client latency expression = {expr}")
         return expr
 
@@ -77,7 +73,7 @@ class DefaultObjectiveFunction(ObjectiveFunction):
         Creates expression representing the number of running nodes.
         """
         running_node_vars_sum: IntExpr = sum([var.int_var for var in variables.running_node_vars.values()])
-        expr = RUNNING_NODE_COST * running_node_vars_sum
+        expr = CSP_RUNNING_NODE_COST * running_node_vars_sum
         logging.debug(f"Running nodes expression = {expr}")
         return expr
 
@@ -89,6 +85,6 @@ class DefaultObjectiveFunction(ObjectiveFunction):
                                           for _ in variables.running_vars_by_node_and_compin.values()
                                           for var in _.values()
                                           ])
-        expr = REDEPLOYMENT_COST * redeploy_vars_sum
+        expr = CSP_REDEPLOYMENT_COST * redeploy_vars_sum
         logging.debug(f"Redeployment expression = {expr}")
         return expr

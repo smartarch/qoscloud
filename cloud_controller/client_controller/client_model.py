@@ -10,7 +10,7 @@ from cloud_controller import architecture_pb2 as arch_pb, UEManagementPolicy, DE
     VIRTUAL_COUNT_CONSTANT, VIRTUAL_COUNT_PERCENT
 from cloud_controller.architecture_pb2 import Architecture
 from cloud_controller.client_controller.client import ClientStatus, Client
-from cloud_controller.client_controller.network_topology import ClientPositionTracker, EuclidClientPositionTracker
+from cloud_controller.client_controller.position_tracker import ClientPositionTracker, EuclidClientPositionTracker
 from cloud_controller.knowledge import knowledge_pb2 as protocols
 from cloud_controller.knowledge.model import Application, ComponentType
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer

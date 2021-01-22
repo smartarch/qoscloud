@@ -17,27 +17,6 @@ class DependencyPlanner(Planner):
     def __init__(self, knowledge: Knowledge, task_registry: TaskRegistry):
         super().__init__(knowledge, task_registry)
 
-    def get_dependency_diff(self, application_name, desired_state: CloudState) -> List[Tuple[Compin, ManagedCompin]]:
-        """
-        Calculates the differences in the compins' dependencies of a given application between the two cloud states.
-        :param application_name: An application to calculate the difference for
-        :param desired_state: CloudState representing the desired state of the cloud
-        :return: list of tuples, each containing the dependent and the providing instances.
-        """
-        set_dependencies: List[Tuple[Compin, ManagedCompin]] = []
-        for component in desired_state.list_components(application_name):
-            for id_ in desired_state.list_instances(application_name, component):
-                desired_state_compin: Compin = desired_state.get_compin(application_name, component, id_)
-                actual_state_compin: Compin = self.knowledge.actual_state.get_compin(application_name, component, id_)
-                for dependency in desired_state_compin.list_dependencies():
-                    actual_state_dependency = self.knowledge.actual_state.get_instance(dependency.component, dependency.id)
-                    current_dependency = actual_state_compin.get_dependency(dependency.component.name)
-                    if actual_state_compin is not None and actual_state_dependency is not None:
-                        if current_dependency is None or current_dependency.id != dependency.id:
-                            assert isinstance(actual_state_dependency, ManagedCompin)
-                            set_dependencies.append((actual_state_compin, actual_state_dependency))
-        return set_dependencies
-
     def _add_middleware_connection_tasks(
             self,
             app_name:str,

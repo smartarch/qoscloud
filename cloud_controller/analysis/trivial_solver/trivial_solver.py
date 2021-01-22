@@ -3,7 +3,7 @@ import math
 from typing import List, Dict, Set, Optional
 
 import cloud_controller.knowledge.model as model
-from cloud_controller.analysis.predictor import Predictor
+from cloud_controller.analyzer.predictor import Predictor
 from cloud_controller.analysis.solver_options import SolverOptions
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.network_distances import NetworkDistances

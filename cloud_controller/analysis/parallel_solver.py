@@ -6,8 +6,7 @@ from multiprocessing.pool import ThreadPool, AsyncResult
 from typing import Optional
 
 from cloud_controller.analysis.csp_solver.solver import CSPSolver
-from cloud_controller.analysis.predictor import Predictor
-from cloud_controller.analysis.trivial_solver.trivial_solver import TrivialSolver
+from cloud_controller.analyzer.predictor import Predictor
 from cloud_controller.knowledge import model
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.network_distances import NetworkDistances

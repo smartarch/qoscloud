@@ -10,7 +10,7 @@ import logging
 from ortools.constraint_solver.pywrapcp import IntExpr
 
 from cloud_controller.knowledge.network_distances import NetworkDistances
-from cloud_controller.analysis.csp_solver.variables import Variables
+from cloud_controller.analyzer.variable_types import Variables
 
 RUNNING_NODE_COST = 1
 LATENCY_COST = 10

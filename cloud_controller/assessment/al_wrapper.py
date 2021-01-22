@@ -17,7 +17,7 @@ from cloud_controller.monitoring.monitor import TopLevelMonitor, KubernetesMonit
 logger = logging.getLogger("MW")
 
 
-class MapekWrapper:
+class AdaptationLoopWrapper:
     """
     Deploys ComponentInstanceChains to cloud
     """
@@ -35,7 +35,7 @@ class MapekWrapper:
         monitor.add_monitor(KubernetesMonitor(extension_manager.knowledge, ASSESSMENT_KUBECONFIG))
         extension_manager.set_monitor(monitor)
         extension_manager.set_mongos_ip(ASSESSMENT_MONGOS_SERVER_IP)
-        self._adaptation_ctl = extension_manager.get_adaptation_ctl()
+        self._adaptation_ctl = extension_manager.get_adaptation_loop()
         ClusterCleaner(ASSESSMENT_MONGOS_SERVER_IP, ASSESSMENT_KUBECONFIG).cleanup()
         # Load cloud data
         self._adaptation_ctl.monitoring()

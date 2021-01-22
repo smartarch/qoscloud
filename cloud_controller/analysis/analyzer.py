@@ -6,7 +6,7 @@ from typing import Type, Optional
 
 from multiprocessing.pool import ThreadPool, AsyncResult
 
-from cloud_controller.analysis.predictor import Predictor
+from cloud_controller.analyzer.predictor import Predictor
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import CloudState, ManagedCompin
 

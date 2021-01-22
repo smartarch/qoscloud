@@ -9,12 +9,13 @@ from typing import List, Optional
 from ortools.constraint_solver.pywrapcp import Solver, IntVar, OptimizeVar, SolutionCollector
 
 import cloud_controller.knowledge.model as model
-from cloud_controller.analysis.predictor import Predictor
+from cloud_controller import CSP_DEFAULT_TIME_LIMIT
+from cloud_controller.analyzer.predictor import Predictor
 from cloud_controller.knowledge.network_distances import NetworkDistances
 from cloud_controller.analysis.csp_solver.constraint_adder import ConstraintAdder
 from cloud_controller.analysis.csp_solver.objective_function_expression import create_objective_function_expression
 from cloud_controller.analysis.csp_solver.variable_adder import VariableAdder
-from cloud_controller.analysis.csp_solver.variables import Variables
+from cloud_controller.analyzer.variable_types import Variables
 from cloud_controller.knowledge.knowledge import Knowledge
 
 
@@ -28,7 +29,6 @@ DEBUG_LOG = _DebugLog.NO_LOG
 
 _logger = logging.getLogger("CSPSolver")
 
-DEFAULT_TIME_LIMIT = 5
 NO_LIMIT = -1
 
 
@@ -38,7 +38,7 @@ class CSPSolver:
     method.
     """
     def __init__(self, knowledge: Knowledge, distances: NetworkDistances, predictor: Predictor,
-                 time_limit: float = DEFAULT_TIME_LIMIT):
+                 time_limit: float = CSP_DEFAULT_TIME_LIMIT):
         """
         :param knowledge: Reference to the Knowledge
         :param distances: Current NetworkDistances

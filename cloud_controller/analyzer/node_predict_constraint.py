@@ -7,8 +7,8 @@ from typing import List, Dict
 from ortools.constraint_solver.pywrapcp import Solver, PyConstraint
 
 import cloud_controller.knowledge.model as model
-from cloud_controller.analysis.predictor import Predictor
-from cloud_controller.analysis.csp_solver.variables import CompNodeVar
+from cloud_controller.analyzer.predictor import Predictor
+from cloud_controller.analyzer.variable_types import CompNodeVar
 
 
 _logger = logging.getLogger("CSPSolver.NodePredictConstraint")

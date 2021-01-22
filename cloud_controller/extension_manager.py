@@ -2,15 +2,14 @@
 Contains ExtensionManager, a class for creating custom versions of Adaptation Controller.
 """
 from enum import Enum
-from multiprocessing import Pool, Lock
 from typing import Callable, Any
 
 from multiprocessing.pool import ThreadPool
 
 import cloud_controller
 from cloud_controller import PRODUCTION_KUBECONFIG, PRODUCTION_MONGOS_SERVER_IP, THREAD_COUNT
-from cloud_controller.adaptation_controller import AdaptationController
-from cloud_controller.analysis.statistical_predictor import StatisticalPredictor
+from cloud_controller.adaptation_loop import AdaptationLoop
+from cloud_controller.analyzer.statistical_predictor import StatisticalPredictor
 from cloud_controller.analyzer.constraint import PredictConstraint, RunningNodeConstraint, InstanceDeploymentConstraint, \
     RedeploymentConstraint, ChainInDatacenterConstraint, NodeSeparationConstraint
 from cloud_controller.analyzer.csp_analyzer import CSPAnalyzer
@@ -118,7 +117,7 @@ class ExtensionManager:
     def get_default_knowledge(self) -> Knowledge:
         return self.knowledge
 
-    def get_adaptation_ctl(self) -> AdaptationController:
+    def get_adaptation_loop(self) -> AdaptationLoop:
         """
         Returns an instance of Adaptation Controller with all the customizations that were set. After this method
         is called, this instance of ExtensionManager is not usable anymore (all the subsequent method calls will raise
@@ -137,7 +136,7 @@ class ExtensionManager:
                 self._planner = self.get_default_planner()
             if self._executor is None:
                 self._executor = self.get_default_executor()
-            return AdaptationController(
+            return AdaptationLoop(
                 knowledge=self.knowledge,
                 monitor=self._monitor,
                 analyzer=self._analyzer,

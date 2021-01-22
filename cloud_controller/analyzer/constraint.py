@@ -6,9 +6,9 @@ from typing import List
 
 from ortools.constraint_solver.pywrapcp import Solver, IntVar
 
-from cloud_controller.analysis.csp_solver.node_predict_constraint import NodePredictConstraint
-from cloud_controller.analysis.csp_solver.variables import CompNodeVar
-from cloud_controller.analysis.predictor import Predictor
+from cloud_controller.analyzer.node_predict_constraint import NodePredictConstraint
+from cloud_controller.analyzer.variable_types import CompNodeVar
+from cloud_controller.analyzer.predictor import Predictor
 from cloud_controller.analyzer.variables import Variables
 from cloud_controller.knowledge.knowledge import Knowledge
 

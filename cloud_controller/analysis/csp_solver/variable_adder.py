@@ -9,7 +9,7 @@ from typing import List, Dict, Tuple
 
 from ortools.constraint_solver.pywrapcp import Solver
 
-from cloud_controller.analysis.csp_solver.variables import Variables, CompNodeVar, CompDCVar, RunningNodeVar, \
+from cloud_controller.analyzer.variable_types import Variables, CompNodeVar, CompDCVar, RunningNodeVar, \
     RunningCompNodeVar, NodeRoleVar
 from cloud_controller.knowledge import model as model
 from cloud_controller.knowledge.knowledge import Knowledge

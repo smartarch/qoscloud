@@ -5,15 +5,15 @@ Together these variables model the possible states of the cloud.
 import logging
 import time
 from itertools import chain
-from typing import List, Tuple, Dict, Iterable, Generator
+from typing import List, Tuple, Dict
 
 from ortools.constraint_solver.pywrapcp import SolutionCollector
 
-from cloud_controller.analysis.csp_solver.variables import Var, CompNodeVar, RunningCompNodeVar, CompDCVar, NodeRoleVar, \
+from cloud_controller.analyzer.variable_types import Var, CompNodeVar, RunningCompNodeVar, CompDCVar, NodeRoleVar, \
     RunningNodeVar
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import CloudState, UnmanagedCompin, Component, ComponentCardinality, \
-    ManagedCompin, Compin
+    ManagedCompin
 from cloud_controller.knowledge.network_distances import NetworkDistances
 
 

@@ -3,8 +3,7 @@ from typing import Dict
 from cloud_controller import PREDICTOR_HOST, PREDICTOR_PORT
 from cloud_controller.aggregator import predictor_pb2 as predictor_pb
 from cloud_controller.aggregator.predictor_pb2_grpc import PredictorStub
-from cloud_controller.analysis.predictor import Predictor
-from cloud_controller.knowledge.knowledge import Knowledge
+from cloud_controller.analyzer.predictor import Predictor
 from cloud_controller.middleware.helpers import connect_to_grpc_server
 
 

@@ -8,20 +8,6 @@ from typing import Tuple, List, Optional
 from cloud_controller.knowledge.model import CloudState, ManagedCompin, Compin, Statefulness, CompinPhase
 
 
-def get_application_diff(actual_state: CloudState, desired_state: CloudState) -> Tuple[List[str], List[str]]:
-    """
-    Calculates the differences in the application present in the two cloud states.
-    :param actual_state: CloudState representing the actual state of the cloud
-    :param desired_state: CloudState representing the desired state of the cloud
-    :return: list of applications present in the desired state but not present in the actual state, and list of
-            applications present in the actual state but not present in the desired state
-    """
-    new_apps = [app for app in desired_state.list_applications() if app not in actual_state.list_applications()]
-    apps_to_remove = [app for app in actual_state.list_applications() if
-                      app not in desired_state.list_applications()]
-    return new_apps, apps_to_remove
-
-
 def get_compin_diff(application_name, actual_state: CloudState, desired_state: CloudState) -> \
         Tuple[List[ManagedCompin], List[ManagedCompin], List[ManagedCompin], List[ManagedCompin]]:
     """

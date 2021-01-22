@@ -21,7 +21,7 @@ SERVICE_TEMPLATE = """
 """
 
 
-JOB_DEPLOYMENT_TEMPLATE = """
+CONTAINER_TEMPLATE = """
 name: container
 image: %s
 imagePullPolicy: Always
@@ -33,7 +33,7 @@ env:
 
 
 def get_job_deployment(job_id, container):
-    return JOB_DEPLOYMENT_TEMPLATE % container
+    return CONTAINER_TEMPLATE % container
 
 
 DEPLOYMENT_TEMPLATE = f"""

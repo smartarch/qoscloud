@@ -4,7 +4,7 @@ from typing import List, Optional
 import logging
 from ortools.constraint_solver.pywrapcp import Solver, SolutionCollector, IntVar, OptimizeVar
 
-from cloud_controller.analysis.csp_solver.solver import DEFAULT_TIME_LIMIT
+from cloud_controller import CSP_DEFAULT_TIME_LIMIT
 from cloud_controller.analyzer.constraint import Constraint
 from cloud_controller.analyzer.objective_function import ObjectiveFunction
 from cloud_controller.analyzer.variables import Variables
@@ -27,7 +27,7 @@ class CSPProblem:
     def __init__(self, variables: Variables, constraints: List["Constraint"], obj_function: "ObjectiveFunction"):
         start_ = time.perf_counter()
         CSPProblem.count += 1
-        self._time_limit_ms: int = DEFAULT_TIME_LIMIT * 1000
+        self._time_limit_ms: int = CSP_DEFAULT_TIME_LIMIT * 1000
         self._solver: Solver = Solver(f"Solver {CSPProblem.count}")
         self._variables: Variables = variables
         self._objective_function: Optional[ObjectiveFunction] = obj_function

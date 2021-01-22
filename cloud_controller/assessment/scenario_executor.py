@@ -15,7 +15,7 @@ from cloud_controller import middleware
 from cloud_controller.assessment.depenedency_solver import DependencySolver, WorkloadType, Resources, \
     ProbeCompinPlanTuple
 from cloud_controller.assessment.deploy_controller import AppJudge
-from cloud_controller.assessment.mapek_wrapper import MapekWrapper
+from cloud_controller.assessment.al_wrapper import AdaptationLoopWrapper
 from cloud_controller.assessment.model import Scenario
 from cloud_controller.assessment.result_storage import ResultStorage
 from cloud_controller.assessment.scenario_planner import ScenarioPlanner, FailureReason
@@ -37,7 +37,7 @@ class ProbeExecutionException(Exception):
 class ScenarioExecutor:
 
     def __init__(self, knowledge: Knowledge, planner: ScenarioPlanner, solver: DependencySolver,
-                 mapek_wrapper: MapekWrapper, judge: AppJudge, multi_thread=False):
+                 mapek_wrapper: AdaptationLoopWrapper, judge: AppJudge, multi_thread=False):
         # Other classes
         self._knowledge = knowledge
         self._planner = planner

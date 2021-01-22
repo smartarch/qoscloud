@@ -8,9 +8,9 @@ from typing import List
 
 from ortools.constraint_solver.pywrapcp import IntVar, Solver
 
-from cloud_controller.analysis.predictor import Predictor
+from cloud_controller.analyzer.predictor import Predictor
 from cloud_controller.knowledge.network_distances import NetworkDistances
-from cloud_controller.analysis.csp_solver.variables import Variables, CompNodeVar
+from cloud_controller.analyzer.variable_types import Variables, CompNodeVar
 from cloud_controller.knowledge import model as model
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.model import Node
@@ -144,7 +144,7 @@ class ConstraintAdder:
         """
         Adds constraints that call the predictor. See docs to NodePredictConstraint.
         """
-        from cloud_controller.analysis.csp_solver.node_predict_constraint import NodePredictConstraint
+        from cloud_controller.analyzer.node_predict_constraint import NodePredictConstraint
 
         for node in self._nodes:
             vars_for_node: List[CompNodeVar] = self._variables.vars_by_node[node.name]
