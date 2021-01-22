@@ -1,0 +1,20 @@
+application: featuredetection
+complete: false
+components:
+- name: detector
+  statefulness: none
+  template:
+    name: rs
+    image: dankhalev/featuredetector:latest
+    imagePullPolicy: Always
+    env:
+    - name: PYTHONUNBUFFERED
+      value: "0"
+  probes:
+  - name: detect
+    codefile: apps/featuredetection/probe.py
+  QoSrequirements:
+  - type: throughput
+    probe: detect
+    requests: 6
+    per: minute # At least 6 requests per minute
