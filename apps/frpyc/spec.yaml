@@ -1,0 +1,34 @@
+name: frpyc
+components:
+  - name: recognizer-server
+    type: managed
+    statefulness: mongo
+    template:
+      kind: Deployment
+      metadata:
+        name: recognizer-server
+        labels:
+          app: recognizer
+      spec:   # micoservices specification
+        template:
+          metadata:
+            labels:
+              app: recognizer
+          spec:
+            containers:
+            - name: rs
+              image: edgeclouduser/frpyc-rs:latest
+              args: ["-c", "-s", "-f", "/root/frpyc/images"]
+              env:
+              - name: PYTHONUNBUFFERED
+                value: "0"
+              ports:
+              - containerPort: 6666
+  - name: image-client
+    type: unmanaged
+    dependsOn: # This component has a dependency on the recognizer-server:
+    - recognizer-server
+dockersecret: # Fill the following fields with the username/password/email of your Docker account (access to d3srepo required)
+  username: edgeclouduser
+  password: X1v3f@orU#8yXwF9W9SD
+  email: khalyeyev@gmail.com

@@ -1,0 +1,24 @@
+components:
+  - id: "A"
+    memory: 10
+    cpu: 5
+    io: 5
+  - id: "B"
+    memory: 5
+    cpu: 5
+    io: 10
+  - id: "C"
+    memory: 5
+    cpu: 10
+    io: 5
+
+
+nodes:
+  - id: "id1"
+    memory: 100
+    cpu: 100
+    io: 100
+  - id: "id2"
+    memory: 400
+    cpu: 400
+    io: 400

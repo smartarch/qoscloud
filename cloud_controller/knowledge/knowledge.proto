@@ -1,0 +1,202 @@
+// Contains the protocol buffer messages and services that are used for:
+//  (1) Execution plan specification
+//  (2) Communication between Adaptation Controller and Client Controller
+
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "";
+option java_outer_classname = "";
+option objc_class_prefix = "";
+
+package cloud_controller.knowledge;
+import "cloud_controller/middleware/middleware.proto";
+import "cloud_controller/architecture.proto";
+
+message ArchitectureRequest {}
+message ClusterStateRequest {}
+message ChangesetRequest {}
+message PlanAck {}
+message ClusterStateAck {}
+
+//-----------------------------EXECUTION PLANS---------------------------
+
+message ExecutionPlan {
+    repeated Task tasks = 1;
+    string namespace = 2;
+}
+
+// The individual task types are documented with the corresponding methods of the PlanExecutor
+message Task {
+    repeated int32 predecessors = 2;
+    repeated int32 successors = 3;
+    int32 id = 4;
+    oneof task_type {
+        int32 DO_NOTHING = 10;
+        DeploymentDescriptor CREATE_DEPLOYMENT = 11;
+        DeploymentDescriptor UPDATE_DEPLOYMENT = 12;
+        string DELETE_DEPLOYMENT = 13;
+        DependencyDescriptor SET_DEPENDENCY_ADDRESS = 14;
+        ServiceDescriptor CREATE_SERVICE = 15;
+        NamespaceDescriptor CREATE_NAMESPACE = 16;
+        NamespaceDescriptor DELETE_NAMESPACE = 17;
+        string DELETE_SERVICE = 18;
+        ClientDependencyDescriptor SET_CLIENT_DEPENDENCY = 19;
+        string DISCONNECT_APPLICATION_CLIENTS = 20;
+        string CREATE_DOCKER_SECRET = 21;
+        int32 DELETE_DOCKER_SECRET = 22;
+        TransferDescriptor FINALIZE_EXECUTION = 23;
+        CollectionDescriptor SHARD_COLLECTION = 24;
+        ChunkMovementDescriptor MOVE_CHUNK = 25;
+        SetMongoParameters SET_MONGO_PARAMETERS = 26;
+        DatabaseDescriptor DROP_DATABASE = 27;
+        string ADD_APP_RECORD = 28;
+        string DELETE_APP_RECORD = 29;
+        cloud_controller.Architecture ADD_APPLICATION_TO_CC = 30;
+        CompinDescriptor DELETE_COMPIN = 31;
+        CompinDescriptor CREATE_COMPIN = 32;
+    }
+}
+
+message SetMongoParameters {
+    cloud_controller.middleware.MongoParameters parameters = 1;
+    string instanceType = 2;
+    string instanceId = 3;
+}
+
+message CollectionDescriptor {
+    string db = 1;
+    string collection = 2;
+}
+
+message DatabaseDescriptor {
+    string db = 1;
+    repeated string collections = 2;
+}
+
+message ChunkMovementDescriptor {
+    string db = 1;
+    string collection = 2;
+    uint32 key = 3;
+    string shard = 4;
+}
+
+message DeploymentDescriptor {
+    string deployment = 1;
+    string name = 2;
+}
+
+message ServiceDescriptor {
+    // YAML description of the Kubernetes service.
+    string service = 1;
+    string name = 2;
+    string component = 3;
+    string instanceId = 4;
+}
+
+message CompinDescriptor {
+    string component = 1;
+    string id = 2;
+    string deployment = 3;
+    string service = 4;
+    bool force = 5;
+    string node = 6;
+    string clientId = 7;
+}
+
+message NamespaceDescriptor {
+    string name = 1;
+}
+
+message TransferDescriptor {
+    string type = 1;
+    string id = 2;
+    string TransferFromIp = 4;
+    string TransferToType = 5;
+    string TransferToId = 6;
+}
+
+message DependencyDescriptor {
+    string providingInstanceType = 4;
+    string dependentInstanceType = 5;
+    string providingInstanceId = 6;
+    string dependentInstanceId = 7;
+}
+
+message ClientDependencyDescriptor {
+    string dependency = 1;
+    string clientId = 3;
+    string clientType = 4;
+    string providingInstanceType = 5;
+    string providingInstanceId = 6;
+}
+
+//-----------------------------CLIENT CONTROLLER--------------------
+
+service ClientControllerInternal {
+
+    rpc SetClientDependency (ClientDependencyDescription) returns (ClientDependencyAck) {}
+
+    rpc CloseApplicationChannels (ApplicationName) returns (CloseAck) {}
+
+    rpc GetNewClientEvents (ClientsRequest) returns (stream ClientDescriptor) {}
+
+    rpc AddNewApplication (cloud_controller.Architecture) returns (ArchitectureAck) {}
+
+    rpc AddNewUE (UserEquipment) returns (UEAck) {}
+
+    rpc RemoveUE (UserEquipment) returns (UEAck) {}
+
+}
+
+enum ClientEventType {
+    CONNECTION = 0;
+    DISCONNECTION = 1;
+}
+
+message ClientDescriptor {
+    string application = 1;
+    string type = 2;
+    string ip = 3;
+    bool hasID = 4;
+    // OPTIONAL: only if client was already added to the Knowledge and received its ID:
+    string id = 5;
+    string imsi = 6;
+    ClientEventType event = 7;
+}
+
+enum ArchitectureResponseCode {
+    ARCHITECTURE_OK = 0;
+    ARCHITECTURE_NAME_NOT_AVAILABLE = 1;
+}
+
+message ArchitectureAck {
+    ArchitectureResponseCode rc = 1;
+}
+
+
+message ClientDependencyDescription {
+    cloud_controller.middleware.DependencyAddress dependencyAddress = 1;
+    string application = 2;
+    string clientType = 3;
+    string clientId = 4;
+}
+
+message UserEquipment {
+    string ip = 1;
+    string imsi = 2;
+    repeated string apps = 3;
+}
+
+message ClientDependencyAck {}
+
+message ClientsRequest {}
+
+message ApplicationName {
+    string name = 1;
+}
+
+message CloseAck {}
+
+message UEAck {}
+//-----------------------------//-----------------------------------

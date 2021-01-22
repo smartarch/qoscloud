@@ -1,0 +1,30 @@
+FROM centos:7
+
+RUN yum -y update; yum clean all
+RUN yum -y install epel-release; yum clean all
+RUN yum -y install git gcc gcc-c++ python36 python36-devel python36-pip python36-numpy python36-scipy python36-PyYAML python2 python2-devel cmake make bzip2 wget which
+RUN pip3 install grpcio grpcio-tools
+
+RUN cd /root && git clone https://github.com/opencv/opencv.git && cd opencv && git checkout 3.2.0 && \
+    cd /root && git clone https://github.com/opencv/opencv_contrib.git && cd opencv_contrib && git checkout 3.2.0
+RUN mkdir -p /root/opencv/build && cd /root/opencv/build && \
+    cmake -DCMAKE_BUILD_TYPE=RELEASE -DENABLE_FAST_MATH=1 -DINSTALL_PYTHON_EXAMPLES=OFF -DBUILD_EXAMPLES=OFF -DENABLE_PRECOMPILED_HEADERS=OFF -DBUILD_TESTS=OFF -D_GLIBCXX_USE_CXX11_ABI=0 -DOPENCV_EXTRA_MODULES_PATH=/root/opencv_contrib/modules -DBUILD_opencv_python3=ON .. && \
+    make -j 4 install
+
+# RUN cp /root/cloud-controller/experiments/ansible/templates/local.conf /etc/ld.so.conf.d/ && ldconfig
+
+RUN pip3 install pymongo Pillow python_papi==5.5.1.3
+ENV PYTHONPATH="/usr/local/lib/python3.4/site-packages/:/root/frpyc"
+RUN pip3 install typing
+
+COPY ./apps/frpyc /root/frpyc
+COPY ./cloud_controller/middleware /root/frpyc/cloud_controller/middleware
+WORKDIR /root/frpyc
+RUN PYTHONPATH=. python3 generate_grpc.py
+RUN PYTHONPATH=. python3 cloud_controller/middleware/generate_grpc.py
+RUN chmod +x frpyc/mongo_server.py
+
+EXPOSE 7777/tcp
+EXPOSE 6666/tcp
+
+ENTRYPOINT [ "./frpyc/mongo_server.py" ]

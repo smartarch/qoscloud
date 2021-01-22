@@ -1,0 +1,15 @@
+components:
+  - id: "server"
+    memory: 256
+    cpu: 15
+    io: 0
+  - id: "recognizer-server"
+    memory: 256
+    cpu: 25
+    io: 0
+
+nodes:
+  - id: "defaultclusternode"
+    memory: 4096
+    cpu: 200
+    io: 10

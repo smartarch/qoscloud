@@ -1,0 +1,172 @@
+// Contains the protocol buffer messages and gRPC services for communication between the Avocado framework and the
+// Managed and unmanaged component instances.
+
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "cz.cuni.mff.avocado.api";
+
+
+package cloud_controller.middleware;
+
+//-------------------------------MIDDLEWARE AGENT-----------------------------
+
+/*
+* MiddlewareAgent provides transparent dependency updates, and transparent measurements of probes in testing
+* cluster. MiddlewareAgent is started along with managed compin in order to communicate properly with the rest
+* of the Avocado framework.
+*/
+service MiddlewareAgent {
+
+    // Sets or updates an address of specified dependent component.
+    rpc SetDependencyAddress (DependencyAddress) returns (AddressAck) {}
+
+    rpc MeasureProbe (ProbeMeasurement) returns (ProbeCallResult) {}
+
+    // Sets a probe as a workload ie. either starts the probe as a background workload or stops the probe.
+    rpc SetProbeWorkload (ProbeWorkload) returns (ProbeCallResult) {}
+
+    rpc CollectProbeResults (ProbeDescriptor) returns (stream ProbeFullResult) {}
+
+    rpc FinalizeExecution (DependencyAddress) returns (AddressAck) {}
+
+    rpc InitializeState (State) returns (StateAck) {}
+
+    rpc Ping (Pong) returns (Pong) {}
+
+    rpc SetMongoParameters (MongoParameters) returns (MongoParametersAck) {}
+
+}
+
+enum Phase {
+        NONE = 0;
+        INIT = 1;
+        READY = 2;
+        FINALIZING = 3;
+        FINISHED = 4;
+}
+
+message Pong {
+    Phase phase = 1;
+}
+
+message MongoParametersAck {}
+
+message MongoParameters {
+    string mongosIp = 1;
+    uint32 shardKey = 2;
+    string db = 3;
+    string collection = 4;
+}
+
+message State {
+    string data = 1;
+}
+
+message StateAck {}
+
+message DependencyAddress {
+    string name = 1;
+    string ip = 3;
+}
+
+message AddressAck {}
+
+message ProbeDescriptor {
+    string name = 1;
+    uint32 waitPerRequest = 2;
+}
+
+message ProbeMeasurement {
+    ProbeDescriptor probe = 1;
+    // This number specifies for how many iterations should the probe run without measuring anything.
+    uint32 warmUpCycles = 2;
+    // This number specifies for how many iterations should the probe run during measurement.
+    uint32 measuredCycles = 3;
+    // Specification of which CPU events should be measured.
+    repeated string cpuEvents = 4;
+}
+
+message ProbeWorkload {
+    oneof newWorkload {
+        ProbeDescriptor probe = 1;
+        // Specifying none as a ProbeWorkload causes all the probes currently running as workloads to stop.
+        bool none = 2;
+    }
+}
+
+/*
+* This message represents the result of probe which corresponds to certain format of files where results of
+* measurements are kept. This format is specified in the documentation.
+*/
+message ProbeFullResult {
+    oneof resultType {
+        // Full header of a data file.
+        string header = 1;
+        // One row of a data file.
+        string row = 2;
+        bool nothing = 3;
+    }
+}
+
+message ProbeCallResult {
+    enum Result {
+        UNKNOWN = 0;
+        OK = 1;
+        CPU_EVENT_NOT_SUPPORTED = 2;
+        IO_EVENT_NOT_SUPPORTED = 3;
+        NOTHING_RUNNING = 4;
+        ERROR = 5;
+    }
+    Result result = 1;
+    int64 executionTime = 2;
+}
+
+//-------------------------------CLIENT CONTROLLER--------------------------
+
+/*
+* Part of Client Controller module which is used as an "external" interface, ie. the clients from outer world
+* connect to this ClientControllerExternal.
+*/
+service ClientControllerExternal {
+
+    // Connects a client. The client receives a stream of commands and as long as the stream is received it means
+    // that the connection is established.
+    rpc Connect (ClientConnectRequest) returns (stream Command) {}
+
+}
+
+message ClientConnectRequest {
+    // Name of the application.
+    string application = 1;
+    // Name of the component.
+    string clientType = 2;
+    bool establishedConnection = 3;
+    // If establishedConnection is True, then the client already has an ID assigned, otherwise the following field is
+    // not valid:
+    string id = 4;
+}
+
+message Command {
+    oneof commandType {
+        int32 WAIT = 1;
+        // This command denotes that the client should save certain ID with which it will identify itself next time
+        // when the client tries to connect via ClientControllerExternal.
+        string SET_ID = 6;
+        // This command denotes that a certain dependency should be either set or updated.
+        DependencyAddress SET_DEPENDENCY = 2;
+        // This command denotes an activation of a "real-time" mode. During the real-time mode, all the specified
+        // latencies should be guaranteed.
+        int32 ACTIVATE_RT_MODE = 3;
+        int32 DEACTIVATE_RT_MODE = 4;
+        ClientResponseCode ERROR = 5;
+    }
+}
+
+enum ClientResponseCode {
+        OK = 0;
+        UNKNOWN_TYPE = 1;
+        ID_NOT_FOUND = 2;
+        IP_NOT_KNOWN = 3;
+        NO_APP_SUBSCRIPTION = 4;
+}

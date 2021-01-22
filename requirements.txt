@@ -1,0 +1,14 @@
+shapely==1.6.4.post2
+pymongo
+networkx
+grpcio==1.19.0
+grpcio-tools==1.19.0  # Used in ./generate_grpc.sh
+numpy==1.15.4
+kubernetes==8.0.0
+ortools==6.9.5824
+# Pillow==5.3.0
+protobuf==3.6.1
+# pymongo==3.7.2
+PyYAML==3.13
+dataclasses==0.6 # Builtin in Python >= 3.7
+python_papi==5.5.1.4 # Used in unittests for Probe monitor

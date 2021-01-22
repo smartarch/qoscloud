@@ -1,0 +1,72 @@
+// Contains protocol buffer messages for application architecture representation
+
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "";
+option java_outer_classname = "";
+option objc_class_prefix = "";
+
+package cloud_controller;
+
+message Architecture {
+    string name = 1;
+    map<string, Component> components = 2;
+    Secret secret = 3;
+}
+
+message Component {
+    string deployment = 1;
+    repeated Probe probes = 2;
+    repeated Requirement timingRequirements = 3;
+    repeated string dependsOn = 4;
+    string name = 5;
+    Cardinality cardinality = 6;
+    string id = 7;
+    ComponentType type = 9;
+    Statefulness statefulness = 10;
+    UEMPolicy policy = 11;
+    repeated string whitelist = 12;
+}
+
+enum Statefulness {
+    NONE = 0;
+    MONGO = 2;
+}
+
+enum UEMPolicy {
+    DEFAULT = 0;
+    FREE = 1;
+    WHITELIST = 2;
+}
+
+enum Cardinality {
+    MULTIPLE = 0;
+    SINGLE = 1;
+}
+
+enum ComponentType {
+    MANAGED = 0;
+    UNMANAGED = 1;
+}
+
+message Secret {
+    string value = 1;
+}
+
+//-----------------------------PROBES-------------------------------
+
+message Probe {
+    string name = 1;
+}
+
+message Requirement {
+    string name = 1;
+    string probe = 2;
+    repeated Limit limits = 3;
+}
+
+message Limit {
+    double probability = 1;
+    double time = 2;
+}

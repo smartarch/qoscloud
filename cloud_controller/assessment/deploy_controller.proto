@@ -1,0 +1,52 @@
+// Contains the protocol buffer messages and services that are used for:
+//  (1) Requests coming from avocadoctl
+//  (2) Communication between Adaptation Controller and Assessment
+
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "";
+option java_outer_classname = "";
+option objc_class_prefix = "";
+
+package assessment;
+
+import "cloud_controller/architecture.proto";
+
+// Avocadoctl stuff
+service DeployController {
+    rpc SubmitArchitecture (cloud_controller.Architecture) returns (DeployReply);
+    rpc RegisterHwConfig (HwConfig) returns (DeployReply);
+    rpc DeleteApplication (AppName) returns (DeployReply);
+    rpc GetApplicationStats (AppName) returns (AppStats);
+}
+
+message AppName {
+    string name = 1;
+}
+
+message HwConfig {
+    string name = 1;
+}
+
+enum ReplyCode {
+    RC_OK = 0;
+    RC_NAME_NOT_AVAILABLE = 1;
+}
+
+message DeployReply {
+    ReplyCode rc = 1;
+}
+
+message AppStats {
+    ReplyCode rc = 1;
+    string stats = 2;
+}
+
+service DeployPublisher {
+    rpc DownloadNewArchitectures (Empty) returns (stream cloud_controller.Architecture);
+    rpc DownloadNewRemovals (Empty) returns (stream AppName);
+}
+
+message Empty {
+}
