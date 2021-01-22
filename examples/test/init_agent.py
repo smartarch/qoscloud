@@ -14,13 +14,6 @@ cfg = InstanceConfig(
 
 probe = cfg.probes.add()
 probe.name = "recognize"
-# probe.type = CODE
-# probe.code = """
-# from subprocess import call
-#
-# call(f"time bash /code/run.sh", shell=True)
-# print(f"Run completed")
-# """
 
 mwa.InitializeInstance(cfg)
 

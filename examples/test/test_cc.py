@@ -1,6 +1,0 @@
-from cloud_controller.knowledge.knowledge_pb2_grpc import ClientControllerInternalStub
-from cloud_controller.middleware import CLIENT_CONTROLLER_EXTERNAL_HOST, CLIENT_CONTROLLER_EXTERNAL_PORT
-from cloud_controller.middleware.helpers import connect_to_grpc_server
-
-cc: ClientControllerInternalStub = connect_to_grpc_server(ClientControllerInternalStub, CLIENT_CONTROLLER_EXTERNAL_HOST, CLIENT_CONTROLLER_EXTERNAL_PORT)
-cc.AddNewApplication()

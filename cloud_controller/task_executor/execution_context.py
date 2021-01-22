@@ -8,7 +8,7 @@ from kubernetes import config, client
 from kubernetes.client import CoreV1Api, AppsV1Api
 
 from cloud_controller import CLIENT_CONTROLLER_HOST, CLIENT_CONTROLLER_PORT
-from cloud_controller.execution.mongo_controller import MongoController
+from cloud_controller.task_executor.mongo_controller import MongoController
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.knowledge_pb2_grpc import ClientControllerInternalStub
 from cloud_controller.knowledge.model import CompinPhase, ManagedCompin

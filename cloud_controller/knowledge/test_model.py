@@ -1,6 +1,5 @@
 import unittest
 
-from cloud_controller.analysis.trivial_solver.trivial_solver import get_first_managed_component
 from cloud_controller.knowledge.model import Component, Application, ComponentType, CloudState, ManagedCompin
 
 
@@ -68,10 +67,6 @@ class ApplicationTests(unittest.TestCase):
         self.unmanaged_components = [self.client]
 
         self.app.add_components([self.client, self.comp1, self.comp2, self.comp3])
-
-    def test_get_first_managed_component(self):
-        first_managed_component = get_first_managed_component(self.app)
-        self.assertEqual(first_managed_component, self.comp1)
 
     def test_list_managed_components(self):
         for managed_component in self.app.list_managed_components():
