@@ -3,7 +3,7 @@ from cloud_controller.analyzer.objective_function import ObjectiveFunction
 from cloud_controller.analyzer.variables import Variables
 from cloud_controller.extension_manager import ExtensionManager
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.monitoring.monitor import TopLevelMonitor
+from cloud_controller.monitor.monitor import TopLevelMonitor
 from cloud_controller.task_executor.task_executor import TaskExecutor
 from cloud_controller.task_executor.execution_context import ExecutionContext
 

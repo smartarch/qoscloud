@@ -12,7 +12,8 @@ import threading
 import logging
 
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import ManagedCompin, TimeContract
+from cloud_controller.knowledge.probe import TimeContract
+from cloud_controller.knowledge.instance import ManagedCompin
 from cloud_controller.middleware import AGENT_PORT, middleware_pb2
 from cloud_controller.middleware.helpers import connect_to_grpc_server
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub

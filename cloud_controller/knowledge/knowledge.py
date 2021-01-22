@@ -7,10 +7,14 @@ from queue import Queue
 from typing import Dict, Set, Optional, Iterable
 from typing import List
 
-from cloud_controller.knowledge.model import Component, UnmanagedCompin, check_datacenters, construct_datacenters, \
+from cloud_controller.knowledge.cluster_model import check_datacenters, construct_datacenters, \
     Datacenter
+from cloud_controller.knowledge.component import Component
+from cloud_controller.knowledge.instance import UnmanagedCompin
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer, UserEquipment
-from cloud_controller.knowledge.model import CloudState, Node, Namespace, Application
+from cloud_controller.knowledge.cluster_model import Node, Namespace
+from cloud_controller.knowledge.application import Application
+from cloud_controller.knowledge.cloud_state import CloudState
 from cloud_controller.knowledge.network_topology import NetworkTopology, EuclidNetworkTopology, StaticNetworkTopology
 
 

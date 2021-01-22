@@ -12,7 +12,8 @@ from cloud_controller.architecture_pb2 import Architecture
 from cloud_controller.client_controller.client import ClientStatus, Client
 from cloud_controller.client_controller.position_tracker import ClientPositionTracker, EuclidClientPositionTracker
 from cloud_controller.knowledge import knowledge_pb2 as protocols
-from cloud_controller.knowledge.model import Application, ComponentType
+from cloud_controller.knowledge.application import Application
+from cloud_controller.knowledge.component import ComponentType
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer
 from cloud_controller.middleware import middleware_pb2 as mw_protocols
 

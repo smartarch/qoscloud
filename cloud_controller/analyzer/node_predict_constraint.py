@@ -6,7 +6,7 @@ from typing import List, Dict
 
 from ortools.constraint_solver.pywrapcp import Solver, PyConstraint
 
-import cloud_controller.knowledge.model as model
+import cloud_controller.knowledge.cluster_model as model
 from cloud_controller.analyzer.predictor import Predictor
 from cloud_controller.analyzer.variable_types import CompNodeVar
 

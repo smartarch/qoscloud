@@ -12,7 +12,8 @@ from cloud_controller.aggregator.scenario_generator import ScenarioGenerator
 from cloud_controller.architecture_pb2 import ApplicationTimingRequirements
 from cloud_controller.assessment.model import Scenario
 from cloud_controller.aggregator.measurement_aggregator import MeasurementAggregator
-from cloud_controller.knowledge.model import Application, Probe, TimeContract, ThroughputContract
+from cloud_controller.knowledge.application import Application
+from cloud_controller.knowledge.probe import TimeContract, ThroughputContract, Probe
 from cloud_controller.middleware.helpers import start_grpc_server, setup_logging
 
 

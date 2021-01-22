@@ -11,8 +11,9 @@ from cloud_controller import ASSESSMENT_KUBECONFIG, ASSESSMENT_MONGOS_SERVER_IP
 from cloud_controller.cleanup import ClusterCleaner
 from cloud_controller.extension_manager import ExtensionManager
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import CloudState
-from cloud_controller.monitoring.monitor import TopLevelMonitor, KubernetesMonitor
+from cloud_controller.knowledge.cloud_state import CloudState
+from cloud_controller.monitor.monitor import TopLevelMonitor
+from cloud_controller.monitor.k8s_monitor import KubernetesMonitor
 
 logger = logging.getLogger("MW")
 

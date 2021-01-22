@@ -16,8 +16,11 @@ from cloud_controller.analyzer.csp_analyzer import CSPAnalyzer
 from cloud_controller.analyzer.objective_function import DefaultObjectiveFunction
 from cloud_controller.knowledge.network_topology import NetworkTopology
 from cloud_controller.knowledge.user_equipment import UEManagementPolicy
-from cloud_controller.monitoring.monitor import TopLevelMonitor, ApplicationMonitor, ClientMonitor, UEMonitor, \
-    KubernetesMonitor, Monitor
+from cloud_controller.monitor.monitor import TopLevelMonitor, Monitor
+from cloud_controller.monitor.app_monitor import ApplicationMonitor
+from cloud_controller.monitor.client_monitor import ClientMonitor
+from cloud_controller.monitor.ue_monitor import UEMonitor
+from cloud_controller.monitor.k8s_monitor import KubernetesMonitor
 from cloud_controller.planner.application_creation_planner import ApplicationCreationPlanner
 from cloud_controller.planner.application_removal_planner import ApplicationRemovalPlanner
 from cloud_controller.planner.dependency_planner import DependencyPlanner

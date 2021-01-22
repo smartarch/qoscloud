@@ -5,7 +5,9 @@ execution plans that aim to bring the actual state to the desired state.
 """
 from typing import Tuple, List, Optional
 
-from cloud_controller.knowledge.model import CloudState, ManagedCompin, Compin, Statefulness, CompinPhase
+from cloud_controller.knowledge.component import Statefulness
+from cloud_controller.knowledge.instance import Compin, CompinPhase, ManagedCompin
+from cloud_controller.knowledge.cloud_state import CloudState
 
 
 def get_compin_diff(application_name, actual_state: CloudState, desired_state: CloudState) -> \

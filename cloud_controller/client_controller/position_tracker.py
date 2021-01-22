@@ -17,7 +17,8 @@ from typing import Dict, Iterable, FrozenSet, Tuple, List
 from cloud_controller import DEFAULT_EUCLID_TOPOLOGY_CONFIG, USE_VIRTUAL_NETWORK_CONTROLLER
 from cloud_controller.client_controller.client import ClientStatus, Client
 from cloud_controller.knowledge.network_distances import NetworkDistances
-from cloud_controller.knowledge.model import UnmanagedCompin, Node
+from cloud_controller.knowledge.cluster_model import Node
+from cloud_controller.knowledge.instance import UnmanagedCompin
 
 
 class ClientPositionTracker(ABC):

@@ -12,8 +12,9 @@ from ortools.constraint_solver.pywrapcp import SolutionCollector
 from cloud_controller.analyzer.variable_types import Var, CompNodeVar, RunningCompNodeVar, CompDCVar, NodeRoleVar, \
     RunningNodeVar
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import CloudState, UnmanagedCompin, Component, ComponentCardinality, \
-    ManagedCompin
+from cloud_controller.knowledge.component import ComponentCardinality, Component
+from cloud_controller.knowledge.instance import ManagedCompin, UnmanagedCompin
+from cloud_controller.knowledge.cloud_state import CloudState
 from cloud_controller.knowledge.network_distances import NetworkDistances
 
 

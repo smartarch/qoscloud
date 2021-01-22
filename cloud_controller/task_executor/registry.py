@@ -5,7 +5,7 @@ from threading import RLock
 from typing import Dict, Optional, Iterable
 
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.monitoring.monitor import Monitor
+from cloud_controller.monitor.monitor import Monitor
 from cloud_controller.tasks.task import Task
 
 

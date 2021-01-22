@@ -16,7 +16,9 @@ from cloud_controller.analyzer.objective_function import ObjectiveFunction
 from cloud_controller.analyzer.constraint import Constraint
 from cloud_controller.analyzer.variables import Variables
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import CloudState, ManagedCompin, ComponentCardinality
+from cloud_controller.knowledge.component import ComponentCardinality
+from cloud_controller.knowledge.instance import ManagedCompin
+from cloud_controller.knowledge.cloud_state import CloudState
 
 
 class Analyzer:

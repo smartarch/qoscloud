@@ -24,7 +24,7 @@ from cloud_controller.assessment.predictor_scenario_planner import PredictorScen
 from cloud_controller.assessment.scenario_executor import ScenarioExecutor, FakeScenarioExecutor
 from cloud_controller.assessment.scenario_planner import ScenarioPlanner, FakeScenarioPlanner
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import Node
+from cloud_controller.knowledge.cluster_model import Node
 from cloud_controller.middleware.helpers import setup_logging, connect_to_grpc_server
 
 if __name__ == "__main__":

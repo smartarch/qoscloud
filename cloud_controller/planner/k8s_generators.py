@@ -4,7 +4,7 @@ Contains the functions that create Kubernetes YAML descriptors from the provided
 import yaml
 
 from cloud_controller import middleware, HOSTNAME_LABEL, DEFAULT_SECRET_NAME, DEFAULT_DOCKER_IMAGE
-from cloud_controller.knowledge.model import ManagedCompin
+from cloud_controller.knowledge.instance import ManagedCompin
 
 SERVICE_TEMPLATE = """
     kind: Service
@@ -129,3 +129,8 @@ def create_service_for_compin(deployment_str: str, compin: ManagedCompin) -> str
             port_dict['name'] = name
             service['spec']['ports'].append(port_dict)
     return yaml.dump(service)
+
+
+def add_resource_requirements(template: str, min_memory="", max_memory="",
+                              min_cpu="", max_cpu="", k8s_labels="") -> str:
+    return template

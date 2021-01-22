@@ -8,7 +8,7 @@ import logging
 
 from cloud_controller.analyzer.csp_analyzer import CSPAnalyzer
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.monitoring.monitor import Monitor
+from cloud_controller.monitor.monitor import Monitor
 from cloud_controller.planner.top_planner import Planner
 from cloud_controller.task_executor.task_executor import TaskExecutor
 

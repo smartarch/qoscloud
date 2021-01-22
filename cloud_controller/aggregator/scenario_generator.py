@@ -6,7 +6,7 @@ from typing import Tuple, Dict, Set, List, Optional
 from cloud_controller import DEFAULT_HARDWARE_ID, MAX_ARITY
 from cloud_controller.aggregator.multipredictor import MultiPredictor, PredictorUpdater
 from cloud_controller.assessment.model import Scenario
-from cloud_controller.knowledge.model import Probe
+from cloud_controller.knowledge.probe import Probe
 
 
 class MeasuringPhase(Enum):

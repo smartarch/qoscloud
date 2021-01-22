@@ -6,7 +6,7 @@ from abc import abstractmethod
 from typing import List, Dict, Set
 
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import CloudState
+from cloud_controller.knowledge.cloud_state import CloudState
 from cloud_controller.task_executor.registry import TaskRegistry
 from cloud_controller.tasks.task import Task
 

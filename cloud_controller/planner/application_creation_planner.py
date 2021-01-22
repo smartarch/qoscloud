@@ -2,7 +2,9 @@ import logging
 from typing import List, Dict, Set
 
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import CloudState, Application, Statefulness
+from cloud_controller.knowledge.application import Application
+from cloud_controller.knowledge.component import Statefulness
+from cloud_controller.knowledge.cloud_state import CloudState
 from cloud_controller.planner.top_planner import Planner
 from cloud_controller.tasks.client_controller import AddApplicationToCCTask
 from cloud_controller.tasks.kubernetes import CreateNamespaceTask, CreateDockersecretTask

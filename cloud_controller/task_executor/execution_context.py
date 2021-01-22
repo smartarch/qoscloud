@@ -11,7 +11,7 @@ from cloud_controller import CLIENT_CONTROLLER_HOST, CLIENT_CONTROLLER_PORT
 from cloud_controller.task_executor.mongo_controller import MongoController
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.knowledge_pb2_grpc import ClientControllerInternalStub
-from cloud_controller.knowledge.model import CompinPhase, ManagedCompin
+from cloud_controller.knowledge.instance import CompinPhase, ManagedCompin
 from cloud_controller.middleware import AGENT_PORT
 from cloud_controller.middleware.helpers import connect_to_grpc_server
 from cloud_controller.middleware.middleware_pb2 import Pong

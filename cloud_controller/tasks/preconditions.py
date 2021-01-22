@@ -1,5 +1,6 @@
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import NamespacePhase, CompinPhase, ManagedCompin
+from cloud_controller.knowledge.cluster_model import NamespacePhase
+from cloud_controller.knowledge.instance import CompinPhase, ManagedCompin
 from cloud_controller.task_executor.execution_context import ExecutionContext
 
 

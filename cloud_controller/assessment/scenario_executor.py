@@ -20,7 +20,9 @@ from cloud_controller.assessment.model import Scenario
 from cloud_controller.assessment.result_storage import ResultStorage
 from cloud_controller.assessment.scenario_planner import ScenarioPlanner, FailureReason
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.model import CloudState, Compin, Probe
+from cloud_controller.knowledge.probe import Probe
+from cloud_controller.knowledge.instance import Compin
+from cloud_controller.knowledge.cloud_state import CloudState
 from cloud_controller.middleware.helpers import connect_to_grpc_server_with_channel
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
 

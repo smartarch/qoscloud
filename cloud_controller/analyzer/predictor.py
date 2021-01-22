@@ -11,7 +11,9 @@ from typing import Dict, Iterable
 
 import yaml
 
-import cloud_controller.knowledge.model as model
+import cloud_controller.knowledge.component
+import cloud_controller.knowledge.instance
+import cloud_controller.knowledge.cluster_model as model
 
 
 class Predictor(ABC):
@@ -19,7 +21,7 @@ class Predictor(ABC):
     An interface for all predictor implementations.
     """
 
-    def predict(self, node: model.Node, components_on_node: Dict[model.Component, int]) -> bool:
+    def predict(self, node: model.Node, components_on_node: Dict[cloud_controller.knowledge.component.Component, int]) -> bool:
         return self.predict_(node.hardware_id, {component.id: count for component, count in components_on_node.items()})
 
     @abstractmethod
@@ -119,7 +121,8 @@ class StraightforwardPredictorModel(Predictor):
                utilization_model.cpu <= node_model.cpu and \
                utilization_model.mem <= node_model.mem
 
-    def print_node_utilization_stats(self, nodes: Iterable[model.Node], compins: Iterable[model.ManagedCompin]) -> None:
+    def print_node_utilization_stats(self, nodes: Iterable[model.Node], compins: Iterable[
+        cloud_controller.knowledge.instance.ManagedCompin]) -> None:
         """
         Prints statistics of node utilization according to the loaded predictor configuration, i.e. which % of CPU,
         memory, and IO is used on each node for the given compin locations.
