@@ -13,8 +13,7 @@ from typing import List, Set, Optional
 from cloud_controller import DEFAULT_HARDWARE_ID
 from cloud_controller.assessment.model import Scenario
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.application import Application
-from cloud_controller.knowledge.probe import Probe
+from cloud_controller.knowledge.model import Application, Probe
 
 logger = logging.getLogger("SP")
 

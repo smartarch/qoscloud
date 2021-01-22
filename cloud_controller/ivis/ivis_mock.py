@@ -1,3 +1,6 @@
+"""
+Contains a mock of some functionality of the IVIS framework used for testing the IVIS interface.
+"""
 import logging
 import time
 
@@ -74,8 +77,6 @@ def on_fail():
     run_status = request.json
     log_run_status(run_status)
     return "200 OK"
-
-# TODO: implement /ccapi/on-fail
 
 if __name__ == "__main__":
     setup_logging()

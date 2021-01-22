@@ -2,7 +2,7 @@ import logging
 
 from cloud_controller import DEFAULT_MEASURED_RUNS
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.component import Statefulness
+from cloud_controller.knowledge.model import Statefulness
 from cloud_controller.knowledge.instance import CompinPhase, ManagedCompin
 from cloud_controller.knowledge.cloud_state import CloudState
 from cloud_controller.middleware.middleware_agent import NO_SHARDING

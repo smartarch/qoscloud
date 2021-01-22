@@ -5,7 +5,7 @@ execution plans that aim to bring the actual state to the desired state.
 """
 from typing import Tuple, List, Optional
 
-from cloud_controller.knowledge.component import Statefulness
+from cloud_controller.knowledge.model import Statefulness
 from cloud_controller.knowledge.instance import Compin, CompinPhase, ManagedCompin
 from cloud_controller.knowledge.cloud_state import CloudState
 

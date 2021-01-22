@@ -11,7 +11,7 @@ from typing import Dict, Iterable
 
 import yaml
 
-import cloud_controller.knowledge.component
+import cloud_controller.knowledge.model
 import cloud_controller.knowledge.instance
 import cloud_controller.knowledge.cluster_model as model
 
@@ -21,7 +21,7 @@ class Predictor(ABC):
     An interface for all predictor implementations.
     """
 
-    def predict(self, node: model.Node, components_on_node: Dict[cloud_controller.knowledge.component.Component, int]) -> bool:
+    def predict(self, node: model.Node, components_on_node: Dict[cloud_controller.knowledge.model.Component, int]) -> bool:
         return self.predict_(node.hardware_id, {component.id: count for component, count in components_on_node.items()})
 
     @abstractmethod

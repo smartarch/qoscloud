@@ -6,7 +6,7 @@ from typing import Tuple, Dict, Set, List, Optional
 from cloud_controller import DEFAULT_HARDWARE_ID, MAX_ARITY
 from cloud_controller.aggregator.multipredictor import MultiPredictor, PredictorUpdater
 from cloud_controller.assessment.model import Scenario
-from cloud_controller.knowledge.probe import Probe
+from cloud_controller.knowledge.model import Probe
 
 
 class MeasuringPhase(Enum):
@@ -16,6 +16,9 @@ class MeasuringPhase(Enum):
 
 
 class ScenarioGenerator:
+    """
+    Responsible for generating measurement scenarios for the assessment controller.
+    """
 
     def __init__(self, _predictor: MultiPredictor):
         import typing
@@ -31,6 +34,9 @@ class ScenarioGenerator:
         self._INITIAL_SCENARIOS_COUNT = 4
 
     def register_probe(self, probe: Probe) -> None:
+        """
+        :param probe: a Probe object representing the probe to add
+        """
         self._probes[probe.alias] = probe
         if probe.alias not in self._measured_combinations:
             self._measured_combinations[probe.alias] = set()
@@ -42,6 +48,11 @@ class ScenarioGenerator:
                 self._combination_scenarios.append((probe.alias, load))
 
     def load_datafile(self, hw_id: str, probe_id: str, bg_probe_ids: List[str], filename: str) -> None:
+        """
+        Notifies the scenario generator that the specified measurement has already been performed.
+        Can be called even if the corresponding scenario was never generated (e.g. if the measurement
+        was done before this instance was created).
+        """
         if probe_id not in self._measured_combinations:
             self._measured_combinations[probe_id] = set()
         self._measured_combinations[probe_id].add(self._bg_load_id(bg_probe_ids))
@@ -51,6 +62,9 @@ class ScenarioGenerator:
             self._predictor_updater.update_predictor()
 
     def scenario_completed(self, scenario: Scenario) -> None:
+        """
+        Notifies the scenario generator that a scenario has been completed.
+        """
         return self.load_datafile(
             hw_id=scenario.hw_id,
             probe_id=scenario.controlled_probe.alias,
@@ -67,6 +81,10 @@ class ScenarioGenerator:
         return bg_probes
 
     def increase_count(self, hw_id: str, probe_id: str, arity: int) -> None:
+        """
+        Increases probability that a scenario for a given probe, HW configuration and arity will be
+        generated. Is used when predictor needs more data on a particular combination.
+        """
         if 1 < arity <= MAX_ARITY:
             if (hw_id, probe_id, arity) not in self._combination_counter:
                 self._combination_counter[(hw_id, probe_id, arity)] = 1
@@ -90,6 +108,10 @@ class ScenarioGenerator:
         return scenario
 
     def next_scenario(self) -> Optional[Scenario]:
+        """
+        :return: Next generated scenario (if more scenarios available, returns the one with the
+        highest priority).
+        """
         if len(self._isolation_scenarios) > 0:
             probe_id = self._isolation_scenarios.pop(0)
             return self._create_scenario(probe_id, [], DEFAULT_HARDWARE_ID)

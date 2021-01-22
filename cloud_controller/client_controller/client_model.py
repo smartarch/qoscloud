@@ -2,7 +2,7 @@ import logging
 import math
 import time
 from threading import RLock
-from typing import Dict, List
+from typing import Dict, List, Iterable
 
 import grpc
 
@@ -12,8 +12,7 @@ from cloud_controller.architecture_pb2 import Architecture
 from cloud_controller.client_controller.client import ClientStatus, Client
 from cloud_controller.client_controller.position_tracker import ClientPositionTracker, EuclidClientPositionTracker
 from cloud_controller.knowledge import knowledge_pb2 as protocols
-from cloud_controller.knowledge.application import Application
-from cloud_controller.knowledge.component import ComponentType
+from cloud_controller.knowledge.model import Application, ComponentType
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer
 from cloud_controller.middleware import middleware_pb2 as mw_protocols
 
@@ -49,13 +48,19 @@ class ClientModel:
         self.liveness_check_frequency = wait_signal_frequency * 4  # Seconds
         self.network_topology: ClientPositionTracker = EuclidClientPositionTracker()
 
-    def iterate_clients(self):
+    def iterate_clients(self) -> Iterable[Client]:
+        """
+        Iterates through all currently connected clients.
+        """
         for app_name in self.clients:
             for client in self.clients[app_name].values():
                 if client.status == ClientStatus.CONNECTED:
                     yield client
 
-    def update_distances(self):
+    def update_distances(self) -> None:
+        """
+        Registers location events for all currently connected clients.
+        """
         self.network_topology.update_client_positions(self.iterate_clients())
         for client in self.iterate_clients():
             event = client.pb_representation()
@@ -63,7 +68,11 @@ class ClientModel:
             self.new_events.append(event)
             logging.info(f"Current location of client {event.id} is ({event.position_x}, {event.position_y})")
 
-    def check_threshold(self, app_name: str, type: str):
+    def check_threshold(self, app_name: str, type: str) -> None:
+        """
+        Checks whether the number of virtual clients of a given application and type is appropriate.
+        Creates or deletes virtual clients if needed.
+        """
         currently_connected = 0
         for client in self.clients[app_name].values():
             if client.type == type and client.status == ClientStatus.CONNECTED:
@@ -75,15 +84,21 @@ class ClientModel:
             self.remove_client(app_name, type)
 
     def get_virtual_client(self, app_name: str, type: str) -> Client:
+        """
+        :return: a free virtual client of a given application and type.
+        """
         return self.virtual_clients[app_name][type].pop(0)
 
-    def _client_exists(self, application, id_):
+    def _client_exists(self, application: str, id_: str) -> bool:
         return application in self.clients and id_ in self.clients[application]
 
-    def component_exists(self, application, component):
+    def component_exists(self, application: str, component: str) -> bool:
+        """
+        :return: True if the given component was registered and belongs to the given application.
+        """
         return application in self.applications and component in self.applications[application].components
 
-    def _generate_client_id(self):
+    def _generate_client_id(self) -> str:
         self._last_id += 1
         return str(self._last_id)
 
@@ -195,6 +210,10 @@ class ClientModel:
             return mw_protocols.ClientResponseCode.Value("OK"), client.persistent_id, client
 
     def add_new_application(self, application_pb):
+        """
+        Adds support for a new application.
+        :param application_pb: Protobuf representation of the application
+        """
         app = Application.init_from_pb(application_pb)
         app_name = application_pb.name
         self.clients[app_name] = {}

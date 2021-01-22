@@ -23,7 +23,6 @@ class Client:
     Stores the data about a client relevant to the ClientController
 
     Attributes:
-        descriptor          ClientDescriptor protobuf for this client
         context             grpc.ServicerContext of this client, can be used to cancel the connection
         last_call           Timestamp of the last call to the client
         dependency_updates  Pending dependency updates (ones that were not yet sent to the client)
@@ -51,11 +50,15 @@ class Client:
 
         self.status: ClientStatus = ClientStatus.VIRTUAL
 
-    def set_statefulness_key(self, ip):
+    def set_statefulness_key(self, ip) -> None:
         agent: MiddlewareAgentStub = connect_to_grpc_server(MiddlewareAgentStub, ip, AGENT_PORT)
         agent.SetStatefulnessKey(MongoParameters(shardKey=int(self.persistent_id)))
 
     def virtualize(self) -> None:
+        """
+        Turns this client into a virtual client, thus erasing all client-cpecific data. Is called
+        by the client controller when a client disconnects.
+        """
         self.status = ClientStatus.VIRTUAL
         self.context = None
         self.persistent_id = None
@@ -65,6 +68,9 @@ class Client:
 
     @staticmethod
     def init_from_pb(descriptor: protocols.ClientDescriptor) -> "Client":
+        """
+        Creates a Client object from ClientDescriptor.
+        """
         client = Client(descriptor.application, descriptor.type, descriptor.id)
         client.ip = descriptor.ip
         client.hasID = descriptor.hasID
@@ -75,6 +81,9 @@ class Client:
         return client
 
     def update_from_pb(self, descriptor: protocols.ClientDescriptor):
+        """
+        Creates the Client from a ClientDescriptor.
+        """
         assert descriptor.type == self.type
         assert descriptor.application == self.application
         assert descriptor.id == self.id
@@ -88,6 +97,9 @@ class Client:
             self.set_statefulness_key(dependency_ip)
 
     def pb_representation(self) -> protocols.ClientDescriptor:
+        """
+        :return: A ClientDescriptor of the client.
+        """
         return protocols.ClientDescriptor(
             application=self.application,
             type=self.type,

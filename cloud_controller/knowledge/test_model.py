@@ -1,7 +1,6 @@
 import unittest
 
-from cloud_controller.knowledge.application import Application
-from cloud_controller.knowledge.component import ComponentType, Component
+from cloud_controller.knowledge.model import Application, ComponentType, Component
 from cloud_controller.knowledge.instance import ManagedCompin
 from cloud_controller.knowledge.cloud_state import CloudState
 

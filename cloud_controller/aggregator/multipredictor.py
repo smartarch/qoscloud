@@ -8,6 +8,12 @@ from cloud_controller import THROUGHPUT_ENABLED, THROUGHPUT_PERCENTILES, DEFAULT
 
 
 class MultiPredictor:
+    """
+    A wrapper around a collection of Predictor instances. Creates and trains new predictor instances
+    when needed (e.g. when a new HW configuration or a new percentile is registered).
+
+    For the external modules serves as a multi-config multi-percentile performance predictor.
+    """
 
     def __init__(self):
         self.lock = RLock()
@@ -23,20 +29,35 @@ class MultiPredictor:
     def _add_predictor(self, hw_id: str, percentile:float) -> None:
         self._predictors[(hw_id, percentile)] = self._create_predictor(hw_id, percentile)
 
-    def add_hw_id(self, hw_id: str):
+    def add_hw_id(self, hw_id: str) -> None:
+        """
+        Registers a new HW configuration. Creates new Predictor instances if needed.
+        """
         for percentile in self.percentiles:
             self._add_predictor(hw_id, percentile)
 
     def add_percentile(self, percentile: float):
+        """
+        Registers a new percentile. Creates new Predictor instances if needed.
+        """
         for hw_id in self.hw_ids:
             self._add_predictor(hw_id, percentile)
 
     def predict_time(self, hw_id: str, combination: List[str], time_limit: int, percentile: float) -> bool:
+        """
+        Returns true if the response time of the first probe in the combination at the specified
+        percentile is predicted to be lower than the specified limit (while running on the given
+        HW configuration).
+        """
         with self.lock:
             verdict, _ = self._predictors[(hw_id, percentile)].predict_combination(comb=combination, time_limit=time_limit)
         return verdict is not None and verdict
 
     def predict_throughput(self, hw_id: str, combination: List[str], max_value: int) -> bool:
+        """
+        Returns true if the mean response time of the first probe in the combination is predicted
+        to be lower than the specified limit (while running on the given HW configuration).
+        """
         assert THROUGHPUT_ENABLED and len(THROUGHPUT_PERCENTILES) > 0
         total_time = 0.0
         previous = 0.0
@@ -75,6 +96,10 @@ class MultiPredictor:
         return _predictor
 
     def provide_new_files(self, files: Dict[str, List[str]]) -> None:
+        """
+        Sends the measurement data files to the respective predictors.
+        :param files: a dictionary of lists of measurement file paths, mapped by HW configuration name.
+        """
         for ((hw_id, _), predictor) in self._predictors.items():
             if hw_id in files:
                 for filename in files[hw_id]:
@@ -83,6 +108,10 @@ class MultiPredictor:
 
 
 class PredictorUpdater:
+    """
+    Responsible for collecting the measurement data files of completed scenarios and
+    sending them to the MultiPredictor, when needed.
+    """
 
     def __init__(self, predictor_: MultiPredictor):
         self._files: Dict[str, List[str]] = {}
@@ -93,6 +122,9 @@ class PredictorUpdater:
 
     @property
     def file_count(self) -> int:
+        """
+        :return: Number of files that have not been processed yet.
+        """
         return self._file_count
 
     def start(self) -> None:
@@ -110,7 +142,12 @@ class PredictorUpdater:
         else:
             time.sleep(1)
 
-    def provide_file(self, hw_id: str, filename:str):
+    def provide_file(self, hw_id: str, filename: str) -> None:
+        """
+        :param hw_id: HW configuration on which the measurement was done.
+        :param filename: Path to the file.
+        :return:
+        """
         with self._lock:
             if hw_id not in self._files:
                 self._files[hw_id] = []
@@ -118,5 +155,9 @@ class PredictorUpdater:
             self._file_count += 1
 
     def update_predictor(self) -> None:
+        """
+        Signals that it is time to provide all collected files to the predictor. The process of
+        transferring and processing the files will start shortly thereafter.
+        """
         with self._lock:
             self._update_time = True

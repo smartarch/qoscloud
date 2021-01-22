@@ -4,7 +4,7 @@ import yaml
 from kubernetes import client
 
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.component import Component
+from cloud_controller.knowledge.model import Component
 from cloud_controller.knowledge.instance import CompinPhase, ManagedCompin
 from cloud_controller.planner.k8s_generators import create_deployment_for_compin, create_service_for_compin
 from cloud_controller.task_executor.execution_context import KubernetesExecutionContext, ExecutionContext, call_k8s_api

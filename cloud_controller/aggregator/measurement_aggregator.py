@@ -5,11 +5,25 @@ import logging
 
 import os
 
-from cloud_controller import DATAFILE_EXTENSION, DEFAULT_HARDWARE_ID, RESULTS_PATH
+from cloud_controller import DATAFILE_EXTENSION, RESULTS_PATH
 from cloud_controller.assessment.model import Scenario
 
 
 class MeasurementAggregator:
+    """
+    Loads response time data from measurement data files. Processes these data in order to be able
+    to answer the questions about response times of probes at different percentiles and their mean
+    response times.
+
+    This module is used for two purposes:
+
+        (1) For the application review process (verifying that the QoS requirements are realistic.
+
+        (2) For responding to the questions about response times and throughput coming from the
+        cloud controller in cases where the combination in question was already measured directly.
+        This is faster than making predictions based on the statistical model, but can only be
+        done for the measured combinations.
+    """
 
     def __init__(self):
         self._measurements: Dict[str, List[int]] = {}
@@ -49,6 +63,11 @@ class MeasurementAggregator:
         return name in self._measurements
 
     def process_measurement_file(self, name: str, filename: str) -> None:
+        """
+        Loads a measurement file, processes the response time values in it.
+        :param name: Name of the measurement
+        :param filename: path to the file
+        """
         self._measurements[name] = []
         total_running_time: int = 0
         with open(filename, "r") as file:
@@ -75,11 +94,21 @@ class MeasurementAggregator:
                 break
 
     def predict_time(self, probe_name: str, time_limit: int, percentile: float) -> bool:
+        """
+        Returns true if the response time of the main probe in the measurement at the specified
+        percentile is lower than the specified limit.
+        :param probe_name: measurement name
+        """
         if self.running_time_at_percentile(probe_name, percentile) < time_limit:
             return True
         return False
 
     def predict_throughput(self, probe_name: str, max_mean_time: int) -> bool:
+        """
+        Returns true if the mean response time of the main probe in the measurement
+        is lower than the specified limit.
+        :param probe_name: measurement name
+        """
         if self.mean_running_time(probe_name) < max_mean_time:
             return True
         return False

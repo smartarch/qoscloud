@@ -6,12 +6,12 @@ from typing import List, Optional
 from cloud_controller.middleware.interpreter import Interpreter
 from cloud_controller.middleware.measurement_collectors import DataCollector
 
-"""
-Collects probes data and controls probe measurement process. The results are saved as files in `./probes/`
-"""
-
 
 class ProbeMonitor:
+    """
+    Collects probes data and controls probe measurement process. The results are saved in the instance
+    container until the assessment controller requests them.
+    """
 
     def __init__(self, interpreter: Interpreter):
         self._workload_enabled = False

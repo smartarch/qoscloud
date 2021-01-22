@@ -29,7 +29,7 @@ DEFAULT_PREDICTOR_CONFIG = "./config/predictor-config.yaml"
 PARALLEL_EXECUTION = False  # Whether the execution of execution plans for different applications will happen in
                             # parallel or sequentially
 USE_VIRTUAL_NETWORK_CONTROLLER = False
-DEFAULT_DOCKER_IMAGE="dankhalev/ivis-job"
+DEFAULT_DOCKER_IMAGE = "dankhalev/ivis-job"
 
 PREDICTOR_HOST = "0.0.0.0"
 PREDICTOR_PORT = 4317
@@ -45,10 +45,6 @@ THROUGHPUT_ENABLED = True
 THROUGHPUT_PERCENTILES = [50.0, 90.0, 99.0]
 REPORTED_PERCENTILES = [50, 80, 90, 95]
 
-load_config_from_file(__name__, CONFIG_FILE_LOCATION)
-if not isinstance(DEFAULT_UE_MANAGEMENT_POLICY, UEManagementPolicy):
-    assert isinstance(DEFAULT_UE_MANAGEMENT_POLICY, str)
-    DEFAULT_UE_MANAGEMENT_POLICY = UEManagementPolicy[DEFAULT_UE_MANAGEMENT_POLICY.upper()]
 DEFAULT_WAIT_SIGNAL_FREQUENCY = 5  # Seconds
 VIRTUAL_COUNT_CONSTANT = 3
 VIRTUAL_COUNT_PERCENT = 0.1
@@ -61,3 +57,8 @@ CSP_DEFAULT_TIME_LIMIT = 5
 CSP_RUNNING_NODE_COST = 1
 CSP_LATENCY_COST = 10
 CSP_REDEPLOYMENT_COST = 2
+
+load_config_from_file(__name__, CONFIG_FILE_LOCATION)
+if not isinstance(DEFAULT_UE_MANAGEMENT_POLICY, UEManagementPolicy):
+    assert isinstance(DEFAULT_UE_MANAGEMENT_POLICY, str)
+    DEFAULT_UE_MANAGEMENT_POLICY = UEManagementPolicy[DEFAULT_UE_MANAGEMENT_POLICY.upper()]

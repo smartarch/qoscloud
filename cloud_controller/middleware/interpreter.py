@@ -32,6 +32,11 @@ request_names = {
 
 
 class Interpreter:
+    """
+    This class is responsible for executing the probes on the instance on which it is instantiated.
+    It can run both procedure and code probes, and can report their running times. It is also
+    responsible for ensuring that two probes do not run concurrently.
+    """
 
     def __init__(self, config: InstanceConfig, agent, es_host, es_port):
         self._config: InstanceConfig = config
@@ -49,9 +54,16 @@ class Interpreter:
 
     @property
     def current_process(self) -> Optional[str]:
+        """
+        :return: the name of the probe that is currently running, can be None
+        """
         return self._current_process
 
-    def run_measurement(self, probe_name: str):
+    def run_measurement(self, probe_name: str) -> None:
+        """
+        Executes a measured run of the specified probe.
+        :param probe_name: the name of the probe to measure.
+        """
         logging.info(f"Running run {self._measurement_iteration_number}")
         probe = self._config.probes[probe_name]
         if isinstance(probe, RunnableProbe) and self._ivis_server_available:
@@ -64,6 +76,11 @@ class Interpreter:
         self._measurement_iteration_number += 1
 
     def run_as_probe(self, probe_name: str, procedure: Callable, args: Tuple = ()) -> Optional[Any]:
+        """
+        Executes the specified callable procedure with the specified arguments. This execution is
+        reported as a run of the specified probe, along with its running time.
+        :return: the returned value of the called procedure.
+        """
         if self._current_process is not None:
             self._report_already_running(probe_name, probe_name)
             return
@@ -76,6 +93,9 @@ class Interpreter:
         return self._result
 
     def run_probe(self, probe_name: str, run_id: str, state: str) -> None:
+        """
+        Runs the procedure or the code corresponding to the specified probe.
+        """
         if self._current_process is not None:
             self._report_already_running(probe_name, run_id)
             return
@@ -188,7 +208,6 @@ class Interpreter:
             self._agent.set_finished()
 
     def _process_runtime_requests(self, fdr, stdin, id):
-        # TODO: kill the thread at process end
         fr = os.fdopen(fdr)
         while not fr.closed:
             line = fr.readline()

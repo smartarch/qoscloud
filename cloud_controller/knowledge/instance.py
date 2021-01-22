@@ -1,6 +1,6 @@
 from typing import Optional, Dict, List
 
-from cloud_controller.knowledge.component import Statefulness, Component
+from cloud_controller.knowledge.model import Statefulness, Component
 from cloud_controller.knowledge.user_equipment import UserEquipment
 from cloud_controller.middleware.helpers import OrderedEnum
 

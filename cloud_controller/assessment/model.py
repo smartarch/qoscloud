@@ -14,8 +14,7 @@ import random
 import cloud_controller.architecture_pb2 as arch_pb
 from cloud_controller import DEFAULT_WARMUP_RUNS, DEFAULT_MEASURED_RUNS, RESULTS_PATH, HEADERFILE_EXTENSION, \
     DATAFILE_EXTENSION
-from cloud_controller.knowledge.application import Application
-from cloud_controller.knowledge.probe import Probe
+from cloud_controller.knowledge.model import Application, Probe
 from cloud_controller.aggregator import predictor_pb2
 
 

@@ -2,7 +2,7 @@ import logging
 
 from cloud_controller import API_ENDPOINT_IP, API_ENDPOINT_PORT
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.component import Component
+from cloud_controller.knowledge.model import Component
 from cloud_controller.knowledge.instance import CompinPhase, ManagedCompin
 from cloud_controller.middleware.middleware_pb2 import InstanceConfig, ProbeType, DependencyAddress, MongoParameters
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub

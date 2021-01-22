@@ -1,8 +1,7 @@
 import itertools
 from typing import TypeVar, Dict, List, Optional, Iterable, Type
 
-from cloud_controller.knowledge.application import Application
-from cloud_controller.knowledge.component import ComponentType, ComponentCardinality, Component
+from cloud_controller.knowledge.model import Application, ComponentType, ComponentCardinality, Component
 from cloud_controller.knowledge.instance import Compin, ManagedCompin, UnmanagedCompin
 
 X = TypeVar('X')

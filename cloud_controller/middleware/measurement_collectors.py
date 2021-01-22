@@ -166,8 +166,8 @@ class CpuMonitor(IterativeMonitor):
 
     @property
     def last_measurement(self) -> List[int]:
-        # TODO: currently we do not measure PAPI_L1_DCM, since only 6 concurrent measurements are supported. This needs
-        #       to be fixed
+        # TODO: currently we do not measure PAPI_L1_DCM, since only 6 concurrent measurements are supported on our
+        #  hardware. This needs to be changed once we move to different hardware.
         return self._counters + [self._counters[3] // 11]
 
     def finish(self):

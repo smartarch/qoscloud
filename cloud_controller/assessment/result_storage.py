@@ -11,7 +11,7 @@ from typing import Tuple, Iterable, Optional, Dict
 import cloud_controller.middleware.middleware_pb2 as mw_protocols
 from cloud_controller import middleware, HEADERFILE_EXTENSION, DATAFILE_EXTENSION, RESULTS_PATH
 from cloud_controller.assessment.model import Scenario
-from cloud_controller.knowledge.probe import Probe
+from cloud_controller.knowledge.model import Probe
 from cloud_controller.knowledge.instance import Compin
 from cloud_controller.middleware.helpers import connect_to_grpc_server_with_channel
 from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
@@ -64,11 +64,7 @@ class ResultStorage:
 
         with ResultStorage._file_locks[header_path]:
             # Check header if scenario leads to extend existing results
-            # TODO: fix the following 4 lines
             existing_header: Optional[str] = "run;iteration;start_time;end_time;elapsed;ref-cycles;instructions;cache-references;cache-misses;branch-instructions;branch-misses;PAPI_L1_DCM;rw_completed;rw_merged;rw_sectors;io_in_progress;io_time;weighted_io_time;scale"
-            # if os.path.isfile(header_path):
-            #     with open(header_path) as header_file:
-            #         existing_header = header_file.readline().strip()
 
             # Save results to file
             header_lines = 0

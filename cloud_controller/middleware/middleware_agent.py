@@ -68,6 +68,9 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         self._finished_reported: bool = standalone
 
     def set_ready(self):
+        """
+        Notifies the agent that the user-side initialization is completed.
+        """
         with self._dict_lock:
             if self._ready_reported:
                 self.phase = mw_protocols.Phase.Value('READY')
@@ -76,6 +79,9 @@ class MiddlewareAgent(MiddlewareAgentServicer):
                 self._ready_reported = True
 
     def set_finished(self):
+        """
+        Notifies the agent that the user-side finalization is completed.
+        """
         with self._dict_lock:
             if self._finished_reported:
                 self.phase = mw_protocols.Phase.Value('FINISHED')
@@ -84,14 +90,23 @@ class MiddlewareAgent(MiddlewareAgentServicer):
                 self._finished_reported = True
 
     def run_as_probe(self, probe_name: str, procedure: Callable, args: Tuple = ()) -> Optional[Any]:
+        """
+        Executes the specified callable procedure with the specified arguments. This execution is
+        reported as a run of the specified probe, along with its running time.
+        :return: the returned value of the called procedure.
+        """
         return self._interpreter.run_as_probe(probe_name, procedure, args)
 
     def register_probe(self, probe_name: str, procedure: Callable) -> None:
+        """
+        Registers the specified procedure under the specified probe name. Can be done only if
+        the probe was specified in the application descriptor.
+        """
         self._probes[probe_name] = procedure
 
     def SetDependencyAddress(self, request, context):
         """
-        Updates the address of a compin's dependency
+        Updates the address of the instance's dependency
         """
         with self._dict_lock:
             self._dependency_addresses[request.name] = request
@@ -123,6 +138,9 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         return mw_protocols.StateAck()
 
     def RunProbe(self, request, context):
+        """
+        Executes one measured run of the specified probe.
+        """
         with self._dict_lock:
             if self.phase == self.phase == mw_protocols.Phase.Value('READY'):
                 logging.info(f"Running probe {request.probe_id} with state {request.state}")
@@ -132,6 +150,9 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         return mw_protocols.RunAck()
 
     def InitializeInstance(self, request, context):
+        """
+        Provides the instance with all data it needs for initialization, creates its InstanceConfig.
+        """
         self._config = InstanceConfig.init_from_pb(request, self._probes)
         self._interpreter = Interpreter(self._config, self, request.api_endpoint_ip, ELASTICSEARCH_PORT)
         if not self._config.production:
@@ -169,6 +190,9 @@ class MiddlewareAgent(MiddlewareAgentServicer):
 
     @property
     def mongo_agent(self) -> Optional[MongoAgent]:
+        """
+        :return: MongoAgent of this instance, if it is stateful, None otherwise
+        """
         if self._mongo_agent is None or self._mongo_agent._shard_key == None:
             return None
         return self._mongo_agent
@@ -184,6 +208,9 @@ class MiddlewareAgent(MiddlewareAgentServicer):
         return None
 
     def MeasureProbe(self, measurement: mw_protocols.ProbeMeasurement, context) -> mw_protocols.ProbeCallResult:
+        """
+        Executes a specified number of the probe runs in the measured mode.
+        """
         self._config.reporting_enabled = measurement.reporting_enabled
         error = self._check_measurement_errors(measurement.probe.name)
         if error:
@@ -207,6 +234,9 @@ class MiddlewareAgent(MiddlewareAgentServicer):
                 result=mw_protocols.ProbeCallResult.Result.Value("CPU_EVENT_NOT_SUPPORTED"))
 
     def SetProbeWorkload(self, workload: mw_protocols.ProbeWorkload, context) -> mw_protocols.ProbeCallResult:
+        """
+        Runs the specified probe in the background mode until requested to stop.
+        """
         self._config.reporting_enabled = workload.reporting_enabled
         if workload.WhichOneof("newWorkload") == "probe":
             # Probe name
@@ -230,6 +260,9 @@ class MiddlewareAgent(MiddlewareAgentServicer):
 
     def CollectProbeResults(self, probe: mw_protocols.ProbeDescriptor, context) \
             -> Generator[mw_protocols.ProbeFullResult, None, None]:
+        """
+        :return: The measurement data collected during the last MeasureProbe execution.
+        """
         error = self._check_measurement_errors(probe.name)
         if error:
             yield mw_protocols.ProbeFullResult(nothing=True)

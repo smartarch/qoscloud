@@ -1,3 +1,8 @@
+"""
+This package contains the middleware library that has to be integrated into any component (or client)
+that is meant to be run with the framework.
+"""
+
 from cloud_controller.middleware.helpers import load_config_from_file
 
 MIDDLEWARE_CONFIG_FILE_LOCATION = "config/middleware-config.yaml"  # This parameter is not configurable externally

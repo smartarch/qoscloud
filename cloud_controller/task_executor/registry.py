@@ -2,7 +2,7 @@ import logging
 from enum import Enum
 from queue import Queue, Empty
 from threading import RLock
-from typing import Dict, Optional, Iterable
+from typing import Dict, Iterable
 
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.monitor.monitor import Monitor
@@ -17,6 +17,11 @@ class TaskState(Enum):
 
 
 class TaskRegistry(Monitor):
+    """
+    Responsible for managing the tasks related to the planing and execution phases. Preserves the
+    integrity of the task system (this is important since the tasks run asynchronously and their
+    effects may influence the rest of the adaptation loop.
+    """
 
     def __init__(self, knowledge: Knowledge):
         super().__init__(knowledge)
@@ -29,9 +34,16 @@ class TaskRegistry(Monitor):
         self._task_states: Dict[str, TaskState] = {}
 
     def task_count(self) -> int:
+        """
+        :return: Number of tasks currently present in the registry.
+        """
         return len(self._tasks)
 
     def monitor(self) -> None:
+        """
+        This method is called during the monitoring phase in order to perform the modifications to
+        the Knowledge corresponding to the effects of executed tasks.
+        """
         while True:
             try:
                 task = self._completed_queue.get_nowait()

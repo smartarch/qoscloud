@@ -75,6 +75,11 @@ class ComponentAgent(Agent):
         start_grpc_server(self._mw_agent, add_MiddlewareAgentServicer_to_server, AGENT_HOST, AGENT_PORT, 10, True)
 
     def run_as_probe(self, probe_name: str, procedure: Callable, args: Tuple = ()) -> Optional[Any]:
+        """
+        Executes the specified callable procedure with the specified arguments. This execution is
+        reported as a run of the specified probe, along with its running time.
+        :return: the returned value of the called procedure.
+        """
         return self._mw_agent.run_as_probe(probe_name, procedure, args)
 
     def get_mongo_agent(self) -> Optional[MongoAgent]:
@@ -108,9 +113,16 @@ class ComponentAgent(Agent):
             logging.info(f"Phase was switched to FINISHED")
 
     def register_probe(self, probe_name: str, callable: Callable):
+        """
+        Registers the specified procedure under the specified probe name. Can be done only if
+        the probe was specified in the application descriptor.
+        """
         self._mw_agent.register_probe(probe_name, callable)
 
     def get_phase(self) -> Phase:
+        """
+        :return: Current lifecycle phase of the instance
+        """
         return Phase(self._mw_agent.phase)
 
 
@@ -138,6 +150,9 @@ class ClientAgent(Agent):
         return self._id
 
     def connected(self) -> bool:
+        """
+        :return: True if a connection with the client controller has been established.
+        """
         return self._connected
 
     def _run(self) -> None:

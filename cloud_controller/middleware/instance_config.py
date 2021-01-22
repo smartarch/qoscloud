@@ -1,3 +1,7 @@
+"""
+This module contains the classes that are used by the middleware agent to store the configuration
+of the instance.
+"""
 import json
 from typing import Callable, Optional, Dict
 
@@ -9,6 +13,9 @@ ELASTICSEARCH_PORT = 9200
 
 
 class ProbeConfig:
+    """
+    Represents a probe registered on the instance
+    """
 
     def __init__(self, name: str, signal_set: str, et_signal: str, rc_signal: str, run_count: int):
         self.name = name
@@ -18,6 +25,9 @@ class ProbeConfig:
         self.run_count = run_count
 
     def submit_running_time(self, time: float, report_service: Elasticsearch) -> None:
+        """
+        Stores the response time value in a provided elasticsearch database.
+        """
         time *= 1000
         self.run_count += 1
         doc = {
@@ -28,6 +38,9 @@ class ProbeConfig:
 
 
 class CallableProbe(ProbeConfig):
+    """
+    Represents a probe that is registered as a callable Python procedure.
+    """
 
     def __init__(self, name: str, signal_set: str, et_signal: str, rc_signal: str, run_count: int, procedure: Callable):
         super(CallableProbe, self).__init__(name, signal_set, et_signal, rc_signal, run_count)
@@ -35,6 +48,10 @@ class CallableProbe(ProbeConfig):
 
 
 class RunnableProbe(ProbeConfig):
+    """
+    Represents a probe that is registered as a runnable Python code file. In addition may contain
+    the standard input and the arguments for the probe.
+    """
 
     def __init__(self, name: str, signal_set: str, et_signal: str, rc_signal: str, run_count: int, code: str, config: str, args: str):
         super(RunnableProbe, self).__init__(name, signal_set, et_signal, rc_signal, run_count)
@@ -67,6 +84,11 @@ class RunnableProbe(ProbeConfig):
 
 
 class InstanceConfig:
+    """
+    Stores the full configuration of an instance, including its probes, instance ID, URL of the
+    service that processes the response time reports, and an access token needed to communicate
+    with that service.
+    """
 
     def __init__(self, instance_id: str, api_endpoint_ip: str, api_endpoint_port: int, access_token:str,
                  production: bool):
@@ -79,6 +101,9 @@ class InstanceConfig:
 
     @staticmethod
     def init_from_pb(config_pb, procedures: Dict[str, Callable]) -> "InstanceConfig":
+        """
+        Creates an InstanceConfig object from its Protobuf representation.
+        """
         config = InstanceConfig(
             config_pb.instance_id,
             config_pb.api_endpoint_ip,

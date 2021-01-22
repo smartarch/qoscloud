@@ -29,7 +29,7 @@ from cloud_controller.assessment.deploy_controller_pb2_grpc import DeployPublish
 from cloud_controller.assessment.model import AppDatabase, Scenario, AppStatus
 from cloud_controller.assessment.scenario_planner import ScenarioPlanner, JudgeResult
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.application import Application
+from cloud_controller.knowledge.model import Application
 from cloud_controller.middleware.helpers import start_grpc_server
 
 logger = logging.getLogger("DC")

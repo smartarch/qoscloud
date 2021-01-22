@@ -2,8 +2,7 @@ import logging
 
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.knowledge_pb2 import ClientDependencyDescription, ApplicationName
-from cloud_controller.knowledge.application import Application
-from cloud_controller.knowledge.component import Component
+from cloud_controller.knowledge.model import Application, Component
 from cloud_controller.knowledge.instance import CompinPhase, ManagedCompin, UnmanagedCompin
 from cloud_controller.knowledge.user_equipment import UserEquipmentContainer
 from cloud_controller.task_executor.execution_context import ClientControllerExecutionContext

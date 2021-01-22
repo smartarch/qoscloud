@@ -1,3 +1,6 @@
+"""
+Contains a mock of the Elasticsearch and helpers classes used for testing the IVIS interface
+"""
 from threading import RLock, Thread
 from time import perf_counter, sleep
 from typing import Dict, List
@@ -39,8 +42,6 @@ class Elasticsearch:
 
 
 class helpers:
-
-
 
     @staticmethod
     def scan(es: Elasticsearch, preserve_order: bool, query, index: str) -> List[Dict[str, Dict]]:

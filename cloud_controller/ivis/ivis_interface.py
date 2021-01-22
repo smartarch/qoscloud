@@ -7,7 +7,7 @@ from cloud_controller.assessment.deploy_controller_pb2 import AppName, AppAdmiss
 from cloud_controller.assessment.deploy_controller_pb2_grpc import DeployControllerStub
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.instance import CompinPhase, ManagedCompin
-from cloud_controller.planner.k8s_generators import CONTAINER_TEMPLATE, get_job_deployment, add_resource_requirements
+from cloud_controller.planner.k8s_generators import get_job_deployment, add_resource_requirements
 from cloud_controller.middleware import AGENT_PORT
 from cloud_controller.middleware.helpers import connect_to_grpc_server
 from cloud_controller.ivis.ivis_pb2 import SubmissionAck, JobStatus, JobAdmissionStatus, UnscheduleJobAck, \
@@ -18,6 +18,12 @@ from cloud_controller.middleware.middleware_pb2_grpc import MiddlewareAgentStub
 
 
 class IvisInterface(IvisInterfaceServicer):
+    """
+    The interface that provides the IVIS framework with access to the QoS-managed cloud.
+
+    The interface is accessible through gRPC. For the parameters of the individual methods,
+    see the ivis.proto file.
+    """
 
     def __init__(self, knowledge: Knowledge):
         self._deploy_controller: DeployControllerStub = connect_to_grpc_server(DeployControllerStub, CTL_HOST, CTL_PORT)
@@ -74,6 +80,9 @@ class IvisInterface(IvisInterfaceServicer):
         self._knowledge.new_apps.put_nowait(application_pb)
 
     def SubmitJob(self, request, context):
+        """
+        Submits an IVIS job for assessment.
+        """
         if self._knowledge.api_endpoint_access_token is None:
             logging.error(f"Cannot deploy a job due to the absence of an access token")
             return SubmissionAck(success=False)
@@ -88,6 +97,9 @@ class IvisInterface(IvisInterfaceServicer):
         return SubmissionAck(success=True)
 
     def DeployJob(self, request, context):
+        """
+        Specifies response time and throughput requirements for the measured jobs.
+        """
         job_id = request.job_id
         contract = self._jobs[job_id].components[job_id].probes[0].requirements.add()
         if request.type == 0:
@@ -100,6 +112,10 @@ class IvisInterface(IvisInterfaceServicer):
         return SubmissionAck(success=True)
 
     def GetJobStatus(self, request, context):
+        """
+        Returns the status of a submitted job with respect to the proceses of assessment, aplication
+        review and deployment.
+        """
         job_id = request.job_id
         if job_id in self._knowledge.applications:
             if job_id in self._knowledge.unique_components_without_resources:
@@ -129,6 +145,9 @@ class IvisInterface(IvisInterfaceServicer):
                 raise RuntimeError(f"App admission status {status.status} is not supported.")
 
     def RunJob(self, request, context):
+        """
+        Performs a run of the given job.
+        """
         job_compin = self._knowledge.actual_state.get_job_compin(request.job_id)
         if job_compin is None or job_compin.phase != CompinPhase.READY:
             return RunJobAck()
@@ -143,10 +162,16 @@ class IvisInterface(IvisInterfaceServicer):
         return job_agent.RunProbe(params)
 
     def UnscheduleJob(self, request, context):
+        """
+        Removes the specified job from the cloud.
+        """
         self._deploy_controller.DeleteApplication(AppName(name=request.job_id))
         return UnscheduleJobAck()
 
     def UpdateAccessToken(self, request, context):
+        """
+        Updates the IVIS access token on both the cloud controller and the assessment controller.
+        """
         assessment_response = self._deploy_controller.UpdateAccessToken(request)
         if not assessment_response.success:
             logging.error(f"Cannot update the access token due to the jobs already being measured")

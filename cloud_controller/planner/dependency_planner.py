@@ -2,7 +2,7 @@ import logging
 from typing import List, Tuple, Optional
 
 from cloud_controller.knowledge.knowledge import Knowledge
-from cloud_controller.knowledge.component import Statefulness
+from cloud_controller.knowledge.model import Statefulness
 from cloud_controller.knowledge.instance import Compin, ManagedCompin
 from cloud_controller.knowledge.cloud_state import CloudState
 from cloud_controller.planner.top_planner import Planner

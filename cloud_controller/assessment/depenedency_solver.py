@@ -11,8 +11,7 @@ from enum import IntEnum
 from typing import Dict, List, Deque, Set, Tuple
 
 from cloud_controller.assessment.model import Scenario
-from cloud_controller.knowledge.component import Component
-from cloud_controller.knowledge.probe import Probe
+from cloud_controller.knowledge.model import Component, Probe
 from cloud_controller.knowledge.instance import Compin, ManagedCompin
 from cloud_controller.knowledge.cloud_state import CloudState
 

@@ -1,3 +1,6 @@
+"""
+Contains samples of IVIS requests and responses used for testing the IVIS interface
+"""
 SAMPLE_JOB_ID = "job1"
 SAMPLE_JOB_INTERVAL = 10
 SAMPLE_JOB_PARAMETERS = '''
