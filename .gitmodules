@@ -1,3 +1,0 @@
-[submodule "cloud_controller/analysis/predictor"]
-	path = predictor
-	url = git@gitlab.d3s.mff.cuni.cz:edge-cloud/predictor.git

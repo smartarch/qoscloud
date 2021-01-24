@@ -17,3 +17,5 @@ probes/
 examples/frpyc/images/
 
 examples/featuredetection/datasets/Mission/images/
+
+predictor/
