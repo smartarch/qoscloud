@@ -45,12 +45,20 @@ In order to destroy the VMs, run `vagrant destroy -f` from the same directory.
 ## Usage
 
 1. You can access the IVIS web interface through your browser at localhost:8080.
+
 2. The username to log in with is "admin", and the password is "test".
+
+   ![Log in screen](images/login.png)
+
 3. Once you have logged in, go to Settings, and press "Run test scenario" button. 
    This will create several initial IVIS entities to work with.
+
 4. Go to the "Jobs" panel. In the list of jobs you should see the Feature Detection job. 
    If it is in the MEASURING state, wait a couple of seconds and refresh the page, the job will get to the MEASURED state.
-   Once the job is in the MEASURED state, press the Edit icon next to the job entry.b
+   Once the job is in the MEASURED state, press the Edit icon next to the job entry.
+   
+   ![Jobs panel](images/job-table.png)
+
 5. At the bottom of job edit page, you can specify the QoS requirements for the job. 
    The table on that page shows the best possible values of response time that can be guaranteed at different percentiles.
    You can specify whether you want to set a response time requirement or a throughput requirement in a dropdown list.
@@ -61,28 +69,46 @@ In order to destroy the VMs, run `vagrant destroy -f` from the same directory.
    Additionally, you can set a time trigger for the job. 
    In this case, the job will be executed periodically with the specified interval.
    After you finish QoS requirement specification, press "Save and Exit".
+   
+   ![Requirements specification](images/requirements.png)
+
 6. Depending on the viability of the specified QoS requirement, the job will get into either ACCEPTED or REJECTED state.
    If the job was accepted, it will get into the DEPLOYED state after some time. 
    For the first instance of the job, the deployment may last several minutes, depending on your internet connection
    (this is due to the fact that a Docker image for the job needs to be downloaded).
    Additional instances that use the same Docker image are usually deployed within 10 seconds. 
+
 7. After the job gets into the DEPLOYED state, you can execute a run of the job by clicking the "Run" button next to the job entry.
    This way the job can be executed manually, if a periodic trigger was not specified.
-8. You can add more instances of the same job by clicking "Add job" button.
+
+8. You can access the run logs of the deployed job by clicking the "Logs" button. Each entry in the table corresponds to an individual run.
+
+   ![Logs panel](images/run-table.png)
+
+9. Clicking "View Run output" next to an entry corresponding to a completed run will show you the logs of that run. 
+   If the run status is "Success" it will show the standard output of that run. If the status is "Failed", it will show the standard error output.
+   
+   ![Run output](images/run-output.png)
+
+10. You can add more instances of the same job by clicking "Add job" button.
    It will open a new job settings page.
    There, you have to specify the name for the job, and check the "Run in Kubernetes cloud" and 
    "Use an already existing job as a template" boxes.
    Then, choose a template job from the dropdown list (only the jobs in ACCEPTED and DEPLOYED states are displayed in the list).
    Finally, press "Save and Exit".
    The new job will copy all the properties of the template job, including the QoS requirement and time trigger. 
-9. Since the cluster is very small, the number of instances that can run at the same time is very low due to memory limitations.
-   Normally, you will be able to add 1 to 4 instances, depending on the strictness of the QoS requirement that you set.
-   Additional instances will not be deployed (in the jobs table they will be displayed with NO_RESOURCES state). 
-10. Visualizations of job performance can be accessed in "Workspaces/Job performance logs". 
+    
+   ![Creating a job from template](images/clone-job.png)
+
+11. Since the cluster is very small, the number of instances that can run at the same time is very low due to memory limitations.
+    Normally, you will be able to add 1 to 4 instances, depending on the strictness of the QoS requirement that you set.
+    Additional instances will not be deployed (in the jobs table they will be displayed with NO_RESOURCES state). 
+
+12. Visualizations of job performance can be accessed in "Workspaces/Job performance logs". 
       There, you can choose a panel from the list in order to see a visualization for the corresponding job.
       Note that a visualization will not be displayed if there are no completed runs of the job (since there are no data to visualize).
 
-
+   ![Performance visualization](images/visualization.png)
 
 ## Configuration
 
