@@ -1,0 +1,54 @@
+Vagrant.configure("2") do |config|
+
+  config.vm.synced_folder ".", "/vagrant", disabled: true
+
+  config.vm.define :production do |node|
+    node.vm.box = "d3s/k8s-node"
+    node.vm.network :private_network, ip: "10.0.3.4"
+    node.vm.hostname = "production"
+    node.vm.provider "virtualbox" do |virtualbox|
+      virtualbox.memory = 2048
+      virtualbox.cpus = 2
+    end
+  end
+
+  config.vm.define :assessment do |node|
+    node.vm.box = "d3s/k8s-node"
+    node.vm.network :private_network, ip: "10.0.3.2"
+    node.vm.hostname = "assessment"
+    node.vm.provider "virtualbox" do |virtualbox|
+      virtualbox.memory = 2048
+      virtualbox.cpus = 2
+    end
+  end
+
+  config.vm.define :controller do |node|
+    node.vm.box = "d3s/controller"
+    node.vm.hostname = "controller"
+    node.vm.network :private_network, ip: "10.0.3.3"
+    node.vm.network :forwarded_port, guest: 8080, host: 8080
+    node.vm.network :forwarded_port, guest: 8081, host: 8081
+    node.vm.network :forwarded_port, guest: 8082, host: 8082
+    node.vm.provider "virtualbox" do |virtualbox|
+      virtualbox.memory = 6144
+      virtualbox.cpus = 2
+    end
+    node.vm.provision "ansible" do |ansible|
+      ansible.limit = "all"
+      ansible.playbook = "./setup.yml"
+      ansible.become = true
+      ansible.extra_vars = {
+        overlay_network: "10.64.0.0/12",
+        pod_network: "10.120.0.0/16",
+      }
+      ansible.host_vars = {
+          production: {ip: "10.0.3.4"},
+          assessment: {ip: "10.0.3.2"},
+      }
+      ansible.groups = {
+        "masters" => ["assessment", "production"],
+      }
+    end
+  end
+end
+
