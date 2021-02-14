@@ -1,11 +1,20 @@
 # Self-adaptive K8S Cloud Controller for Time-sensitive Applications
 
-The framework can be installed with the Vagrantfile located in the `setup` folder (see Installation section).
-The setup consists of 3 virtual machines. 
-Two of them are running Kubernetes nodes, and the third runs the cloud controller and the IVIS platform.
-The functionality of the cloud controller can be accessed through the IVIS web interface.
+If you want to try out the framework, follow the Installation and Usage sections. The rest of this document describes the architecture of the framework, how to use the framework for your own use cases, and how to configure and modify the framework.
+
+### Table of Contents
+
+1. [Installation](#installation)
+2. [Usage](#usage)
+3. [Using the framework for your own use case](#using-the-framework-for-your-own-use-case)
+4. [Framework architecture](#framework-architecture)
+5. [Configuration](#configuration)
+
+
 
 ## Installation
+
+The framework can be installed with the Vagrantfile located in the `setup` folder. The setup consists of 3 virtual machines. Two of them are running Kubernetes nodes, and the third runs the cloud controller and the IVIS platform. The functionality of the cloud controller can be accessed through the IVIS web interface.
 
 ### Hardware requirements
 
@@ -110,6 +119,82 @@ In order to destroy the VMs, run `vagrant destroy -f` from the same directory.
       Note that a visualization will not be displayed if there are no completed runs of the job (since there are no data to visualize).
 
    ![Performance visualization](images/visualization.png)
+
+
+
+## Using the framework for your own use case
+
+This section describes how to run the framework on your own machine, deploy applications into it, and how to integrate the middleware library into your own Docker images used with the framework.
+
+### Running the framework
+
+The steps have to be done before the first run of the framework.
+
+1. Make sure two Kubernetes clusters (production and assessment) are set up and running.
+2. Run `pip3 install -r requirements.txt` to install the required libraries.
+3. Run `python3 ./generate_grpc.py` to generate protocol buffers and gRPC stubs.
+
+The framework consists of several processes. They can be started in the following way (the commands  are executed from the root folder of the project):
+
+1. Start the assessment controller process:  `./run_assessment.sh`.
+2. Start the cloud controller process:  `./run_production.sh`.
+3. Start the performance data aggregator process:  `./run_aggregator.sh`.
+4. Start the client controller process: `./run_cc.sh`. 
+   This is only necessary if you want to submit applications containing external clients.
+
+### Deploying applications
+
+In addition to deploying applications with the IVIS web interface (as shown in the section Usage), applications can be deployed with the command-line deployment tool.
+
+In this case, the application has to be specified with an application descriptor (a YAML file that describes the application). Examples of application descriptors can be found in the demonstrators located in the `examples` folder.
+
+Below is the list of commands supported by the deployment tool.
+
+```bash
+# Submiting an application descriptor:
+
+./depltool.sh submit application.yaml
+
+# Getting the measurement and deployment status of a submitted application:
+
+./depltool.sh status application
+
+# Getting the values of response time and throughput of a measured application:
+
+./depltool.sh get-time 99 application component probe
+
+./depltool.sh get-throughput application component probe
+
+# Submitting QoS requirements for an application:
+
+./depltool.sh submit-requirements requirements.yaml
+
+# Deleting a submitted application:
+
+./depltool.sh delete application
+```
+
+### Integrating middleware agent
+
+All the modules of the control middleware library are located in the `cloud_controller.middleware` package. There are three essential classes in the package. `MiddlewareAgent` is the class that exposes the gRPC interface through which the framework controls the cloud instances. `ComponentAgent` and `ClientAgent` are the classes through which the application-side code can interact with the framework and its services.
+
+There are two ways to integrate the middleware agent into a component. The first way is to run the midleware agent as the main program of the container. This can be done, e.g. by setting the entry point of the container to the `run_middleware_agent.py` module. In this case, management and ititialization of instances is fully handled by the framework. Development of a component for the framework in this case consists of two steps: (i) building a Docker image for the component, and (ii) writing the code of the probes and providing it along with the application descriptor.
+
+The framework includes a default Docker image that integrates the middleware agent in the way described above. With this image the first of two steps can be skipped.
+
+The second way to integrate the middleware agent is by instantiating and starting the component agent object in the application-side code. Calling the `start` method on that object starts a non-daemon thread that runs the middleware agent. With this option, the probes can be registered as callable procedures.
+
+Using the component agent requires some degree of cooperation on the side of application developer with respect to controlling the lifecycle of an instance. Instance initialization in this case consists of two parts: framework-side and application-side. The application-side code needs to notify the agent when its initialization is completed through the `set_ready` method. The agent will signal the completion of framework-side initialization by invoking the callback function provided to it at initialization. An instance can be provided to other instances as a dependency only if both parts of initialization are completed.
+
+Instance finalization is also divided in two parts in the same way. The framework will not remove an instance from the cloud until it is finalized by the application-side code.
+
+### Integrating client agent
+
+An external client must run a client agent in order to be able to connect to the framework. At initialization, a client agent needs to receive a name of an application and a name of a client type. It communicates these values to the framework, so that the framework would know which components the client needs to connect to. Starting the client agent and getting dependency addresses from it works in the same way as in the component agent. 
+
+If a client wants to use stateful components and to have access to its persistent state after a restart, it needs to save an ID assigned to it by the client controller after the first connection. This ID has to be supplied to the client agent when it is instantiated again after the restart.
+
+
 
 ## Framework architecture
 
@@ -497,7 +582,22 @@ There are two main ways in which you can configure the framework for the purpose
 
 ### Modifying the settings
 
-The framework settings can be configured in the framework configuration files located in the `config` folder. For instance, in order to turn on the statistical predictor you need to set `STATISTICAL_PREDICTION_ENABLED` variable to `True` in the `config/main-config.yaml` file.
+The framework settings can be configured in the framework configuration files located in the `config` folder.  The table below contains a brief overview of some of the most important settings. All of these settings are located in `config/main-config.yaml` file.
+
+| Setting                                           | Explanation                                                  |
+| ------------------------------------------------- | ------------------------------------------------------------ |
+| `STATISTICAL_PREDICTION_ENABLED`                  | If `True`, the prediction based on statistical modelling is used. Otherwise, only historical data are taken into account. |
+| `THROUGHPUT_ENABLED`                              | If `True`, the statistical predictor will be capable to answer the questions about throughput in addition to response time. Setting this to `True` increases the duration of predictor initialization. |
+| `CSP_DEFAULT_TIME_LIMIT`                          | Specifies the time limit on the duration of the analysis phase (in seconds). The best solution that is found in this time is used as the desired state. |
+| `CSP_RUNNING_NODE_COST`                           | Specifies the relative cost of a running node in the objective function expression used by the constraint solver. |
+| `CSP_LATENCY_COST`                                | Specifies the relative cost of end-to-end latency betwen a connected client and its services in the objective function expression used by the constraint solver. |
+| `CSP_REDEPLOYMENT_COST`                           | Specifies the relative cost of the redeployment of an instance in the objective function expression used by the constraint solver. |
+| `DEFAULT_DOCKER_IMAGE`                            | The Docker image that is used for cloud instances in cases when a different image is not explicitly specified. |
+| `API_ENDPOINT_IP`                                 | IP address of the IVIS server.                               |
+| `DEFAULT_MEASURED_RUNS`                           | The number of probe runs that is executed by the assessment controller in each measurement scenario. |
+| `VIRTUAL_COUNT_CONSTANT`, `VIRTUAL_COUNT_PERCENT` | The number of spare containers reserved for incoming clients is determined as ``VIRTUAL_COUNT_CONSTANT`` + <current # of clients> * `VIRTUAL_COUNT_PERCENT`. |
+
+Additionally, the config files allow you to change the default ports and IP addresses of all components of the framework, default node labels, etc.
 
 The settings relevant to the middleware library are located in the `config/middleware-config.yaml` file. If you want to build a custom Docker container to use with the framework, it is important to make sure that the middleware settings with which the container was built are the same as those used by the running instance of the framework.
 
