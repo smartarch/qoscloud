@@ -8,6 +8,7 @@ from threading import Thread
 from typing import Optional, Any, Callable, Tuple
 
 import requests
+from datetime import datetime
 from elasticsearch import Elasticsearch
 
 from cloud_controller.middleware import middleware_pb2 as mw_protocols
@@ -47,10 +48,15 @@ class Interpreter:
 
         self._current_process: Optional[str] = None
         self._last_run_start_time: float = 0
+        self._last_run_start_time_str: str = ""
         self._elasticsearch = Elasticsearch([{'host': es_host, 'port': int(es_port)}])
         self._measurement_iteration_number = 0
         self._result: Optional[Any] = None
         self._ivis_server_available: bool = self._config.access_token != ""
+        self._reporting_enabled: bool = True
+
+    def set_reporting(self, reporting: bool):
+        self._reporting_enabled = reporting
 
     @property
     def current_process(self) -> Optional[str]:
@@ -86,10 +92,11 @@ class Interpreter:
             return
         self._current_process = probe_name
         self._last_run_start_time = time.perf_counter()
+        self._last_run_start_time_str = datetime.now().isoformat()
         assert probe_name in self._config.probes
         probe = self._config.probes[probe_name]
         assert isinstance(probe, CallableProbe)
-        self._wait_for_process(probe, procedure, args)
+        self._wait_for_process(probe, self._current_process, procedure, args)
         return self._result
 
     def run_probe(self, probe_name: str, run_id: str, state: str) -> None:
@@ -101,12 +108,13 @@ class Interpreter:
             return
         self._current_process = probe_name
         self._last_run_start_time = time.perf_counter()
+        self._last_run_start_time_str = datetime.now().isoformat()
         probe = self._config.probes[probe_name]
         if isinstance(probe, RunnableProbe):
             probe.update_state(state)
-            self._run_python_interpreter(probe)
+            self._run_python_interpreter(probe, run_id)
         elif isinstance(probe, CallableProbe):
-            self._wait_thread: Thread = Thread(target=self._wait_for_process, args=(probe,), daemon=True)
+            self._wait_thread: Thread = Thread(target=self._wait_for_process, args=(probe, run_id), daemon=True)
             self._wait_thread.start()
 
     def _report_already_running(self, probe_name: str, run_id: str):
@@ -114,8 +122,8 @@ class Interpreter:
             'config': "",
             'instanceId': probe_name,
             'runId': run_id,
-            'startTime': time.perf_counter(),
-            'endTime': time.perf_counter(),
+            'startTime': datetime.now().isoformat(),
+            'endTime': datetime.now().isoformat(),
             'output': "",
             'error': "This instance is already running a probe.",
             'returnCode': -1,
@@ -124,14 +132,14 @@ class Interpreter:
         if self._ivis_server_available:
             self._send_request(Request.FAIL, run_status)
 
-    def _run_python_interpreter(self, probe: RunnableProbe):
+    def _run_python_interpreter(self, probe: RunnableProbe, run_id: str):
         fdr, fdw = os.pipe()
         self._process = Popen([PYTHON_EXEC, probe.filename, str(fdw), probe.args], universal_newlines=True,
                               stderr=PIPE, stdout=PIPE, stdin=PIPE, pass_fds=(fdw,))
         self._process.stdin.write(f"{probe.config()}\n")
         self._process.stdin.flush()
 
-        self._wait_thread: Thread = Thread(target=self._wait_for_process, args=(probe,), daemon=True)
+        self._wait_thread: Thread = Thread(target=self._wait_for_process, args=(probe, run_id), daemon=True)
         self._wait_thread.start()
         if self._ivis_server_available:
             self._requests_thread: Thread = Thread(target=self._process_runtime_requests, args=(fdr, self._process.stdin, probe.name),
@@ -166,13 +174,13 @@ class Interpreter:
         except Exception as e:
             return e
 
-    def _wait_for_process(self, probe: ProbeConfig, procedure: Callable = None, args: Tuple = ()):
+    def _wait_for_process(self, probe: ProbeConfig, run_id: str = None, procedure: Callable = None, args: Tuple = ()):
         assert self._current_process is not None
         run_status = {
             'config': "",
             'instanceId': probe.name,
-            'runId': self._current_process,
-            'startTime': self._last_run_start_time
+            'runId': run_id,
+            'startTime': self._last_run_start_time_str
         }
         if isinstance(probe, RunnableProbe):
             while self._process.poll() is None:
@@ -192,7 +200,8 @@ class Interpreter:
                 run_status['error'] = str(self._result)
             else:
                 run_status['output'] = str(self._result)
-        run_status['endTime'] = time.perf_counter()
+        end_time = time.perf_counter()
+        run_status['endTime'] = datetime.now().isoformat()
         if success:
             logging.info(f"Run completed successfully. STDOUT: {run_status['output']}")
             if self._ivis_server_available:
@@ -201,8 +210,8 @@ class Interpreter:
             logging.info(f"Run failed. STDERR: {run_status['error']}")
             if self._ivis_server_available:
                 self._send_request(Request.FAIL, run_status)
-        if self._ivis_server_available and self._config.reporting_enabled:
-            probe.submit_running_time(run_status['endTime'] - self._last_run_start_time, self._elasticsearch)
+        if self._ivis_server_available and self._config.reporting_enabled and self._reporting_enabled:
+            probe.submit_running_time(end_time - self._last_run_start_time, self._elasticsearch)
         self._current_process = None
         if self._agent.phase == mw_protocols.Phase.Value('FINALIZING'):
             self._agent.set_finished()

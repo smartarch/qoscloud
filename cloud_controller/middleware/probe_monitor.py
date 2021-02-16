@@ -23,9 +23,11 @@ class ProbeMonitor:
         collector = DataCollector(probe_name, cpu_events)
 
         # Warm up
-        for _ in range(warm_up_cycles):
-            self._interpreter.run_measurement(probe_name)
-
+        if warm_up_cycles > 0:
+            self._interpreter.set_reporting(False)
+            for _ in range(warm_up_cycles):
+                self._interpreter.run_measurement(probe_name)
+            self._interpreter.set_reporting(True)
         # Measured
         start = time.perf_counter() * 1000
         for _ in range(measured_cycles):
