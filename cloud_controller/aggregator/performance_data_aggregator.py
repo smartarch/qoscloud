@@ -137,6 +137,17 @@ class PerformanceDataAggregator(PredictorServicer):
                 for probe in component.probes:
                     self._register_probe(probe)
                     self._scenario_generator.register_probe(probe)
+                    if probe.signal_set != "":
+                        if self._single_process_predictor.has_measurement(
+                                MeasurementAggregator.compose_measurement_name(DEFAULT_HARDWARE_ID, [probe.alias])
+                        ):
+                            self._single_process_predictor.report_measurements(
+                                probe.alias,
+                                probe.signal_set,
+                                probe.execution_time_signal,
+                                probe.run_count_signal
+                            )
+
         return predictor_pb.RegistrationAck()
 
     def UnregisterApp(self, request, context):

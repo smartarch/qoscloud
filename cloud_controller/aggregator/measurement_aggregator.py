@@ -5,8 +5,11 @@ import logging
 
 import os
 
-from cloud_controller import DATAFILE_EXTENSION, RESULTS_PATH
+from elasticsearch import Elasticsearch
+
+from cloud_controller import DATAFILE_EXTENSION, RESULTS_PATH, API_ENDPOINT_IP, DEFAULT_HARDWARE_ID
 from cloud_controller.assessment.model import Scenario
+from cloud_controller.middleware.instance_config import ELASTICSEARCH_PORT
 
 
 class MeasurementAggregator:
@@ -28,6 +31,29 @@ class MeasurementAggregator:
     def __init__(self):
         self._measurements: Dict[str, List[int]] = {}
         self._mean_running_times: Dict[str, int] = {}
+        self._elasticsearch = Elasticsearch([{'host': API_ENDPOINT_IP, 'port': int(ELASTICSEARCH_PORT)}])
+
+    def report_measurements(self, probe_alias: str, signal_set: str, execution_time_signal: str, run_count_signal: str):
+        run_count = 0
+        filename = f"{RESULTS_PATH}/{DEFAULT_HARDWARE_ID}/{probe_alias}{DATAFILE_EXTENSION}"
+        with open(filename, "r") as file:
+            while True:
+                line = file.readline()
+                lines = line.split(';', 5)
+                if len(lines) < 4:
+                    break
+                start = int(lines[2])
+                end = int(lines[3])
+                running_time = end - start
+                run_count += 1
+                doc = {
+                    execution_time_signal: running_time,
+                    run_count_signal: run_count
+                }
+                self._elasticsearch.index(index=signal_set, doc_type='_doc', body=doc)
+        logging.info(f"{run_count} measurements for {probe_alias} were reported to "
+                     f"{signal_set}:{execution_time_signal}:{run_count_signal}")
+
 
     def load_existing_measurements(self) -> Iterable[Tuple[str, str, List[str], str]]:
         """
