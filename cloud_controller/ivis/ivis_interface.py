@@ -1,6 +1,11 @@
 import logging
 from typing import Dict, List
 
+from datetime import datetime
+
+import requests
+
+from cloud_controller import API_ENDPOINT_IP, API_ENDPOINT_PORT
 from cloud_controller.architecture_pb2 import Architecture, Cardinality, ComponentType
 from cloud_controller.assessment import CTL_HOST, CTL_PORT
 from cloud_controller.assessment.deploy_controller_pb2 import AppName, AppAdmissionStatus
@@ -151,6 +156,25 @@ class IvisInterface(IvisInterfaceServicer):
         """
         job_compin = self._knowledge.actual_state.get_job_compin(request.job_id)
         if job_compin is None or job_compin.phase != CompinPhase.READY:
+            run_status = {
+                'config': "",
+                'instanceId': request.job_id,
+                'runId': request.run_id,
+                'startTime': datetime.now().isoformat(),
+                'endTime': datetime.now().isoformat(),
+                'output': "",
+                'error': "This instance is not deployed yet.",
+                'returnCode': -1,
+            }
+            logging.info(f"Cannot run the probe. {run_status['error']}")
+            headers = {
+                "Content-Type": "application/json",
+                "access-token": self._knowledge.api_endpoint_access_token
+            }
+            requests.post(
+                f"http://{API_ENDPOINT_IP}:{API_ENDPOINT_PORT}/ccapi/on-fail",
+                headers=headers, json=run_status
+            )
             return RunJobAck()
         logging.info(f"Running job {job_compin.id}")
         params = RunParameters(
