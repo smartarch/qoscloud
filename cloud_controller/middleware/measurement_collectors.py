@@ -180,7 +180,10 @@ class DataCollector:
 
     def __init__(self, probe_name: str, cpu_events: Optional[List[str]] = None):
         # Monitors
-        self._monitors: List[IterativeMonitor] = [TimeMonitor(), CpuMonitor(cpu_events), DiskMonitor()]
+        try:
+            self._monitors: List[IterativeMonitor] = [TimeMonitor(), CpuMonitor(cpu_events), DiskMonitor()]
+        except CPUEventsNotSupportedException:
+            self._monitors: List[IterativeMonitor] = [TimeMonitor()]
 
         # Common header
         self._header: List[str] = []
