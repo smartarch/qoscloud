@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple, Iterator, Set
 import logging
 
 import cloud_controller.aggregator.predictor_pb2 as predictor_pb
-from cloud_controller import DEFAULT_HARDWARE_ID, PREDICTOR_HOST, PREDICTOR_PORT
+from cloud_controller import DEFAULT_HARDWARE_ID, PREDICTOR_HOST, PREDICTOR_PORT, STATISTICAL_PREDICTION_ENABLED
 from cloud_controller.aggregator.multipredictor import MultiPredictor
 from cloud_controller.aggregator.predictor_pb2_grpc import PredictorServicer, \
     add_PredictorServicer_to_server
@@ -89,6 +89,9 @@ class PerformanceDataAggregator(PredictorServicer):
         for combination in self._generate_combinations(assignment=assignment):
             measurement = MeasurementAggregator.compose_measurement_name(hw_id, combination)
             measured = self._single_process_predictor.has_measurement(measurement)
+            if not STATISTICAL_PREDICTION_ENABLED and not measured:
+                self._scenario_generator.increase_count(hw_id, combination[0], len(combination))
+                return predictor_pb.Prediction(result=False)
             probe = self._probes_by_id[combination[0]]
             for requirement in probe.requirements:
                 prediction: bool = False
