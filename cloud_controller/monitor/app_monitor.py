@@ -25,6 +25,8 @@ class ApplicationMonitor(Monitor):
     def monitor(self) -> None:
         for app_pb in self.postponed_apps:
             self._knowledge.add_application(app_pb)
+        while not self._knowledge.delete_apps.empty():
+            self._knowledge.delete_application(self._knowledge.delete_apps.get_nowait())
         while not self._knowledge.new_apps.empty():
             self._knowledge.add_application(self._knowledge.new_apps.get_nowait())
         self.postponed_apps = []

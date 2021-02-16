@@ -37,8 +37,8 @@ with app.app_context() as ctx:
 
 
 def log_run_status(run_status):
-    logging.info(f"Run {run_status['runId']} of the job {run_status['jobId']} was completed successfully in "
-                 f"{run_status['endTime'] - run_status['startTime']} with return code {run_status['returnCode']}")
+    logging.info(f"Run {run_status['runId']} of the job {run_status['jobId']} was completed successfully at "
+                 f"{run_status['endTime']} with return code {run_status['returnCode']}")
     logging.info("-----------------------------------------------------------------------------\nSTDOUT:")
     print(run_status['output'])
     logging.info("-----------------------------------------------------------------------------\nSTDERR:")

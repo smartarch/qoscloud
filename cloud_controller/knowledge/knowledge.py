@@ -57,6 +57,7 @@ class Knowledge:
         self.clients_without_resources: List[str] = []
         self.api_endpoint_access_token: Optional[str] = None
         self.new_apps: Queue = Queue()
+        self.delete_apps: Queue = Queue()
         self._application_was_deleted: bool = False
         self._load_monitoring_on: bool = False
 

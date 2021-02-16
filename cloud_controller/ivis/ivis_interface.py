@@ -7,6 +7,7 @@ from cloud_controller.assessment.deploy_controller_pb2 import AppName, AppAdmiss
 from cloud_controller.assessment.deploy_controller_pb2_grpc import DeployControllerStub
 from cloud_controller.knowledge.knowledge import Knowledge
 from cloud_controller.knowledge.instance import CompinPhase, ManagedCompin
+from cloud_controller.middleware.middleware_agent import IVIS_HOST
 from cloud_controller.planner.k8s_generators import get_job_deployment, add_resource_requirements
 from cloud_controller.middleware import AGENT_PORT
 from cloud_controller.middleware.helpers import connect_to_grpc_server
@@ -165,7 +166,10 @@ class IvisInterface(IvisInterfaceServicer):
         """
         Removes the specified job from the cloud.
         """
-        self._deploy_controller.DeleteApplication(AppName(name=request.job_id))
+        if request.job_id in self._templates:
+            self._knowledge.delete_apps.put_nowait(request.job_id)
+        else:
+            self._deploy_controller.DeleteApplication(AppName(name=request.job_id))
         return UnscheduleJobAck()
 
     def UpdateAccessToken(self, request, context):
