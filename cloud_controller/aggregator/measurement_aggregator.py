@@ -125,6 +125,7 @@ class MeasurementAggregator:
         percentile is lower than the specified limit.
         :param probe_name: measurement name
         """
+        logging.info(f"Predicting running time for process {probe_name} at {percentile} percentile. Requirement: {time_limit}")
         if self.running_time_at_percentile(probe_name, percentile) < time_limit:
             return True
         return False
@@ -135,6 +136,7 @@ class MeasurementAggregator:
         is lower than the specified limit.
         :param probe_name: measurement name
         """
+        logging.info(f"Predicting mean running time for process {probe_name}. Requirement: {max_mean_time}")
         if self.mean_running_time(probe_name) < max_mean_time:
             return True
         return False
@@ -146,4 +148,5 @@ class MeasurementAggregator:
         return time_array[index]
     
     def mean_running_time(self, name: str) -> int:
+        logging.info(f"Predicted mean running time of {self._mean_running_times[name]} for process {name}.")
         return self._mean_running_times[name]

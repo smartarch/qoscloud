@@ -68,8 +68,8 @@ class PredictorScenarioPlanner(ScenarioPlanner):
                     contract.percentile = percentile
                 response = self._predictor_stub.ReportPercentiles(request)
                 for report in response.contracts:
-                    logging.info(f"Running time at {report.percentile} percentile: {report.time}")
-                logging.info(f"Mean running time: {response.mean}")
+                    logging.info(f"Running time for app {app_name} at {report.percentile} percentile: {report.time}")
+                logging.info(f"Mean running time for app {app_name}: {response.mean}")
                 if self._knowledge.api_endpoint_access_token is not None:
                     headers = {
                         "Content-Type": "application/json",
