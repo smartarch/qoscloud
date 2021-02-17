@@ -1,0 +1,63 @@
+- name: setup k8s nodes
+  hosts: masters
+
+  tasks:
+  - shell: echo 1 > /proc/sys/net/ipv4/ip_forward
+
+  - name: run kubeadm init
+    shell: kubeadm init --apiserver-advertise-address {{ ip }} --pod-network-cidr={{ pod_network }} --service-cidr={{ overlay_network }} --node-name {{ inventory_hostname }}
+
+  - name: create directory for kubeconfig
+    file:
+      path: /root/.kube
+      state: directory
+
+  - name: create kube config
+    shell: cp -i /etc/kubernetes/admin.conf /root/.kube/config && chown $(id -u):$(id -g) /root/.kube/config
+
+  - name: add datacenter labels
+    shell: kubectl label nodes {{ inventory_hostname }} mlmec/DataCenter=center
+
+  - name: add hardware ID labels
+    shell: kubectl label nodes {{ inventory_hostname }} mlmec/HardwareID=nodetype_1
+
+  - name: untaint master
+    shell: kubectl taint nodes --all node-role.kubernetes.io/master-
+
+  - name: change cidr in calico deployment file
+    lineinfile:
+      path: /root/calico.yaml
+      regexp: '^              value: "192.168.0.0/16"'
+      line: '              value: "{{ pod_network }}"'
+
+  - name: setup rbac-kdd
+    shell: export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl apply -f /root/rbac-kdd.yaml
+
+  - name: setup calico
+    shell: export KUBECONFIG=/etc/kubernetes/admin.conf && kubectl apply -f /root/calico.yaml
+
+  - name: fetch kubeconfigs for the clusters
+    fetch:
+      src: /etc/kubernetes/admin.conf
+      dest: config-{{ inventory_hostname }}
+      flat: yes
+
+- name: copy kubeconfig
+  hosts: controller
+  vars:
+    ansible_python_interpreter: /usr/bin/python2
+  tasks:
+
+  - name: create directory for kubeconfig
+    file:
+      path: /root/.kube
+      state: directory
+
+  - name: copy kubeconfig to the controller
+    copy:
+      src: config-{{ item }}
+      dest: /root/.kube/config-{{ item }}
+    with_items:
+      - assessment
+      - production
+

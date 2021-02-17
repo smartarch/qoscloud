@@ -37,13 +37,9 @@ Vagrant.configure("2") do |config|
       ansible.limit = "all"
       ansible.playbook = "./setup.yml"
       ansible.become = true
-      ansible.extra_vars = {
-        overlay_network: "10.64.0.0/12",
-        pod_network: "10.120.0.0/16",
-      }
       ansible.host_vars = {
-          production: {ip: "10.0.3.4"},
-          assessment: {ip: "10.0.3.2"},
+          production: {ip: "10.0.3.4", overlay_network: "10.96.0.0/12", pod_network: "10.118.0.0/16"},
+          assessment: {ip: "10.0.3.2", overlay_network: "10.64.0.0/12", pod_network: "10.120.0.0/16"},
       }
       ansible.groups = {
         "masters" => ["assessment", "production"],
