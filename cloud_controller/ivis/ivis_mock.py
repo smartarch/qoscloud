@@ -91,7 +91,7 @@ if __name__ == "__main__":
                 job_id="ivisjob",
                 code=SAMPLE_JOB_CODE,
                 config=json.dumps(json.loads(SAMPLE_JOB_CONFIG)),
-                docker_container="dankhalev/ivis-job"
+                docker_container="d3srepo/qoscloud-default"
             )
         )
         logging.info("Job has been submitted")

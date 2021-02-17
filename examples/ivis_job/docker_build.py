@@ -6,7 +6,7 @@ This script builds the docker images of image client and recognizer server and p
 from subprocess import call
 
 print("Building the default docker image")
-call("docker build -t dankhalev/ivis-job -f Dockerfile ../..", shell=True)
+call("docker build -t d3srepo/qoscloud-default -f Dockerfile ../..", shell=True)
 
 print("Pushing images to DockerHub")
-call("docker push dankhalev/ivis-job", shell=True)
+call("docker push d3srepo/qoscloud-default", shell=True)

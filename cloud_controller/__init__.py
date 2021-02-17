@@ -27,7 +27,7 @@ THREAD_COUNT = 32
 DEFAULT_EUCLID_TOPOLOGY_CONFIG = "config/topology-config.yaml"
 DEFAULT_PREDICTOR_CONFIG = "./config/predictor-config.yaml"
 USE_VIRTUAL_NETWORK_CONTROLLER = False
-DEFAULT_DOCKER_IMAGE = "dankhalev/ivis-job"
+DEFAULT_DOCKER_IMAGE = "d3srepo/qoscloud-default"
 
 PREDICTOR_HOST = "0.0.0.0"
 PREDICTOR_PORT = 4317
