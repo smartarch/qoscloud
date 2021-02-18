@@ -18,7 +18,7 @@ The framework can be installed with the Vagrantfile located in the `setup` folde
 
 ### Hardware requirements
 
-The VMs in this setup take 10 GB of RAM and 6 CPUs combined.
+The VMs in this setup take 11 GB of RAM and 6 CPUs combined.
 
 ### Prerequisites
 
@@ -53,7 +53,7 @@ In order to destroy the VMs, run `vagrant destroy -f` from the same directory.
 
 ## Usage
 
-1. You can access the IVIS web interface through your browser at localhost:8080.
+1. You can access the IVIS web interface through your browser at 10.0.3.3:8080.
 
 2. The username to log in with is "admin", and the password is "test".
 
@@ -99,7 +99,9 @@ In order to destroy the VMs, run `vagrant destroy -f` from the same directory.
    
    ![Run output](images/run-output.png)
 
-10. You can add more instances of the same job by clicking "Add job" button.
+10. You can add more instances of the same job by clicking "Run test scenario" button again.
+    After that, you can specify the QoS requirements for that job in the same way.
+    Alternatively, you can clone an already deployed job by clicking "Add job" button.
       It will open a new job settings page.
       There, you have to specify the name for the job, and check the "Run in Kubernetes cloud" and 
       "Use an already existing job as a template" boxes.
