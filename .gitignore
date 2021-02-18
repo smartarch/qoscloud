@@ -19,3 +19,8 @@ examples/frpyc/images/
 examples/featuredetection/datasets/Mission/images/
 
 predictor/
+
+/setup/controller.box
+/setup/config-assessment
+/setup/config-production
+/setup/.vagrant/
