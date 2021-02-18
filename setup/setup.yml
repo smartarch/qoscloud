@@ -48,6 +48,9 @@
     ansible_python_interpreter: /usr/bin/python2
   tasks:
 
+  - name: add IP routes to K8S overlay networks
+    shell: ip route add 10.96.0.0/12 via 10.0.3.4 && ip route add 10.64.0.0/12 via 10.0.3.2
+
   - name: create directory for kubeconfig
     file:
       path: /root/.kube
@@ -61,3 +64,5 @@
       - assessment
       - production
 
+  - name: restart services
+    shell: systemctl restart predictor && systemctl restart assessment && systemctl restart production
