@@ -42,9 +42,7 @@ apt-get install vagrant ansible
 The VMs can be created with the following commands (executed from the folder where Vagrantfile is located)
 
 ```
-vagrant box add d3s/controller
-vagrant box add d3s/k8s-node
-vagrant up
+sudo vagrant up --provider virtualbox
 ```
 
 After `vagrant up` finishes execution, you will be able to access the IVIS interface through your browser
