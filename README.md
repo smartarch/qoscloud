@@ -642,3 +642,6 @@ Similarly, the prediction method used in the framework can be changed with the f
 3. Provide the instance of your custom predictor to an instance of `ExtensionManager`.
 4. Get the adaptation loop from the extension manager and run it.
 
+## License
+
+See the LICENSE file.
